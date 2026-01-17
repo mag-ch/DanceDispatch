@@ -1,15 +1,5 @@
 import React from 'react';
-
-interface Event {
-    id: string;
-    title: string;
-    description: string;
-    startDateTime: Date;
-    endDateTime: Date;
-    location: string;
-    price: number;
-    thumbnailUrl?: string;
-}
+import { Event, processUrl, checkEventSaved } from '../../lib/utils'
 
 interface EventCardProps {
     event: Event;
@@ -21,6 +11,8 @@ interface SearchResultProps {
     date?: string;
     price?: number;
     location?: string;
+    img?: string;
+    route?: string;
 }
 
 export const SearchResult: React.FC<SearchResultProps> = ({ 
@@ -28,20 +20,32 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     subheader, 
     date, 
     price, 
-    location 
+    location,
+    img,
+    route,
 }) => {
     const formatDate = (date: string) => {
         return new Intl.DateTimeFormat('en-US', {
             month: 'short',
-            day: 'numeric',
+            day: '2-digit',
             year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
         }).format(new Date(date));
     };
 
     return (
-        <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+        <div 
+            onClick={() => route ? window.location.href = route : undefined}
+            className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+        >
             <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 text-xl">📅</span>
+                <img
+                    src={img || '/images/default_event.jpg'}
+                    alt={header}
+                    className="w-10 h-10 object-cover rounded-full"
+                />
             </div>
             <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-900">{header}</h4>
@@ -56,54 +60,69 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     );
 };
 
-export const EventCard: React.FC<EventCardProps> = ({ event }) => {
-    const defaultThumbnail = event.thumbnailUrl ?? '/images/default_event.jpg';
+export const EventCard: React.FC<EventCardProps & { userId?: string }> = async ({ event, userId }) => {
+    const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
     
-    const formatDateTime = (date: Date) => {
+    const formatDateAndTime = (date: string, time:string) => {
         return new Intl.DateTimeFormat('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
-            hour: 'numeric',
+            hour: '2-digit',
             minute: '2-digit',
-        }).format(date);
+        }).format(new Date([date, time].join(" ")));
     };
+
+    const extLink = event.externallink ? await processUrl(event.externallink): undefined;
+    const isSaved = userId ? await checkEventSaved(event, userId) : false;
 
     const truncateDescription = (text: string, maxLength: number = 100) => {
         return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
     };
 
     return (
-        <div className="w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <img
-                src={event.thumbnailUrl || defaultThumbnail}
-                alt={event.title}
-                className="w-full h-48 object-cover"
-            />
-            <div className="p-4">
-                <h3 className="text-xl font-bold mb-2">{event.title}</h3>
-                <p className="text-gray-600 text-sm mb-3">
-                    {event.description ? truncateDescription(event.description):""}
-                </p>
-                <div className="space-y-2 text-sm">
-                    <div className="flex items-center text-gray-700">
-                        <span className="font-semibold mr-2">Start:</span>
-                        {formatDateTime(event.startDateTime)}
+        <div className="w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+            <a href={`/events/${event.id}`}>
+                <img
+                    src={defaultThumbnail}
+                    alt={event.title}
+                    className="w-full h-48 object-cover"
+                />
+                <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xl font-bold">{event.title}</h3>
+                        {isSaved && <span className="text-red-600">❤️</span>}
                     </div>
-                    <div className="flex items-center text-gray-700">
-                        <span className="font-semibold mr-2">End:</span>
-                        {formatDateTime(event.endDateTime)}
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                        <span className="font-semibold mr-2">Location:</span>
-                        {event.location}
-                    </div>
-                    <div className="flex items-center text-gray-900 font-bold">
-                        <span className="mr-2">Price:</span>
-                        ${event.price}
+                    <p className="text-gray-600 text-sm mb-3">
+                        {event.description ? truncateDescription(event.description):""}
+                    </p>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex items-center text-gray-700">
+                            <span className="font-semibold mr-2">Start:</span>
+                            {formatDateAndTime(event.startdate, event.starttime)}
+                        </div>
+                        <div className="flex items-center text-gray-700">
+                            <span className="font-semibold mr-2">End:</span>
+                            {formatDateAndTime(event.enddate, event.endtime)}
+                        </div>
+                        <div className="flex items-center text-gray-700">
+                            <span className="font-semibold mr-2">Location:</span>
+                            {event.location}
+                        </div>
+                        {!isNaN(event.price) && (
+                            <div className="flex items-center text-gray-900">
+                                <span className="font-semibold mr-2">Price:</span>
+                                ${event.price ?? "?"}
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
+            </a>
+            {extLink && (
+            <a href={extLink} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-600 hover:text-blue-800 hover:underline p-4 border-t">
+                <span className="font-semibold mr-2">Get Tickets →</span>
+            </a>
+            )}
         </div>
     );
 };

@@ -75,6 +75,7 @@ def get_synced_events(synctoken = None):
                     calendarId=CALENDAR_ID,
                     pageToken=page_token,
                 ).execute()
+                print(events_result)
             else:
                 # now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
                 # end = (datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=90)).isoformat()
@@ -87,7 +88,7 @@ def get_synced_events(synctoken = None):
                     syncToken=synctoken
                 ).execute()
             if 'nextSyncToken' in events_result:
-                with open('nextSyncToken', 'w') as file:
+                with open('src/nextSyncToken', 'w') as file:
                     file.write(events_result['nextSyncToken'])
             events = events_result.get('items', [])
             page_token = events_result.get('nextPageToken')
@@ -154,7 +155,7 @@ def main():
     for event in events:
         if (check_if_event_exists(Event(id=event["id"]))):
             continue
-        if (any(blacklisted_word in event['summary'].lower() for blacklisted_word in BLACKLISTED_EVENTS)):
+        if (any(blacklisted_word in event.get('summary', '').lower() for blacklisted_word in BLACKLISTED_EVENTS)):
             continue
         process_event(event)
 

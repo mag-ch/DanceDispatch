@@ -71,7 +71,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
             <div className="relative h-96 bg-gray-900">
                 {venue.photourls.split(',').length > 0 && (
                     <Image
-                        src={venue.photourls.split(',')[activeImageIndex]}
+                        src={venue.photourls.split(',')[activeImageIndex] || '/images/default_venue.jpg'}
                         alt={venue.name}
                         fill
                         className="object-cover"
@@ -141,7 +141,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                                 </div>
                                 <div className="space-y-3">
                                     {upcomingEvents.map((event, index) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} route={`/events/${event.id}`}/>
+                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
 
                                         // <div key={event.id} className="border-l-4 border-purple-500 pl-4">
                                         //     <p className="text-gray-900 font-medium">{event.title}</p>
@@ -158,7 +158,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                                 <h2 className="font-semibold text-gray-900 text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {pastEvents.map((event, index) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} route={`/events/${event.id}`}/>
+                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
                                         // <div key={event.id} className="border-l-4 border-gray-300 pl-4">
                                         //     <p className="text-gray-900 font-medium">{event.title}</p>
                                         //     <p className="text-sm text-gray-600">{event.startdate}</p>

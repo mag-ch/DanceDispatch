@@ -1,4 +1,4 @@
-import { getEvents, updateEvent } from '@/lib/utils';
+import { getEventById, updateEvent } from '@/lib/utils';
 
 export async function GET(
     request: Request,
@@ -6,8 +6,8 @@ export async function GET(
 ) {
     try {
         const { eventId } = await params;
-        const events = await getEvents();
-        const event = events.find(e => e.id === eventId);        
+        const event = await getEventById(eventId);
+        
         if (!event) {
             return new Response(JSON.stringify({ error: 'Event not found' }), {
                 status: 404,
@@ -33,7 +33,6 @@ export async function PATCH(
 ) {
     try {
         const { eventId } = await params;
-        console.log(`PATCH request received for event id ${eventId}`);
         const body = await request.json();
         const updatedEvent = await updateEvent(eventId, body);
         

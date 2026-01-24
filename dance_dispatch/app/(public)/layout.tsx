@@ -2,7 +2,6 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import "../styles/globals.css"; // global styles
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Dance Dispatch",
@@ -11,9 +10,7 @@ export const metadata = {
 
 const METADATA_TITLE = metadata.title;
 
-export default async function PublicLayout({ children }: { children: ReactNode }) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function PublicLayout({ children }: { children: ReactNode }) {
   
   return (
     <html lang="en" suppressHydrationWarning>

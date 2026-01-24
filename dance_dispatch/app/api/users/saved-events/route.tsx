@@ -1,21 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
 import { userSaveEvent } from '@/lib/utils';
-
-const supabase = createClient();
+import { requireAuth } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
     try {
-        const { eventId, saveToggle } = await request.json();
-        console.log('Supabase client:', supabase);  
-        const { data: { user }, error } = await supabase.auth.getUser();
-        console.log('Authenticated user:', user, 'Error:', error);
-        if (error || !user) {
-            return new Response(JSON.stringify({ error: 'User not authenticated ' + error }), {
-                status: 401,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-        await userSaveEvent(eventId, user.id, saveToggle);
+        const { entId, saveToggle } = await request.json();
+        const user = await requireAuth();
+        await userSaveEvent(entId, user.id, saveToggle);
         //  await (eventId, user.id, saveToggle );
 
         // const { error } = await supabase

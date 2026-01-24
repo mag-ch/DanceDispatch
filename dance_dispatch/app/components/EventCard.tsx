@@ -1,5 +1,7 @@
 import React from 'react';
 import { Event, processUrl, checkEventSaved } from '../../lib/utils'
+import { SaveEventButton } from './SaveEventButton';
+import { getCurrentUserId } from '../../lib/auth-helpers';
 
 interface EventCardProps {
     event: Event;
@@ -12,7 +14,8 @@ interface SearchResultProps {
     price?: number;
     location?: string;
     img?: string;
-    route?: string;
+    entityId?: string;
+    entity?: string;
 }
 
 export const SearchResult: React.FC<SearchResultProps> = ({ 
@@ -22,7 +25,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     price, 
     location,
     img,
-    route,
+    entityId,
+    entity,
 }) => {
     const formatDate = (date: string) => {
         return new Intl.DateTimeFormat('en-US', {
@@ -34,33 +38,41 @@ export const SearchResult: React.FC<SearchResultProps> = ({
             hour12: true,
         }).format(new Date(date));
     };
+    const route = entity && entityId ? `/${entity}/${entityId}` : undefined;
 
     return (
         <div 
-            onClick={() => route ? window.location.href = route : undefined}
-            className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
         >
+            <div 
+            onClick={() => route ? window.location.href = route : undefined}
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+            >
             <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <img
-                    src={img || '/images/default_event.jpg'}
-                    alt={header}
-                    className="w-10 h-10 object-cover rounded-full"
+                src={img || '/images/default_event.jpg'}
+                alt={header}
+                className="w-10 h-10 object-cover rounded-full"
                 />
             </div>
             <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-gray-900">{header}</h4>
                 <p className="text-sm text-gray-600">{subheader}</p>
                 <div className="flex gap-3 text-xs text-gray-500 mt-1">
-                    {date && <span>{formatDate(date)}</span>}
-                    {price !== undefined && <span>${price}</span>}
-                    {location && <span>{location}</span>}
+                {date && <span>{formatDate(date)}</span>}
+                {price !== undefined && <span>${price}</span>}
+                {location && <span>{location}</span>}
                 </div>
             </div>
+            </div>
+            {entityId && entity && (
+            <SaveEventButton entity={entity} entityId={entityId} />
+            )}
         </div>
     );
 };
 
-export const EventCard: React.FC<EventCardProps & { userId?: string }> = async ({ event, userId }) => {
+export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
     
     const formatDateAndTime = (date: string, time:string) => {
@@ -73,8 +85,11 @@ export const EventCard: React.FC<EventCardProps & { userId?: string }> = async (
         }).format(new Date([date, time].join(" ")));
     };
 
+    const userId = await getCurrentUserId();
+    const isSaved = await checkEventSaved(event, userId);
+    
+
     const extLink = event.externallink ? await processUrl(event.externallink): undefined;
-    const isSaved = userId ? await checkEventSaved(event, userId) : false;
 
     const truncateDescription = (text: string, maxLength: number = 100) => {
         return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
@@ -82,16 +97,19 @@ export const EventCard: React.FC<EventCardProps & { userId?: string }> = async (
 
     return (
         <div className="w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-            <a href={`/events/${event.id}`}>
+            <a href={`/events/${event.id}`} className="relative">
                 <img
                     src={defaultThumbnail}
                     alt={event.title}
                     className="w-full h-48 object-cover"
                 />
+                <div className='absolute top-4 left-4'>
+
+                <SaveEventButton entity='events' entityId={event.id} initialSaved={isSaved} />
+                </div>
                 <div className="p-4">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xl font-bold">{event.title}</h3>
-                        {isSaved && <span className="text-red-600">❤️</span>}
                     </div>
                     <p className="text-gray-600 text-sm mb-3">
                         {event.description ? truncateDescription(event.description):""}

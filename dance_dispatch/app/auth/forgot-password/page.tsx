@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 import { useRouter } from 'next/navigation';
 
 
@@ -12,7 +12,6 @@ export default function ForgotPasswordPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const supabase = createClient();
 
     const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault();

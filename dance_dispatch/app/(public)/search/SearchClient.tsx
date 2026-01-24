@@ -76,7 +76,7 @@ export default function SearchClient({
     filteredEvents = dateFilter === '' ? filteredEvents : filteredEvents.filter(event => {
         const eventDate = new Date(event.startdate);
         const filterDate = new Date(dateFilter);
-        return eventDate.toISOString().split('T')[0] === filterDate.toISOString().split('T')[0];
+        return eventDate.toISOString().split('T')[0] >= filterDate.toISOString().split('T')[0];
     });
 
     let filteredVenues = searchQuery === '' 
@@ -99,11 +99,7 @@ export default function SearchClient({
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="max-w-4xl mx-auto">
-                {/* Theme Toggle
-                <div className="flex justify-end mb-4">
-                    <ThemeToggle />
-                </div> */}
+            <div className="max-w-7xl mx-auto">
                 {/* Search Bar */}
                 <div className="relative mb-6">
                     <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -134,86 +130,102 @@ export default function SearchClient({
                         )
                     )}
                 </div>
-                <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                {/* Category-specific Filters */}
-                {activeCategories.includes('events') && (
-                    <div className="mb-4">
-                        <h3 className="font-semibold mb-3 text-gray-900">Event Filters</h3>
-                        <div className="mb-4">
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <input
-                                        type="checkbox"
-                                        onChange={(e) => {
-                                            setPastEventsBool(e.target.checked);
-                                        }}
-                                        className="rounded border-gray-300"
-                                    />
-                                    Include past events
-                                </label>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">Date</label>
-                                <input
-                                    type="date"
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 "
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1 text-gray-700">
-                                    Price Range
-                                </label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="Min"
-                                        value={priceRange.min}
-                                        onChange={(e) =>
-                                            setPriceRange({ ...priceRange, min: e.target.value })
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900  placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="Max"
-                                        value={priceRange.max}
-                                        onChange={(e) =>
-                                            setPriceRange({ ...priceRange, max: e.target.value })
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900  placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
+
+                {/* Main Layout with Sidebar */}
+                <div className="flex gap-6">
+                    {/* Sidebar - Filters */}
+                    <aside className="w-64 flex-shrink-0">
+                        <div className="bg-white rounded-lg shadow p-4 sticky top-8">
+                            <h2 className="text-lg font-bold mb-4 text-gray-900">Filters</h2>
+                            
+                            {/* Category-specific Filters */}
+                            {activeCategories.includes('events') && (
+                                <div className="mb-6">
+                                    <h3 className="font-semibold mb-3 text-gray-900">Event Filters</h3>
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                            <input
+                                                type="checkbox"
+                                                onChange={(e) => {
+                                                    setPastEventsBool(e.target.checked);
+                                                }}
+                                                className="rounded border-gray-300"
+                                            />
+                                            Include past events
+                                        </label>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1 text-gray-700">Date</label>
+                                            <input
+                                                type="date"
+                                                value={dateFilter}
+                                                onChange={(e) => {
+                                                    setDateFilter(e.target.value);
+                                                    if (new Date(e.target.value) < new Date()) {
+                                                        setPastEventsBool(true);
+                                                    }
+                                                    else {
+                                                        setPastEventsBool(false);
+                                                    }
+                                                }}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1 text-gray-700">
+                                                Price Range
+                                            </label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={priceRange.min}
+                                                    onChange={(e) =>
+                                                        setPriceRange({ ...priceRange, min: e.target.value })
+                                                    }
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={priceRange.max}
+                                                    onChange={(e) =>
+                                                        setPriceRange({ ...priceRange, max: e.target.value })
+                                                    }
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                            )}
 
-                {activeCategories.includes('venues') && (
-                    <div>
-                        <h3 className="font-semibold mb-3 text-gray-900">Venue Filters</h3>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-700">Boroughs</label>
-                            <Select
-                                isMulti
-                                options={initalBoroughs}
-                                onChange={(e) => setBoroughs(e ? [...e] : [])}
-                                className="text-gray-900"
-                            />
+                            {activeCategories.includes('venues') && (
+                                <div>
+                                    <h3 className="font-semibold mb-3 text-gray-900">Venue Filters</h3>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1 text-gray-700">Boroughs</label>
+                                        <Select
+                                            isMulti
+                                            options={initalBoroughs}
+                                            onChange={(e) => setBoroughs(e ? [...e] : [])}
+                                            className="text-gray-900 text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                )}
-                </div>
+                    </aside>
 
-                {/* Search Results */}
-                <div className="space-y-6">
+                    {/* Search Results */}
+                    <div className="flex-1 space-y-6">
                     {activeCategories.includes('events') && (
                         <section>
                             <h2 className="text-xl font-bold mb-4 text-gray-900">Events</h2>
                             <div className="space-y-3">
                                 {filteredEvents.map((event: Event, index: number) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} route={`/events/${event.id}`}/>
+                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
                                       ))}
                                 {filteredEvents.length === 0 && <p className="text-gray-500">No events found</p>}
                             </div>
@@ -225,7 +237,7 @@ export default function SearchClient({
                             <h2 className="text-xl font-bold mb-4 text-gray-900">Venues</h2>
                             <div className="space-y-3">
                                 {filteredVenues.map((venue: any, index: number) => (
-                                        <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.imageurl} route={`/venues/${venue.id}`}/>
+                                        <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.imageurl} entityId={venue.id} entity="venues"/>
                                       ))}                                
                                 {filteredVenues.length === 0 && <p className="text-gray-500">No venues found</p>}
                             </div>
@@ -237,7 +249,7 @@ export default function SearchClient({
                             <h2 className="text-xl font-bold mb-4 text-gray-900">Hosts</h2>
                             <div className="space-y-3">
                               {filteredHosts.map((host: any, index: number) => (
-                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.description} location={host.address} img={host.imageurl} route={`/hosts/${host.id}`}/>
+                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.description} location={host.address} img={host.imageurl} entityId={host.id} entity="hosts"/>
                                       ))}                                
                                 {filteredHosts.length === 0 && <p className="text-gray-500">No hosts found</p>}
                             </div>
@@ -253,6 +265,7 @@ export default function SearchClient({
                             </div>
                         </section>
                     )}
+                    </div>
                 </div>
             </div>
         </div>

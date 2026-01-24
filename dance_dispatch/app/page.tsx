@@ -4,13 +4,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getEvents } from "@/lib/utils"; 
 import { EventCard } from "./components/EventCard";
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
   const params = await searchParams;
-  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = params?.userId || user?.id;
 
@@ -80,7 +79,7 @@ async function TrendingEvents({ userId }: { userId?: string }) {
   return (
     <div className="grid md:grid-cols-3 gap-6">
       {events.map((event: any) => (
-        <EventCard key={event.id} event={event} userId={userId} />
+        <EventCard key={event.id} event={event}/>
       ))}
     </div>
   );

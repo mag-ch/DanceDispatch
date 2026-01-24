@@ -1,14 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from 'next/navigation';
 
 
-
-const supabase = createClient();
-
 export default function ResetPasswordPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -38,16 +36,11 @@ export default function ResetPasswordPage() {
             setPassword('');
             setConfirmPassword('');
 
-            const router = useRouter();
-
             const timer = setTimeout(() => {
                 console.log('5 seconds passed, redirecting...');
                 // Redirect to the home page using router.push
                 router.push('/?userId=' + uuid);
                 }, 5000);
-
-                // Clean up the timeout if the component unmounts before the delay finishes
-                return () => clearTimeout(timer);
                 
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');

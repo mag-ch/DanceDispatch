@@ -1,12 +1,9 @@
-import { createClient } from "./supabase/server";
-
-const supabase = createClient();
-
+import { supabase } from "./supabase/client";
 
 export async function getUsernameFromId(userId: string | number) {
   try {
     // Query the public profiles table for the username
-    const { data, error } = await supabase
+    const { data, error } = await (await supabase)
       .from('profiles') // Replace 'profiles' with your actual table name
       .select('username') // Select the column containing the username
       .eq('id', userId)   // Filter by the user ID

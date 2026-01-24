@@ -2,16 +2,18 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, Calendar, Users, Share2, Heart } from 'lucide-react';
-import { getRelatedEvents, Event } from '@/lib/utils';
+import { getRelatedEvents, Event, EventReview } from '@/lib/utils';
+import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
+import { SaveEventButton } from '@/app/components/SaveEventButton';
 
 
 export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
     const [eventId, setEventId] = useState<string | null>(null);
     const [event, setEvent] = useState<Event | null>(null);
     const [isRsvped, setIsRsvped] = useState(false);
-    const [isSaved, setIsSaved] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [relatedEvents, setRelatedEvents] = useState<Event[]>([]);
+    const [eventReviews, setEventReviews] = useState<EventReview[]>([]);
 
     useEffect(() => {
         // Unwrap params promise
@@ -30,13 +32,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     }, [eventId]);
 
     useEffect(() => {
+        if (!eventId) return;
+        
+        const fetchEvent = async () => {
+            const res = await fetch(`/api/events/${eventId}/reviews`);
+            const data = await res.json();
+            console.log('Fetched event reviews:', data);
+            setEventReviews(data);
+        };
+        fetchEvent();
+    }, [eventId]);
+
+    useEffect(() => {
         if (!event) return;
         const fetchRelatedEvents = async () => {
             const related = await getRelatedEvents(event, 3);
             setRelatedEvents(related);
         };
         fetchRelatedEvents();
-    }, [event]);
+    }, [event?.id]);
 
     if (!event) return <div>Loading...</div>;
 
@@ -92,19 +106,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     >
                         {isRsvped ? '✓ RSVP\'d' : 'RSVP'}
                     </button>
-                    <button
-                        onClick={async () => {
-                        setIsSaved(!isSaved);
-                        await fetch(`/api/users/saved-events`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ eventId: event.id, saveToggle: !isSaved })
-                        });
-                        }}
-                        className="p-2 border rounded-lg hover:bg-gray-100"
-                    >
-                        <Heart fill={isSaved ? 'currentColor' : 'none'} className="text-red-500" />
-                    </button>
+                    <SaveEventButton entity='events' entityId={event.id}  />
                     <button className="p-2 border rounded-lg hover:bg-gray-100">
                         <Share2 className="text-gray-600" />
                     </button>
@@ -167,7 +169,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                 <div className="bg-white rounded-lg p-6">
                     <h2 className="text-2xl font-bold mb-4 text-gray-700">Reviews</h2>
                     <div className="space-y-4">
-                        <div className="border rounded-lg p-4">
+                        {
+                            eventReviews.length === 0 ? <p className="text-gray-600">No reviews yet. Be the first to review!</p> :
+                            eventReviews.map((review, index) => (
+                                <DisplayEventReview key={index} review={review} />
+                            ))
+                        }
+                        {/* <div className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <p className="font-semibold text-gray-700">John Doe</p>
                                 <div className="flex text-yellow-400">★★★★★</div>
@@ -180,7 +188,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                                 <div className="flex text-yellow-400">★★★★</div>
                             </div>
                             <p className="text-gray-600 text-sm">Good music and crowd, but venue could be cooler.</p>
-                        </div>
+                        </div> */}
                     </div>
                     <button 
                         onClick={() => setShowReviewModal(true)}
@@ -188,31 +196,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     >
                         Write a Review
                     </button>
-                    {showReviewModal && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
-                                <h3 className="text-xl font-bold mb-4 text-gray-900">Write a Review</h3>
-                                <div className="space-y-4">
-                                    <textarea 
-                                        placeholder="Share your experience..." 
-                                        className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                                        rows={4}
-                                    />
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setShowReviewModal(false)}
-                                            className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 font-semibold"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
-                                            Submit
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {showReviewModal && 
+                    <ReviewModal 
+                        isOpen={showReviewModal} 
+                        event={event} 
+                        onClose={() => setShowReviewModal(false)} 
+                        onSubmit={async (reviews) => {
+                            if (!event?.id) return;
+                            const response = await fetch(`/api/reviews/${event.id}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ content: reviews })
+                            });
+                            if (response.ok) {
+                                window.location.reload();
+                            }
+                            setShowReviewModal(false);
+                        }}
+                    />
+                    }
                 </div>
                 </div>
 

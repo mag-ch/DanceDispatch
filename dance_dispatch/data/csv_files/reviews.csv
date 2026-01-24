@@ -1,0 +1,12 @@
+UserID, EventID, EntityType, EntityID, Rating, Comment, PrivacyLevel, SubmitDate
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,event,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,0,"WPPP",public,2024-06-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,musclecars,5,"my fav",public,2024-06-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,Tortured Soul,2,"",public,2024-06-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,event,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,0,"test grouping multiple reviews by date/submission time",public,2024-07-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,venue,22.0,5,"woo!",public,2024-07-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,DJ Spinna,5,"",public,2024-07-01T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,event,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,0,"an extremely full bodied review to test the span spacing of this little div guy what the heck were to happen if i were to be the type of person to write extremely extensive reviews. I frickin love this party it changed my life and made me a better person tahnk ypou very much",private,2026-01-24T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,venue,22.0,5,"",private,2026-01-24T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,musclecars,1,"even if its a fake review i feel bad giving brandon and craig a one star because they are genuinely the first djs i felt connected to in NY, and i have Ray to thank for that thanks ray for introducing them and sorry i shat on your name 'musclecars' its only because im not a car person i swear",private,2026-01-24T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,DJ Spinna,5,"",private,2026-01-24T12:00:00Z
+ba398812-06a0-4c48-9f15-0660d3af0047,6sq62c1pchgm2bb56cpjcb9k68ojebb1clgm8b9jcli6ap1j6or3gcb1c8,dj,Tortured Soul,5,"",private,2026-01-24T12:00:00Z

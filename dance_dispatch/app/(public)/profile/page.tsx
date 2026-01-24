@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Event, getEvents, getHosts, Venue, Host, getVenues } from '@/lib/utils';
-import { createClient } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 import type { User } from '@supabase/supabase-js';
 
 export default function ProfilePage() {
@@ -13,7 +13,6 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const fetchUserId = async () => {
-            const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
         }

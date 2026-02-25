@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth-helpers';
 
 export async function POST(
     request: Request,
-    { params }: { params: { eventId: string } }
+    { params }: { params: Promise<{ eventId: string }> }
 ) {
     try {
         const { eventId } = await params;

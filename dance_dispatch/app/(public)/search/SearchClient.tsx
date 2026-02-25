@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import { Event, getUniqueBoroughs } from '@/lib/utils';
@@ -32,7 +32,10 @@ export default function SearchClient({
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
     const [boroughs, setBoroughs] = useState<any[]>([]);
 
-    initalBoroughs = initalBoroughs.map(borough => ({ value: borough, label: borough }))
+    const boroughOptions = useMemo(() => 
+        initalBoroughs.map(borough => ({ value: borough, label: borough })),
+        [initalBoroughs]
+    );
     // useEffect(() => {
     //     const fetchBoroughs = async () => {
     //         const uniqueBoroughs = await getUniqueBoroughs();
@@ -208,7 +211,7 @@ export default function SearchClient({
                                         <label className="block text-sm font-medium mb-1 text-gray-700">Boroughs</label>
                                         <Select
                                             isMulti
-                                            options={initalBoroughs}
+                                            options={boroughOptions}
                                             onChange={(e) => setBoroughs(e ? [...e] : [])}
                                             className="text-gray-900 text-sm"
                                         />

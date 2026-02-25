@@ -4,12 +4,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getEvents } from "@/lib/utils"; 
 import { EventCard } from "./components/EventCard";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
   const params = await searchParams;
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = params?.userId || user?.id;
 

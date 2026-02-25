@@ -67,6 +67,56 @@ let eventsCache: Event[] | null = null;
 let eventsCacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Helper function to build venue lookup map
+async function buildVenueMap(): Promise<Map<string, string>> {
+    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'venues.csv');
+    const venueMap = new Map<string, string>();
+    
+    try {
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+        });
+        
+        for (const record of records as any[]) {
+            if (record.ID && record.Name) {
+                venueMap.set(record.ID.toString(), record.Name);
+            }
+        }
+    } catch (error) {
+        console.error('Error reading venues CSV:', error);
+    }
+    
+    return venueMap;
+}
+
+// Helper function to build host lookup map
+async function buildHostMap(): Promise<Map<string, string>> {
+    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'hosts.csv');
+    const hostMap = new Map<string, string>();
+    
+    try {
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+        });
+        
+        for (const record of records as any[]) {
+            if (record.ID && record.Name) {
+                hostMap.set(record.ID.toString(), record.Name);
+            }
+        }
+    } catch (error) {
+        console.error('Error reading hosts CSV:', error);
+    }
+    
+    return hostMap;
+}
+
 export async function getEvents(includeUpcoming = true, venueId?: string|number, hostId?: string|number, forceRefresh = false): Promise<Event[]> {
     const now = Date.now();
     
@@ -81,6 +131,10 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'events.csv');
     
     try {
+        // Build lookup maps for venues and hosts (read once instead of for each event)
+        const venueMap = await buildVenueMap();
+        const hostMap = await buildHostMap();
+        
         var res: Event[] = [];
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const records = parse(fileContent, {
@@ -91,7 +145,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
         
         const now = new Date();
        
-        await Promise.all(records.map(async (record: any) => {
+        for (const record of records) {
             // Parse hosts from string format to array of strings
             let hostIds: string[] = [];
             let hostNames: string[] = [];
@@ -113,14 +167,12 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
                     // Plain comma-separated format
                     hostIds = hostsStr.split(',').map((id: string) => id.trim()).filter((id: string) => id !== '');
                 }
-                // Use Promise.all to properly await all host name lookups
-                hostNames = await Promise.all(
-                    hostIds.map(async (id) => {
-                        const hostName = await getHost(id);
-                        return hostName;
-                    })
-                );
+                // Use the lookup map instead of async calls
+                hostNames = hostIds.map(id => hostMap.get(id) || 'Unknown Host');
             }
+
+            // Use the lookup map for location
+            const locationName = venueMap.get(record.Location?.toString()) || (typeof record.Location === 'string' ? record.Location : 'Unknown Location');
 
             var event: Event = {
                 id: record.ID.toString(),
@@ -130,7 +182,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
                 enddate: record.EndDate,
                 endtime: record.EndTime,
                 locationid: record.Location.toString(),
-                location: await getLocation(record.Location),
+                location: locationName,
                 description: record.Description,
                 price: parseFloat(record.Price),
                 imageurl: record.PhotoURL,
@@ -141,14 +193,14 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
             
             // if venueId is provided, filter by venueId
             if (venueId && Number(record.Location) != Number(venueId)) {
-                return;
+                continue;
             }
             
             // if hostId is provided, filter by hostId
             if (hostId && record.Hosts) {
-                const hostIds = record.Hosts.split(',').map((id: string) => id.trim());
-                if (!hostIds.includes(hostId.toString())) {
-                    return;
+                const recordHostIds = record.Hosts.split(',').map((id: string) => id.trim());
+                if (!recordHostIds.includes(hostId.toString())) {
+                    continue;
                 }
             }
 
@@ -157,7 +209,8 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
             if (!includeUpcoming || eventDate >= now) {
                 res.push(event);
             }
-        }));
+        }
+        
         // Sort by date ascending
         res.sort((a, b) => {
             const dateA = new Date(`${a.startdate} ${a.starttime}`);
@@ -599,59 +652,92 @@ export async function getRelatedEvents(currentEvent: Event, numResults: number):
 }
 
 
-export async function getEventReviews(eventId: string): Promise<EventReview[]> {
+// Reviews cache
+let reviewsCache: Map<string, EventReview[]> | null = null;
+let reviewsCacheTimestamp: number = 0;
+
+async function getAllReviews(): Promise<Map<string, EventReview[]>> {
+    const now = Date.now();
+    
+    // Return cached reviews if available and not expired
+    if (reviewsCache && (now - reviewsCacheTimestamp < CACHE_DURATION)) {
+        return reviewsCache;
+    }
+
     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'reviews.csv');
+    const reviewsByEvent = new Map<string, EventReview[]>();
+    
     try {
-        var res: EventReview[] = [];
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const records = parse(fileContent, {
             columns: true,
             skip_empty_lines: true,
             trim: true,
         }) as any[];
-        const eventRecords = records.filter((record: any) => record.EventID === eventId);
-        // Group reviews by UserID and Timestamp
-        const groupedReviews = new Map<string, any[]>();
-        eventRecords.forEach((record: any) => {
-            const key = `${record.UserID}-${record.SubmitDate || new Date().toISOString()}`;
-            if (!groupedReviews.has(key)) {
-                groupedReviews.set(key, []);
+        
+        // Group all records by eventId first
+        const eventRecordsMap = new Map<string, any[]>();
+        records.forEach((record: any) => {
+            if (!eventRecordsMap.has(record.EventID)) {
+                eventRecordsMap.set(record.EventID, []);
             }
-            groupedReviews.get(key)!.push(record);
+            eventRecordsMap.get(record.EventID)!.push(record);
         });
-        console.log('Event Records:', groupedReviews);
         
-        // console.log('Grouped Reviews:', groupedReviews);
-        // Create EventReview for each group
-        groupedReviews.forEach((records, key) => {
-            const mainComment = records.find((record: any) => record.EntityType === 'event')?.Comment;
-            const venueReviewRecord = records.find((record: any) => record.EntityType === 'venue');
-            const venueReview = venueReviewRecord ? {
-                rating: parseInt(venueReviewRecord.Rating),
-                comments: venueReviewRecord.Comment
-            } : undefined;
-            const djReviews = records.filter((record: any) => record.EntityType === 'dj').map((record: any) => ({
-                djId: record.EntityID,
-                rating: parseInt(record.Rating),
-                comments: record.Comment
-            }));
+        // Process each event's reviews
+        eventRecordsMap.forEach((eventRecords, eventId) => {
+            const res: EventReview[] = [];
             
-            const eventReview: EventReview = {
-                eventId: eventId,
-                username: records[0]?.UserID || 'Anonymous',
-                dateSubmitted: records[0]?.SubmitDate || new Date().toISOString(),
-                mainComment: mainComment,
-                venueReview: venueReview,
-                djReviews: djReviews,
-                privacyLevel: records[0]?.PrivacyLevel || 'public'
-            };
-            res.push(eventReview);
+            // Group reviews by UserID and Timestamp
+            const groupedReviews = new Map<string, any[]>();
+            eventRecords.forEach((record: any) => {
+                const key = `${record.UserID}-${record.SubmitDate || new Date().toISOString()}`;
+                if (!groupedReviews.has(key)) {
+                    groupedReviews.set(key, []);
+                }
+                groupedReviews.get(key)!.push(record);
+            });
+            
+            // Create EventReview for each group
+            groupedReviews.forEach((records, key) => {
+                const mainComment = records.find((record: any) => record.EntityType === 'event')?.Comment;
+                const venueReviewRecord = records.find((record: any) => record.EntityType === 'venue');
+                const venueReview = venueReviewRecord ? {
+                    rating: parseInt(venueReviewRecord.Rating),
+                    comments: venueReviewRecord.Comment
+                } : undefined;
+                const djReviews = records.filter((record: any) => record.EntityType === 'dj').map((record: any) => ({
+                    djId: record.EntityID,
+                    rating: parseInt(record.Rating),
+                    comments: record.Comment
+                }));
+                
+                const eventReview: EventReview = {
+                    eventId: eventId,
+                    username: records[0]?.UserID || 'Anonymous',
+                    dateSubmitted: records[0]?.SubmitDate || new Date().toISOString(),
+                    mainComment: mainComment,
+                    venueReview: venueReview,
+                    djReviews: djReviews,
+                    privacyLevel: records[0]?.PrivacyLevel || 'public'
+                };
+                res.push(eventReview);
+            });
+            
+            reviewsByEvent.set(eventId, res);
         });
         
-        return res;
-    }
-    catch (error) {
+        reviewsCache = reviewsByEvent;
+        reviewsCacheTimestamp = Date.now();
+        
+        return reviewsByEvent;
+    } catch (error) {
         console.error('Error reading reviews CSV:', error);
-        return [];
-    }   
+        return reviewsByEvent;
+    }
+}
+
+export async function getEventReviews(eventId: string): Promise<EventReview[]> {
+    const allReviews = await getAllReviews();
+    return allReviews.get(eventId) || [];
 }

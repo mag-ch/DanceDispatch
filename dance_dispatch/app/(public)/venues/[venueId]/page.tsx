@@ -38,7 +38,10 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
         const fetchRelatedEvents = async () => {
             const relatedEvents = await getEvents(false, venueId);
             setRelatedEvents(relatedEvents);
-            const pastEvents = relatedEvents.filter(event => new Date(`${event.startdate} ${event.starttime}`) < new Date());
+            const pastEvents = relatedEvents
+                .filter(event => new Date(`${event.startdate} ${event.starttime}`) < new Date())
+                .sort((a, b) => new Date(`${b.startdate} ${b.starttime}`).getTime() - new Date(`${a.startdate} ${a.starttime}`).getTime())
+                .slice(0, 5);
             const upcomingEvents = relatedEvents.filter(event => new Date(`${event.startdate} ${event.starttime}`) >= new Date());
             setPastEvents(pastEvents);
             setUpcomingEvents(upcomingEvents);

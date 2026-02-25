@@ -22,9 +22,9 @@ export async function POST(
         // }
 
         const user = await requireAuth();
-
+        const username = user.user_metadata?.username || user.id;
         for (const entry of content) {
-            await userSubmitReview(entry, user.id, eventId);
+            await userSubmitReview(entry, username, eventId);
         }
 
         return new Response(JSON.stringify({ success: true }), {

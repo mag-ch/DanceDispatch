@@ -1,6 +1,5 @@
 //Navigation links, footer, banners, cookie notices, or modals 
 import { ReactNode } from "react";
-import Link from "next/link";
 import "../styles/globals.css"; // global styles
 
 export const metadata = {
@@ -8,23 +7,18 @@ export const metadata = {
   description: "Are you ready to dance?",
 };
 
-const METADATA_TITLE = metadata.title;
-
 export default function PublicLayout({ children }: { children: ReactNode }) {
-  
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
-        <main className="bg-white container mx-auto my-6 px-4">
-          {children} {/* Page content will render here */}
-        </main>
+    <>
+      <main className="bg-white container mx-auto my-6 px-4">
+        {children} {/* Page content will render here */}
+      </main>
 
-        <footer className="bg-white shadow-inner mt-12 py-6">
-          <div className="container mx-auto text-center text-sm text-gray-500">
-            © 2025 Eventify. All rights reserved.
-          </div>
-        </footer>
-      </body>
-    </html>
+      <footer className="bg-white shadow-inner mt-12 py-6">
+        <div className="container mx-auto text-center text-sm text-gray-500">
+          © 2025 Eventify. All rights reserved.
+        </div>
+      </footer>
+    </>
   );
 }

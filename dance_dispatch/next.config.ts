@@ -7,6 +7,12 @@ const hostnames = [
   'imgproxy.ra.co',
   'yet-another-domain.com',
   'imgix.bustle.com',
+  'phosphor.utils.elfsightcdn.com',
+  'www.eventbrite.com',
+  'dice-media.imgix.net',
+  'scontent-lga3-2.cdninstagram.com',
+  'cityparksfoundation.org',
+  'scontent-lga3-1.cdninstagram.com'
 ];
 
 const nextConfig: NextConfig = {

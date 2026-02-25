@@ -89,7 +89,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
     const [showDJSection, setShowDJSection] = useState(false);
     const [privacyLevel, setPrivacyLevel] = useState<'public' | 'private' | 'anonymous'>('public');
 
-    // Initialize djReviews when event.hosts changes
+    // Initialize djReviews when event.hostNames changes
     React.useEffect(() => {
         if (event.hostNames) {
             const initialDjReviews: Record<string, { rating: number; comment: string }> = {};
@@ -246,12 +246,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                             className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-blue-600 focus:outline-none"
                         >
                             <span className={`transition-transform ${showDJSection ? 'rotate-90' : ''}`}>▶</span>
-                            DJs: {event.hosts?.join(", ")}
+                            DJs: {event.hostNames?.join(", ")}
                         </button>
                     </div>
                     {/* Section 5: DJ Reviews */}
                     {showDJSection && (
-                        event.hosts?.map((dj) => (
+                        event.hostNames?.map((dj) => (
                             <div key={dj} className="mb-6">
                                 <h3 className="text-md font-semibold text-gray-900 mb-2">{dj}</h3>
                                 <RatingCommentCombo 

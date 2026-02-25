@@ -3,6 +3,7 @@
 import path from 'path';
 import  {parse}  from 'csv-parse/sync';
 import { promises as fs } from "fs";
+import { Underdog } from 'next/font/google';
 
 export interface Event {
     id: string;
@@ -14,7 +15,7 @@ export interface Event {
     locationid: string;
     location: string;
     description: string;
-    price: number;
+    price?: number;
     imageurl?: string;
     externallink?: string;
     hostNames?: string[]; 
@@ -173,10 +174,10 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
                 starttime: record.StartTime,
                 enddate: record.EndDate,
                 endtime: record.EndTime,
-                locationid: record.Location.toString(),
+                locationid: Number(record.Location).toString(),
                 location: locationName,
                 description: record.Description,
-                price: parseFloat(record.Price),
+                price: isNaN(parseFloat(record.Price)) ? undefined : parseFloat(record.Price),
                 imageurl: record.PhotoURL,
                 externallink: record.ExternalURLs,
                 hostNames: hostNames,
@@ -198,7 +199,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
         
         // if venueId is provided, filter by venueId
         if (venueId) {
-            res = res.filter(event => event.locationid === venueId.toString());
+            res = res.filter(event => event.locationid === Number(venueId).toString());
         }
         
         // if hostId is provided, filter by hostId
@@ -253,7 +254,7 @@ async function getHost(hostId: string): Promise<string> {
 
 export async function getEventById(eventId: string): Promise<Event | null> {
     // Try to use cache first
-    const events = await getEvents(false);
+    const events = await getEvents(true);
     return events.find(e => e.id === eventId) || null;
 }
 

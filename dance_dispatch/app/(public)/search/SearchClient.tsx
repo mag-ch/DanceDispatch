@@ -71,10 +71,10 @@ export default function SearchClient({
         return eventDate >= now;
     });
     filteredEvents = (priceRange.min === '' && priceRange.max === '') ? filteredEvents : filteredEvents.filter(event => {
-        const eventPrice = parseFloat(event.price);
+        const eventPrice = event.price === undefined ? 0 : event.price;
         const minPrice = priceRange.min === '' ? 0 : parseFloat(priceRange.min);
         const maxPrice = priceRange.max === '' ? Infinity : parseFloat(priceRange.max);
-        return (isNaN(eventPrice)) || (eventPrice >= minPrice && eventPrice <= maxPrice);
+        return (eventPrice >= minPrice && eventPrice <= maxPrice);
     });
     filteredEvents = dateFilter === '' ? filteredEvents : filteredEvents.filter(event => {
         const eventDate = new Date(event.startdate);

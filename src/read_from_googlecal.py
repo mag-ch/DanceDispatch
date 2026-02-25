@@ -107,6 +107,7 @@ def process_event(event):
         venue_name, venue_address = None, None
     start = datetime.datetime.fromisoformat(event["start"].get("dateTime", event["start"].get("date")))
     end = datetime.datetime.fromisoformat(event["end"].get("dateTime", event["end"].get("date")))
+    # split hosts from title
     e = Event(
         id = event["id"],
         title=event["summary"],

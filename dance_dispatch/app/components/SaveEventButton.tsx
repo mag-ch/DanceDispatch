@@ -44,10 +44,10 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         isSubmittingRef.current = true;
         const newSavedState = !isSaved;
         try {
-            await fetch(`/api/users/saved-${entity}`, {
+            await fetch(`/api/users/saved-${entity}/${entityId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entId:entityId, saveToggle: newSavedState })
+                body: JSON.stringify({ saveToggle: newSavedState })
             });
             setIsSaved(newSavedState);
         } catch (error) {

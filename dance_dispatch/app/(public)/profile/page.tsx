@@ -90,7 +90,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {followedVenues.map((fav) => (
                         <div key={fav.id} className="border rounded-lg p-4">
-                            <p className="font-medium">{fav.name}</p>
+                            <p className="font-medium text-gray-700">{fav.name}</p>
                             <p className="text-sm text-gray-600">{fav.address}</p>
                         </div>
                     ))}
@@ -106,7 +106,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {favoriteDJs.map((fav) => (
                         <div key={fav.id} className="border rounded-lg p-4">
-                            <p className="font-medium">{fav.name}</p>
+                            <p className="font-medium text-gray-700">{fav.name}</p>
                             <p className="text-sm text-gray-600">{fav.tags}</p>
                         </div>
                     ))}
@@ -122,7 +122,7 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                     {upcomingEvents.map((event) => (
                         <div key={event.id} className="border rounded-lg p-4">
-                            <p className="font-medium">{event.title}</p>
+                            <p className="font-medium text-gray-700">{event.title}</p>
                                 <p className="text-sm text-gray-600">{event.location}</p>
                             <p className="text-sm text-gray-500">
                                 {new Date(event.startdate).toLocaleDateString()}

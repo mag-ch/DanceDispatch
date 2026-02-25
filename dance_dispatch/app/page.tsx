@@ -22,10 +22,10 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
     <main className="min-h-screen bg-gray-50 text-gray-900">
       <section className="py-24 text-center bg-white shadow-sm">
         <h1 className="text-4xl font-bold mb-4">
-          Discover events, organizers, and hosts near you.
+          Are you ready to dance?
         </h1>
         <p className="text-lg text-gray-600 mb-8">
-          Search, explore, and save your favorites.
+          For the house community, by the house community.
         </p>
         <div className="max-w-2xl mx-auto">
           <SearchBar />

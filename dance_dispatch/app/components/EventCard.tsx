@@ -61,14 +61,14 @@ export const SearchResult: React.FC<SearchResultProps> = ({
                 <p className="text-sm text-gray-600">{subheader}</p>
                 <div className="flex gap-3 text-xs text-gray-500 mt-1">
                 {date && <span>{formatDate(date)}</span>}
-                {price !== undefined && <span>${price}</span>}
+                {price && <span>${price}</span>}
                 {location && <span>{location}</span>}
                 </div>
             </div>
             </CustomLink>
-            {entityId && entity && (
+            {/* {entityId && entity && (
             <SaveEventButton entity={entity} entityId={entityId} initialSaved={false} />
-            )}
+            )} */}
         </div>
     );
 };
@@ -145,10 +145,10 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                             <span className="font-semibold mr-2">Location:</span>
                             {event.location}
                         </div>
-                        {!isNaN(event.price) && (
+                        {event.price !== undefined && (
                             <div className="flex items-center text-gray-900">
                                 <span className="font-semibold mr-2">Price:</span>
-                                ${event.price ?? "?"}
+                                ${event.price}
                             </div>
                         )}
                     </div>

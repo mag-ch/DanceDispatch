@@ -59,16 +59,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents }: EventD
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold mb-4 text-gray-900">{event.title}</h1>
                             <div className="flex gap-4">
-                                <button
-                                    onClick={() => setIsRsvped(!isRsvped)}
-                                    className={`px-6 py-2 rounded-lg font-semibold transition ${
-                                        isRsvped
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                                    }`}
+                                {event.price && <a
+                                    href={event.externallink?.replace(/[\[\]"']/g, '') || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-6 py-2 rounded-lg font-semibold transition bg-blue-600 text-white hover:bg-blue-700"
                                 >
-                                    {isRsvped ? '✓ RSVP\'d' : 'RSVP'}
-                                </button>
+                                    {event.price === 0 ? 'Free' : `Buy Tickets - From $${event.price}`}
+                                </a>}
                                 <SaveEventButton entity='events' entityId={event.id} />
                                 <button className="p-2 border rounded-lg hover:bg-gray-100">
                                     <Share2 className="text-gray-600" />
@@ -130,7 +128,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents }: EventD
                         {/* Venue */}
                         <div className="bg-white rounded-lg p-6 mb-6">
                             <h2 className="text-2xl text-gray-700 font-bold mb-4">Venue Information</h2>
-                            <a href={`/venues/${event.locationid}`} className="block border rounded-lg p-4 hover:shadow-md transition">
+                            <a href={`/venues/${encodeURIComponent(event.locationid || '')}`} className="block border rounded-lg p-4 hover:shadow-md transition">
                                 <h3 className="font-semibold text-gray-700 text-lg mb-2">{event.location}</h3>
                                 <div className="flex items-center gap-2 text-gray-600">
                                     <MapPin size={18} />

@@ -141,7 +141,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
             columns: true,
             skip_empty_lines: true,
             trim: true,
-        });
+        }) as any[];
         
         const now = new Date();
        

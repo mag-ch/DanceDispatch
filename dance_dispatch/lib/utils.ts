@@ -104,7 +104,7 @@ async function buildHostMap(): Promise<Map<number, string>> {
     return hostMap;
 }
 
-export async function getEvents(includeUpcoming = true, venueId?: string|number, hostId?: string|number, forceRefresh = false): Promise<Event[]> {
+export async function getEvents(onlyUpcoming = true, venueId?: string|number, hostId?: string|number, forceRefresh = false): Promise<Event[]> {
     const now = Date.now();
     // Return cached data if available, not expired, and no filters applied
     if (!forceRefresh && eventsCache && (now - eventsCacheTimestamp < CACHE_DURATION)) {
@@ -115,7 +115,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
             console.log('Filtering events by hostId:', hostId);
             return eventsCache.filter(event => event.hostIDs && event.hostIDs.some(h => h === hostId.toString()));
         }
-        return includeUpcoming ? eventsCache : eventsCache.filter(event => {
+        return !onlyUpcoming ? eventsCache : eventsCache.filter(event => {
             const eventDate = new Date(`${event.startdate} ${event.starttime}`);
             return eventDate >= new Date();
         });
@@ -211,7 +211,7 @@ export async function getEvents(includeUpcoming = true, venueId?: string|number,
         }
 
         // Only add upcoming events if includeUpcoming is true
-        if (includeUpcoming) {
+        if (onlyUpcoming) {
             res = res.filter(event => {
                 const eventDate = new Date(`${event.startdate} ${event.starttime}`);
                 return eventDate >= now;

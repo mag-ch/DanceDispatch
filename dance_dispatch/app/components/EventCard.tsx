@@ -78,7 +78,7 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
     const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
     return (
         
-        <CustomLink href={`/events/${event.id}`} className="w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+        <CustomLink href={`/events/${event.id}`} className="relative w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
             <img
                 src={defaultThumbnail}
                 alt={event.title}
@@ -105,11 +105,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
             hour: '2-digit',
             minute: '2-digit',
         }).format(new Date([date, time].join(" ")));
-    };
-
-    const userId = await getCurrentUserId();
-    const isSaved = await checkEventSaved(event, userId);
-    
+    };    
 
     const extLink = event.externallink ? await processUrl(event.externallink): undefined;
 
@@ -127,7 +123,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                 />
                 <div className='absolute top-4 left-4'>
 
-                <SaveEventButton entity='events' entityId={event.id} initialSaved={isSaved} />
+                <SaveEventButton entity='events' entityId={event.id} />
                 </div>
                 <div className="p-4">
                     <div className="flex items-center justify-between mb-2">

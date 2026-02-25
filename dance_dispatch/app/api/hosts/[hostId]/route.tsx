@@ -1,4 +1,4 @@
-import { getHosts } from '@/lib/utils';
+import { getHostById } from '@/lib/utils';
 
 export async function GET(
     request: Request,
@@ -6,8 +6,7 @@ export async function GET(
 ) {
     try {
         const { hostId } = await params;
-        const hosts = await getHosts();
-        const host = hosts.find(h => h.id === hostId);        
+        const host = await getHostById(hostId);
         if (!host) {
             return new Response(JSON.stringify({ error: 'Host not found' }), {
                 status: 404,

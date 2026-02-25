@@ -91,9 +91,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
     // Initialize djReviews when event.hosts changes
     React.useEffect(() => {
-        if (event.hosts) {
+        if (event.hostNames) {
             const initialDjReviews: Record<string, { rating: number; comment: string }> = {};
-            event.hosts.forEach(dj => {
+            event.hostNames.forEach(dj => {
                 if (!djReviews[dj]) {
                     initialDjReviews[dj] = { rating: 0, comment: '' };
                 }
@@ -102,7 +102,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                 setDjReviews(prev => ({ ...prev, ...initialDjReviews }));
             }
         }
-    }, [event.hosts]);
+    }, [event.hostNames]);
 
     const handleDjRatingChange = (dj: string, rating: number) => {
         setDjReviews(prev => ({

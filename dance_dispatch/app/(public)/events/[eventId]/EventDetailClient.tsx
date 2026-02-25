@@ -6,6 +6,7 @@ import { Event, EventReview } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
+import { hostname } from 'os';
 
 interface EventDetailClientProps {
     event: Event;
@@ -113,6 +114,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents }: EventD
                                 <p className="text-gray-700">{event.description}</p>
                             </div>
                         )}
+
+                        {/* Hosts */}
+                        {event.hostNames && event.hostNames.length > 0 && 
+                        ( <div className="bg-white rounded-lg p-4 mb-6"> 
+                            <h2 className="text-2xl font-bold mb-4 text-gray-700">Hosted By</h2>
+                        {event.hostNames.map((host,index) => (
+                           
+                                <a key={host} href={`/hosts/${encodeURIComponent(event.hostIDs ? event.hostIDs[index] : '')}`} className="text-sm font-bold text-gray-600 bg-gray-200 px-3 py-1 rounded m-2 inline-block hover:bg-gray-300 transition">
+                                    {host.trim().replace(/[\[\]']/g, '')}
+                                </a>
+                        ))}
+                        </div>)}  
 
                         {/* Venue */}
                         <div className="bg-white rounded-lg p-6 mb-6">

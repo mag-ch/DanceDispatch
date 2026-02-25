@@ -27,6 +27,9 @@ export default function LoginPage() {
         setLoading(false);
         return;
     }
+    
+    // Redirect to previous page or home on success
+    router.back();
     };
 
     return (

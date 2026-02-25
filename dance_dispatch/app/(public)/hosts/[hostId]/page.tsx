@@ -13,7 +13,6 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [host, setHost] = useState<Host | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
     const [pastEvents, setPastEvents] = useState<any[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
     const [similarHosts, setSimilarHosts] = useState<Host[]>([]);
@@ -35,9 +34,8 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
 
     useEffect(() => {
         if (!hostId) return;
-        const fetchRelatedEvents = async () => {
+        const fetchEvents = async () => {
             const events = await getEvents(false, undefined, hostId);
-            console.log('Related events:', events);
             const pastEvents = events
                 .filter(event => new Date(`${event.startdate} ${event.starttime}`) < new Date())
                 .sort((a, b) => new Date(`${b.startdate} ${b.starttime}`).getTime() - new Date(`${a.startdate} ${a.starttime}`).getTime())
@@ -46,7 +44,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             setPastEvents(pastEvents);
             setUpcomingEvents(upcomingEvents);
         };
-        fetchRelatedEvents();
+        fetchEvents();
     }, [hostId]);
     
     

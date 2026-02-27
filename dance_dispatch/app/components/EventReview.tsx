@@ -175,8 +175,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
             <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[70vh] flex flex-col shadow-lg">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
-                    <h2 className="text-2xl font-bold text-gray-900">Leave a Review</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                    <h2 className="text-2xl font-bold text-text">Leave a Review</h2>
+                    <button onClick={onClose} className="text-text hover:text-gray-700">
                     <X size={24} />
                     </button>
                 </div>
@@ -198,7 +198,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                             onChange={(e) => setPrivacyLevel(e.target.value as typeof level)}
                             className="w-4 h-4"
                         />
-                        <span className="text-gray-700 capitalize">{level}</span>
+                        <span className="text-text capitalize">{level}</span>
                         </label>
                     ))}
                     </div>
@@ -208,12 +208,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
                     {/* Section 1: Comment */}
                     <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">Comments</label>
+                    <label className="block text-sm font-semibold text-text mb-2">Comments</label>
                     <textarea
                         value={generalComment}
                         onChange={(e) => setGeneralComment(e.target.value)}
                         placeholder="Share your thoughts..."
-                        className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full border border-gray-300 rounded-lg p-3 text-text focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                         rows={3}
                     />
                     </div>
@@ -222,7 +222,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     <div className="mb-3 sticky top-0 bg-white z-10 py-2">
                         <button
                             onClick={() => setShowVenueSection(!showVenueSection)}
-                            className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-blue-600 focus:outline-none"
+                            className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
                         >
                             <span className={`transition-transform ${showVenueSection ? 'rotate-90' : ''}`}>▶</span>
                             Venue: {event.location}
@@ -243,7 +243,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     <div className="mb-3 sticky top-0 bg-white z-10 py-2">
                         <button
                             onClick={() => setShowDJSection(!showDJSection)}
-                            className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-blue-600 focus:outline-none"
+                            className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
                         >
                             <span className={`transition-transform ${showDJSection ? 'rotate-90' : ''}`}>▶</span>
                             DJs: {event.hostNames?.join(", ")}
@@ -253,7 +253,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     {showDJSection && (
                         event.hostNames?.map((dj) => (
                             <div key={dj} className="mb-6">
-                                <h3 className="text-md font-semibold text-gray-900 mb-2">{dj}</h3>
+                                <h3 className="text-md font-semibold text-text mb-2">{dj}</h3>
                                 <RatingCommentCombo 
                                     rating={djReviews[dj]?.rating || 0}
                                     comment={djReviews[dj]?.comment || ''}
@@ -269,13 +269,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     <div className="mt-6 flex gap-3 flex-shrink-0 border-t pt-4">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                            className="flex-1 px-4 py-2 text-text border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                            className="btn-highlighted flex-1 px-4 py-2  rounded-lg font-medium"
                         >
                             Submit Review
                         </button>
@@ -287,15 +287,15 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
 export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }) => {
     return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
+    <div className="bg-surface rounded-lg shadow p-4 mb-4">
         {/* Header: username, date, privacy */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b">
             <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">{review.username}</span>
-                <span className="text-sm text-gray-500">•</span>
-                <span className="text-sm text-gray-500">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
+                <span className="font-semibold text-text">{review.username}</span>
+                <span className="text-sm text-text">•</span>
+                <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
             </div>
-            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full capitalize">
+            <span className="text-xs px-2 py-1 bg-gray-100 text-text rounded-full capitalize">
                 {review.privacyLevel}
             </span>
         </div>
@@ -305,15 +305,15 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
             {/* Main Comment Section */}
             {review.mainComment && (
                 <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">General Comment</h4>
-                    <p className="text-sm text-gray-700">{review.mainComment}</p>
+                    <h4 className="text-sm font-semibold text-text mb-2">General Comment</h4>
+                    <p className="text-sm text-text">{review.mainComment}</p>
                 </div>
             )}
 
             {/* Venue Review Section */}
             {review.venueReview && (
                 <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Venue</h4>
+                    <h4 className="text-sm font-semibold text-text mb-2">Venue</h4>
                     <div className="flex gap-1 mb-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <Star
@@ -324,7 +324,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
                         ))}
                     </div>
                     {review.venueReview.comments && (
-                        <p className="text-sm text-gray-700">{review.venueReview.comments}</p>
+                        <p className="text-sm text-text">{review.venueReview.comments}</p>
                     )}
                 </div>
             )}
@@ -332,7 +332,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
             {/* DJ Reviews Section */}
             {review.djReviews && review.djReviews.map((djReview) => (
                 <div key={djReview.djId} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">{djReview.djId}</h4>
+                    <h4 className="text-sm font-semibold text-text mb-2">{djReview.djId}</h4>
                     <div className="flex gap-1 mb-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <Star
@@ -343,7 +343,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
                         ))}
                     </div>
                     {djReview.comments && (
-                        <p className="text-sm text-gray-700">{djReview.comments}</p>
+                        <p className="text-sm text-text">{djReview.comments}</p>
                     )}
                 </div>
             ))}

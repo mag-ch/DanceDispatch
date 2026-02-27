@@ -17,5 +17,5 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
     return <div>Loading...</div>;
   }
 
-  return <div className="min-h-screen bg-gray-50"></div>;
+  return <div className="min-h-screen bg-bg text-text"></div>;
 }

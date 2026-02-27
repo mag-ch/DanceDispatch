@@ -67,10 +67,10 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
     if (!venue) return <div className="p-8">Venue not found</div>;
     
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-bg text-text">
             {/* Image Gallery */}
             {venue.photourls && 
-            <div className="relative h-96 bg-gray-900">
+            <div className="relative h-96 bg-bg">
                 {venue.photourls.split(',').length > 0 && (
                     <Image
                         src={venue.photourls.split(',')[activeImageIndex] || '/images/default_venue.jpg'}
@@ -100,16 +100,16 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                         <section className="mb-8 bg-white p-6 rounded-lg">
                             <div className="flex items-start gap-4 mb-4">
                                 <div>
-                                    <h2 className="text-sm text-gray-600 uppercase">{venue.type}</h2>
-                                    <h1 className="text-4xl text-gray-900 font-bold mt-2">{venue.name}</h1>
+                                    <h2 className="text-sm text-text uppercase">{venue.type}</h2>
+                                    <h1 className="text-4xl text-text font-bold mt-2">{venue.name}</h1>
                                 </div>
                             </div>
                         </section>
 
                         {/* Bio */}
                         {venue.tags && <section className="mb-8 bg-white p-6 rounded-lg">
-                            <h2 className="font-semibold text-gray-900 text-lg mb-4">Tags</h2>
-                            <p className="text-gray-700">{venue.bio}</p>
+                            <h2 className="font-semibold text-text text-lg mb-4">Tags</h2>
+                            <p className="text-text">{venue.bio}</p>
                             <div className="flex flex-wrap gap-2">
                                 {venue.tags.split(',').map((feature) => (
                                     <span key={feature} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
@@ -124,8 +124,8 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                             <div className="flex items-start gap-4 mb-4">
                                 <MapPin className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
                                 <div>
-                                    <h2 className="font-semibold text-gray-900 text-lg">Address</h2>
-                                    <p className="text-gray-700">{venue.address}</p>
+                                    <h2 className="font-semibold text-text text-lg">Address</h2>
+                                    <p className="text-text">{venue.address}</p>
                                 </div>
                             </div>
                             {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
@@ -137,7 +137,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                                     loading="lazy"
                                 />
                             ) : (
-                                <p className="text-sm text-gray-500">Map not available</p>
+                                <p className="text-sm text-text">Map not available</p>
                             )}
                         </section>
 
@@ -147,7 +147,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                             <section className="bg-white p-6 rounded-lg">
                                 <div className="flex items-center gap-2 mb-4">
                                     <Calendar className="w-6 h-6 text-purple-500" />
-                                    <h2 className="font-semibold text-gray-900 text-lg">Upcoming Events</h2>
+                                    <h2 className="font-semibold text-text text-lg">Upcoming Events</h2>
                                 </div>
                                 <div className="space-y-3">
                                     {upcomingEvents.map((event, index) => (
@@ -165,7 +165,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
 
                             {/* Recent Events */}
                             <section className="bg-white p-6 rounded-lg">
-                                <h2 className="font-semibold text-gray-900 text-lg mb-4">Recent Events</h2>
+                                <h2 className="font-semibold text-text text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {pastEvents.map((event, index) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
@@ -182,13 +182,13 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                     {/* Sidebar */}
                     <div>
                         <section className="bg-white p-6 rounded-lg sticky top-4">
-                            <h2 className="font-semibold text-gray-900 text-lg mb-4">Similar Venues</h2>
+                            <h2 className="font-semibold text-text text-lg mb-4">Similar Venues</h2>
                             <div className="space-y-4">
                                 {similarVenues.map((v) => (
                                     
                                     <a key={v.id} href={`/venues/${v.id}`} className="block hover:bg-gray-50 p-3 rounded border border-gray-200 transition">
-                                        <p className="font-medium text-gray-900">{v.name}</p>
-                                        <p className="text-sm text-gray-600">{v.type}</p>
+                                        <p className="font-medium text-text">{v.name}</p>
+                                        <p className="text-sm text-text">{v.type}</p>
                                     </a>
                                 ))}
                             </div>

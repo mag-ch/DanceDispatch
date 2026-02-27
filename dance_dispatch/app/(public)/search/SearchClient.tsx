@@ -105,13 +105,13 @@ export default function SearchClient({
             <div className="max-w-7xl mx-auto">
                 {/* Search Bar */}
                 <div className="relative mb-6">
-                    <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Search className="absolute left-3 top-3 h-5 w-5 text-text" />
                     <input
                         type="text"
                         placeholder= {"Search " + activeCategories.join(", ") + "..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white  text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white  text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
@@ -125,7 +125,7 @@ export default function SearchClient({
                                 className={`px-4 py-2 rounded-full font-medium capitalize transition-colors ${
                                     activeCategories.includes(category)
                                         ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        : 'bg-gray-200 text-text hover:bg-gray-300'
                                 }`}
                             >
                                 {category}
@@ -138,15 +138,15 @@ export default function SearchClient({
                 <div className="flex gap-6">
                     {/* Sidebar - Filters */}
                     <aside className="w-64 flex-shrink-0">
-                        <div className="bg-white rounded-lg shadow p-4 sticky top-8">
-                            <h2 className="text-lg font-bold mb-4 text-gray-900">Filters</h2>
+                        <div className="bg-surface rounded-lg shadow p-4 sticky top-8">
+                            <h2 className="text-lg font-bold mb-4 text-text">Filters</h2>
                             
                             {/* Category-specific Filters */}
                             {activeCategories.includes('events') && (
                                 <div className="mb-6">
-                                    <h3 className="font-semibold mb-3 text-gray-900">Event Filters</h3>
+                                    <h3 className="font-semibold mb-3 text-text">Event Filters</h3>
                                     <div className="space-y-4">
-                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                        <label className="flex items-center gap-2 text-sm font-medium text-text">
                                             <input
                                                 type="checkbox"
                                                 onChange={(e) => {
@@ -158,7 +158,7 @@ export default function SearchClient({
                                         </label>
                                         
                                         <div>
-                                            <label className="block text-sm font-medium mb-1 text-gray-700">Date</label>
+                                            <label className="block text-sm font-medium mb-1 text-text">Date</label>
                                             <input
                                                 type="date"
                                                 value={dateFilter}
@@ -171,12 +171,12 @@ export default function SearchClient({
                                                         setPastEventsBool(false);
                                                     }
                                                 }}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                             />
                                         </div>
                                         
                                         <div>
-                                            <label className="block text-sm font-medium mb-1 text-gray-700">
+                                            <label className="block text-sm font-medium mb-1 text-text">
                                                 Price Range
                                             </label>
                                             <div className="flex gap-2">
@@ -187,7 +187,7 @@ export default function SearchClient({
                                                     onChange={(e) =>
                                                         setPriceRange({ ...priceRange, min: e.target.value })
                                                     }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                                 <input
                                                     type="number"
@@ -196,7 +196,7 @@ export default function SearchClient({
                                                     onChange={(e) =>
                                                         setPriceRange({ ...priceRange, max: e.target.value })
                                                     }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                             </div>
                                         </div>
@@ -206,14 +206,14 @@ export default function SearchClient({
 
                             {activeCategories.includes('venues') && (
                                 <div>
-                                    <h3 className="font-semibold mb-3 text-gray-900">Venue Filters</h3>
+                                    <h3 className="font-semibold mb-3 text-text">Venue Filters</h3>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1 text-gray-700">Boroughs</label>
+                                        <label className="block text-sm font-medium mb-1 text-text">Boroughs</label>
                                         <Select
                                             isMulti
                                             options={boroughOptions}
                                             onChange={(e) => setBoroughs(e ? [...e] : [])}
-                                            className="text-gray-900 text-sm"
+                                            className="text-text text-sm"
                                         />
                                     </div>
                                 </div>
@@ -225,46 +225,46 @@ export default function SearchClient({
                     <div className="flex-1 space-y-6">
                     {activeCategories.includes('events') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-gray-900">Events</h2>
+                            <h2 className="text-xl font-bold mb-4 text-text">Events</h2>
                             <div className="space-y-3">
                                 {filteredEvents.map((event: Event, index: number) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
                                       ))}
-                                {filteredEvents.length === 0 && <p className="text-gray-500">No events found</p>}
+                                {filteredEvents.length === 0 && <p className="text-text">No events found</p>}
                             </div>
                         </section>
                     )}
 
                     {activeCategories.includes('venues') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-gray-900">Venues</h2>
+                            <h2 className="text-xl font-bold mb-4 text-text">Venues</h2>
                             <div className="space-y-3">
                                 {filteredVenues.map((venue: any, index: number) => (
                                         <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.imageurl} entityId={venue.id} entity="venues"/>
                                       ))}                                
-                                {filteredVenues.length === 0 && <p className="text-gray-500">No venues found</p>}
+                                {filteredVenues.length === 0 && <p className="text-text">No venues found</p>}
                             </div>
                         </section>
                     )}
 
                     {activeCategories.includes('hosts') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-gray-900">Hosts</h2>
+                            <h2 className="text-xl font-bold mb-4 text-text">Hosts</h2>
                             <div className="space-y-3">
                               {filteredHosts.map((host: any, index: number) => (
                                         <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.description} location={host.address} img={host.imageurl} entityId={host.id} entity="hosts"/>
                                       ))}                                
-                                {filteredHosts.length === 0 && <p className="text-gray-500">No hosts found</p>}
+                                {filteredHosts.length === 0 && <p className="text-text">No hosts found</p>}
                             </div>
                         </section>
                     )}
 
                     {activeCategories.includes('users') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-gray-900">Users</h2>
+                            <h2 className="text-xl font-bold mb-4 text-text">Users</h2>
                             <div className="space-y-3">
                                 {/* User results will be mapped here */}
-                                <p className="text-gray-500">No users found</p>
+                                <p className="text-text">No users found</p>
                             </div>
                         </section>
                     )}

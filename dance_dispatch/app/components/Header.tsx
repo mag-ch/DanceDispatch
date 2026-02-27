@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getUsernameFromId } from '@/lib/utils_supabase';
+import { ThemeToggle } from './ThemeProvider';
 
 export function Header() {
     const { session, loading, logout } = useAuth();
@@ -23,7 +24,7 @@ export function Header() {
 
     if (loading) {
         return (
-            <header className="border-b border-gray-200 bg-white">
+            <header className="site-header border-b border-border">
                 <div className="container mx-auto px-4 py-4">
                     <div className="flex justify-between items-center">
                         <Link href="/" className="text-2xl font-bold">DanceDispatch</Link>
@@ -34,12 +35,12 @@ export function Header() {
     }
 
     return (
-        <header className="bg-white shadow-md sticky top-0 z-50">
+        <header className="site-header shadow-md sticky top-0 z-50">
             <div className="container mx-auto px-4 py-4">
                 <div className="flex justify-between items-center">
-                    <Link href="/" className="text-2xl text-gray-900 font-bold">DanceDispatch</Link>
-                    <nav className="flex items-center text-gray-900 gap-4">
-                        <Link href="/feed" className="hover:underline">Feed</Link>
+                    <Link href="/" className="text-2xl text-text font-bold">DanceDispatch</Link>
+                    <nav className="flex items-center text-muted gap-4">
+                        <ThemeToggle />
                         <Link href="/search" className="hover:underline">Search</Link>
                         {session ? (
                             <>

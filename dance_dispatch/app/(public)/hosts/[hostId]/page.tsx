@@ -67,9 +67,9 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     if (!host) return <div className="p-8">Host not found</div>;
     
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-bg text-text">
             {/* Image Gallery */}
-            <div className="relative h-96 bg-gray-900">
+            <div className="relative h-96 bg-bg">
                 
                     <Image
                         src={host.photoUrl ?? '/images/default_host.jpg'}
@@ -101,16 +101,16 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
 
                         {/* Bio */}
                         {host.bio && (
-                            <section className="mb-8 bg-white p-6 rounded-lg">
+                            <section className="mb-8 bg-surface p-6 rounded-lg">
                                 <h2 className="font-semibold text-gray-900 text-lg mb-4">About</h2>
-                                <p className="text-gray-700">{host.bio}</p>
+                                <p className="text-muted">{host.bio}</p>
                             </section>
                         )}
 
                         {/* Events */}
                         <div className="grid md:grid-cols-2 gap-8">
                             {/* Upcoming Events */}
-                            <section className="bg-white p-6 rounded-lg">
+                            <section className="bg-surface p-6 rounded-lg">
                                 <div className="flex items-center gap-2 mb-4">
                                     <Calendar className="w-6 h-6 text-purple-500" />
                                     <h2 className="font-semibold text-gray-900 text-lg">Upcoming Events</h2>
@@ -130,8 +130,8 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             </section>
 
                             {/* Recent Events */}
-                            <section className="bg-white p-6 rounded-lg">
-                                <h2 className="font-semibold text-gray-900 text-lg mb-4">Recent Events</h2>
+                            <section className="bg-surface p-6 rounded-lg">
+                                <h2 className="font-semibold text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {pastEvents.map((event, index) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
@@ -147,14 +147,14 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
 
                     {/* Sidebar */}
                     <div>
-                        <section className="bg-white p-6 rounded-lg sticky top-4">
-                            <h2 className="font-semibold text-gray-900 text-lg mb-4">You might be interested in...</h2>
+                        <section className="bg-surface p-6 rounded-lg sticky top-4">
+                            <h2 className="font-semibold text-lg mb-4">You might be interested in...</h2>
                             <div className="space-y-4">
                                 {similarHosts.map((h) => (
                                     
                                     <a key={h.id} href={`/hosts/${h.id}`} className="block hover:bg-gray-50 p-3 rounded border border-gray-200 transition">
-                                        <p className="font-medium text-gray-900">{h.name}</p>
-                                        <p className="text-sm text-gray-600">{h.tags}</p>
+                                        <p className="font-medium text-text">{h.name}</p>
+                                        <p className="text-sm text-muted">{h.tags}</p>
                                     </a>
                                 ))}
                             </div>

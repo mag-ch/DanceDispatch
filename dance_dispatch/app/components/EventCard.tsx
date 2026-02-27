@@ -1,8 +1,9 @@
 import React from 'react';
-import { Event, processUrl, checkEventSaved } from '../../lib/utils'
+import { Event, processUrl } from '@/lib/utils'
 import { SaveEventButton } from './SaveEventButton';
-import { getCurrentUserId } from '../../lib/auth-helpers';
 import CustomLink from './CustomLink';
+import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
+
 
 interface EventCardProps {
     event: Event;
@@ -19,11 +20,11 @@ interface SearchResultProps {
     entity?: string;
 }
 
-export const SearchResult: React.FC<SearchResultProps> = ({ 
-    header, 
-    subheader, 
-    date, 
-    price, 
+export const SearchResult: React.FC<SearchResultProps> = ({
+    header,
+    subheader,
+    date,
+    price,
     location,
     img,
     entityId,
@@ -42,52 +43,41 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     const route = entity && entityId ? `/${entity}/${entityId}` : undefined;
 
     return (
-        <div 
-            className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-            <CustomLink 
-            href={route || '#'}
-            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-            >
-            <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <img
-                src={img || '/images/default_event.jpg'}
-                alt={header}
-                className="w-10 h-10 object-cover rounded-full"
-                />
-            </div>
-            <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-gray-900">{header}</h4>
-                <p className="text-sm text-gray-600">{subheader}</p>
-                <div className="flex gap-3 text-xs text-gray-500 mt-1">
-                {date && <span>{formatDate(date)}</span>}
-                {price && <span>${price}</span>}
-                {location && <span>{location}</span>}
+        <div className={styles.searchRow}>
+            <CustomLink href={route || '#'} className={styles.searchLink}>
+                <div className={styles.avatarWrap}>
+                    <img
+                        src={img || '/images/default_event.jpg'}
+                        alt={header}
+                        className={styles.avatarImg}
+                    />
                 </div>
-            </div>
+                <div className={styles.searchText}>
+                    <h4 className={styles.searchTitle}>{header}</h4>
+                    <p className={styles.searchSub}>{subheader}</p>
+                    <div className={styles.searchMeta}>
+                        {date && <span>{formatDate(date)}</span>}
+                        {price && <span>${price}</span>}
+                        {location && <span>{location}</span>}
+                    </div>
+                </div>
             </CustomLink>
-            {/* {entityId && entity && (
-            <SaveEventButton entity={entity} entityId={entityId} initialSaved={false} />
-            )} */}
         </div>
     );
 };
 
 
+
 export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
     const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
     return (
-        
-        <CustomLink href={`/events/${event.id}`} className="relative w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-            <img
-                src={defaultThumbnail}
-                alt={event.title}
-                className="w-full h-32 object-cover"
-            />
-            <div className="p-4">
-                <h3 className="text-lg font-bold mb-2 text-gray-700">{event.title}</h3>
-                <p className="text-gray-600 text-sm">
-                    {event.startdate??""} @ {event.location ?? ""}
+
+        <CustomLink href={`/events/${event.id}`} className={styles.card}>
+            <img src={defaultThumbnail} alt={event.title} className={styles.imageSm} />
+            <div className={styles.content}>
+                <h3 className={styles.titleMd}>{event.title}</h3>
+                <p className={styles.description}>
+                    {event.startdate ?? ""} @ {event.location ?? ""}
                 </p>
             </div>
         </CustomLink>
@@ -96,8 +86,8 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
-    
-    const formatDateAndTime = (date: string, time:string) => {
+
+    const formatDateAndTime = (date: string, time: string) => {
         return new Intl.DateTimeFormat('en-US', {
             month: 'short',
             day: 'numeric',
@@ -105,59 +95,57 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
             hour: '2-digit',
             minute: '2-digit',
         }).format(new Date([date, time].join(" ")));
-    };    
+    };
 
-    const extLink = event.externallink ? await processUrl(event.externallink): undefined;
+    const extLink = event.externallink ? await processUrl(event.externallink) : undefined;
 
     const truncateDescription = (text: string, maxLength: number = 100) => {
         return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
     };
 
     return (
-        <div className="w-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-            <CustomLink href={`/events/${event.id}`} className="relative">
-                <img
-                    src={defaultThumbnail}
-                    alt={event.title}
-                    className="w-full h-48 object-cover"
-                />
-                <div className='absolute top-4 left-4'>
-
-                <SaveEventButton entity='events' entityId={event.id} />
+        <div className={styles.card}>
+            <CustomLink href={`/events/${event.id}`} className={styles.cardLink}>
+                <img src={defaultThumbnail} alt={event.title} className={styles.imageLg} />
+                <div className={styles.saveOverlay}>
+                    <SaveEventButton entity='events' entityId={event.id} />
                 </div>
-                <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-bold">{event.title}</h3>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-3">
-                        {event.description ? truncateDescription(event.description):""}
+                <div className={styles.content}>
+                    <h3 className={styles.titleLg}>{event.title}</h3>
+                    <p className={styles.description}>
+                        {event.description ? truncateDescription(event.description) : ""}
                     </p>
-                    <div className="space-y-2 text-sm">
-                        <div className="flex items-center text-gray-700">
-                            <span className="font-semibold mr-2">Start:</span>
+                    <div className={styles.metaList}>
+                        <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>Start:</span>
                             {formatDateAndTime(event.startdate, event.starttime)}
                         </div>
-                        <div className="flex items-center text-gray-700">
-                            <span className="font-semibold mr-2">End:</span>
+                        <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>End:</span>
                             {formatDateAndTime(event.enddate, event.endtime)}
                         </div>
-                        <div className="flex items-center text-gray-700">
-                            <span className="font-semibold mr-2">Location:</span>
+                        <div className={styles.metaRow}>
+                            <span className={styles.metaLabel}>Location:</span>
                             {event.location}
                         </div>
                         {event.price !== undefined && (
-                            <div className="flex items-center text-gray-900">
-                                <span className="font-semibold mr-2">Price:</span>
-                                ${event.price}
+                            <div className={styles.metaRow}>
+                                <span className={styles.metaLabel}>Price:</span>${event.price}
                             </div>
                         )}
                     </div>
                 </div>
             </CustomLink>
+
             {extLink && (
-            <CustomLink href={extLink} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-600 hover:text-blue-800 hover:underline p-4 border-t">
-                <span className="font-semibold mr-2">Get Tickets →</span>
-            </CustomLink>
+                <CustomLink
+                    href={extLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.ticketLink}
+                >
+                    <span className={styles.metaLabel}>Get Tickets →</span>
+                </CustomLink>
             )}
         </div>
     );

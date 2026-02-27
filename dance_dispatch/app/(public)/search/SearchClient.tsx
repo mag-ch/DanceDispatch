@@ -213,7 +213,7 @@ export default function SearchClient({
                                             isMulti
                                             options={boroughOptions}
                                             onChange={(e) => setBoroughs(e ? [...e] : [])}
-                                            className="text-text text-sm"
+                                            className="bg-surface text-text text-sm"
                                         />
                                     </div>
                                 </div>

@@ -17,6 +17,10 @@ export default function LoginPage() {
         setError(null);
         setLoading(true);
 
+    console.log("Attempting to sign in with email:", email);
+    console.log(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+
     const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

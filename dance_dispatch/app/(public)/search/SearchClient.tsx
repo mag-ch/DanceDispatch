@@ -111,7 +111,7 @@ export default function SearchClient({
                         placeholder= {"Search " + activeCategories.join(", ") + "..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white  text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
@@ -171,7 +171,7 @@ export default function SearchClient({
                                                         setPastEventsBool(false);
                                                     }
                                                 }}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-surface text-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                             />
                                         </div>
                                         
@@ -187,7 +187,7 @@ export default function SearchClient({
                                                     onChange={(e) =>
                                                         setPriceRange({ ...priceRange, min: e.target.value })
                                                     }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                                 <input
                                                     type="number"
@@ -196,7 +196,7 @@ export default function SearchClient({
                                                     onChange={(e) =>
                                                         setPriceRange({ ...priceRange, max: e.target.value })
                                                     }
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                             </div>
                                         </div>

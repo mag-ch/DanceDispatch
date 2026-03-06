@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { use } from 'react';
 import Image from 'next/image';
 import { MapPin, Clock, Calendar } from 'lucide-react';
-import {  Venue } from '@/lib/utils';
-import { getEvents } from '@/lib/utils_supabase_server';
+import { Event, Venue } from '@/lib/utils';
 import { SearchResult } from '@/app/components/EventCard';
 
 
@@ -14,8 +13,8 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
     const [venue, setVenue] = useState<Venue | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [pastEvents, setPastEvents] = useState<any[]>([]);
-    const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
     const [similarVenues, setSimilarVenues] = useState<Venue[]>([]);
 
     useEffect(() => {
@@ -36,16 +35,26 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
     useEffect(() => {
         if (!venueId) return;
         const fetchEvents = async () => {
-            const re = await getEvents(false, venueId);
-            const pastEvents = re
+            const res = await fetch(`/api/events?venueId=${venueId}&onlyUpcoming=false`);
+            if (!res.ok) {
+                throw new Error('Failed to fetch events');
+            }
+
+            const events: Event[] = await res.json();
+            const pastEvents = events
                 .filter(event => new Date(`${event.startdate} ${event.starttime}`) < new Date())
                 .sort((a, b) => new Date(`${b.startdate} ${b.starttime}`).getTime() - new Date(`${a.startdate} ${a.starttime}`).getTime())
                 .slice(0, 5);
-            const upcomingEvents = re.filter(event => new Date(`${event.startdate} ${event.starttime}`) >= new Date());
+            const upcomingEvents = events.filter(event => new Date(`${event.startdate} ${event.starttime}`) >= new Date());
             setPastEvents(pastEvents);
             setUpcomingEvents(upcomingEvents);
         };
-        fetchEvents();
+
+        fetchEvents().catch((error) => {
+            console.error('Failed to fetch venue events:', error);
+            setPastEvents([]);
+            setUpcomingEvents([]);
+        });
     }, [venueId]);
     
     

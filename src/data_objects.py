@@ -11,19 +11,12 @@ class Venue:
     name: str = ""
     address: str = ""
     tags: List[str] = None
-    residents: List[str] = None
-    nearest_station: str = ""
-    distance_from_station: Optional[float] = None
-    number_of_zones: Optional[int] = None
-    total_area: Optional[float] = None
     external_links: List[str] = None
     photo_urls: List[str] = None
     
     def __post_init__(self):
         if self.tags is None:
             self.tags = []
-        if self.residents is None:
-            self.residents = []
         if self.external_links is None:
             self.external_links = []
         if self.photo_urls is None:

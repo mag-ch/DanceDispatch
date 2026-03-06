@@ -96,13 +96,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                     </span>
                                 ))}
                             </div>
-                            <h1 className="text-4xl text-gray-900 font-bold mt-2">{host.name}</h1>
+                            <h1 className="text-4xl text-text font-bold mt-2">{host.name}</h1>
                         </div>
 
                         {/* Bio */}
                         {host.bio && (
                             <section className="mb-8 bg-surface p-6 rounded-lg">
-                                <h2 className="font-semibold text-gray-900 text-lg mb-4">About</h2>
+                                <h2 className="font-semibold text-text text-lg mb-4">About</h2>
                                 <p className="text-muted">{host.bio}</p>
                             </section>
                         )}
@@ -113,7 +113,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             <section className="bg-surface p-6 rounded-lg">
                                 <div className="flex items-center gap-2 mb-4">
                                     <Calendar className="w-6 h-6 text-purple-500" />
-                                    <h2 className="font-semibold text-gray-900 text-lg">Upcoming Events</h2>
+                                    <h2 className="font-semibold text-text text-lg">Upcoming Events</h2>
                                 </div>
                                 <div className="space-y-3">
                                     {upcomingEvents.map((event, index) => (
@@ -131,7 +131,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
 
                             {/* Recent Events */}
                             <section className="bg-surface p-6 rounded-lg">
-                                <h2 className="font-semibold text-lg mb-4">Recent Events</h2>
+                                <h2 className="font-semibold text-text text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {pastEvents.map((event, index) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
@@ -148,7 +148,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                     {/* Sidebar */}
                     <div>
                         <section className="bg-surface p-6 rounded-lg sticky top-4">
-                            <h2 className="font-semibold text-lg mb-4">You might be interested in...</h2>
+                            <h2 className="font-semibold text-text text-lg mb-4">You might be interested in...</h2>
                             <div className="space-y-4">
                                 {similarHosts.map((h) => (
                                     

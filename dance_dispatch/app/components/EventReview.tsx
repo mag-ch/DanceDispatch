@@ -147,7 +147,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
         Object.entries(djReviews).forEach(([dj, review]) => {
             if (review.rating > 0) {
                 reviewsToSubmit.push({
-                    entityType: 'dj',
+                    entityType: 'host',
                     entityId: dj,
                     rating: review.rating,
                     comment: review.comment,

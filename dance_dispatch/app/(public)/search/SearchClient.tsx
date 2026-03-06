@@ -11,14 +11,14 @@ interface SearchClientProps {
     initialEvents: any[];
     initialVenues: any[];
     initialHosts: any[];
-    initalBoroughs: any[];
+    initialBoroughs: any[];
 }
 
 export default function SearchClient({ 
     initialEvents, 
     initialVenues, 
     initialHosts,
-    initalBoroughs
+    initialBoroughs
 }: SearchClientProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [pastEventsBool, setPastEventsBool] = useState(false);
@@ -33,8 +33,8 @@ export default function SearchClient({
     const [boroughs, setBoroughs] = useState<any[]>([]);
 
     const boroughOptions = useMemo(() => 
-        initalBoroughs.map(borough => ({ value: borough, label: borough })),
-        [initalBoroughs]
+        initialBoroughs.map(borough => ({ value: borough, label: borough })),
+        [initialBoroughs]
     );
     // useEffect(() => {
     //     const fetchBoroughs = async () => {

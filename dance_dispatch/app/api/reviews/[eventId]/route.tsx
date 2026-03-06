@@ -1,4 +1,4 @@
-import { userSubmitReview } from '@/lib/utils';
+import { userSubmitReview } from '@/lib/utils_supabase_server';
 import { validateAndSanitizeReviews } from '@/lib/validator';
 import { requireAuth } from '@/lib/auth-helpers';
 
@@ -22,9 +22,9 @@ export async function POST(
         // }
 
         const user = await requireAuth();
-        const username = user.user_metadata?.username || user.id;
+        console.log('Submitting reviews for user:', user.id, 'event:', eventId, 'content:', content);
         for (const entry of content) {
-            await userSubmitReview(entry, username, eventId);
+            await userSubmitReview(entry, user.id, eventId);
         }
 
         return new Response(JSON.stringify({ success: true }), {

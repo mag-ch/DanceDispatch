@@ -1,4 +1,4 @@
-import { getEventById, updateEvent } from '@/lib/utils';
+import { getEventById, updateEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
     request: Request,

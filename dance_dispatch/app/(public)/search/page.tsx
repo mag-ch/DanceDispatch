@@ -1,11 +1,10 @@
-import { getEvents, getVenues, getHosts, getUniqueBoroughs, refreshCaches } from '@/lib/utils';
+import { getEvents, getVenues, getHosts, getUniqueBoroughs } from '@/lib/utils_supabase_server';
 import SearchClient from './SearchClient';
 
 // This is a Server Component (no 'use client')
 export default async function SearchPage() {
     // Fetch data synchronously on the server using fs
     const events = await getEvents(false);
-    refreshCaches();
     const venues = await getVenues();
     const hosts = await getHosts();
     const boroughs = await getUniqueBoroughs();
@@ -16,7 +15,7 @@ export default async function SearchPage() {
             initialEvents={events}
             initialVenues={venues}
             initialHosts={hosts}
-            initalBoroughs={boroughs}
+            initialBoroughs={boroughs}
         />
     );
 }

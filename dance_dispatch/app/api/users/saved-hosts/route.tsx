@@ -1,4 +1,4 @@
-import { userSaveHost } from '@/lib/utils';
+import { userSaveHost } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {

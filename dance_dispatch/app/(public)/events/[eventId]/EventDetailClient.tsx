@@ -1,32 +1,21 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { MapPin, Calendar, Users, Share2 } from 'lucide-react';
-import { Event, EventReview, getVenueById } from '@/lib/utils';
+import { Event, EventReview } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
-import { hostname } from 'os';
 
 interface EventDetailClientProps {
     event: Event;
     eventReviews: EventReview[];
     relatedEvents: Event[];
+    venueAddress: string;
 }
 
-export function EventDetailClient({ event, eventReviews, relatedEvents }: EventDetailClientProps) {
+export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress }: EventDetailClientProps) {
     const [showReviewModal, setShowReviewModal] = useState(false);
-    const [venueAddress, setVenueAddress] = useState('');
-
-    useEffect(() => {
-        const fetchVenueAddress = async () => {
-            const venue = await getVenueById(event.locationid || '');
-            if (venue) {
-                setVenueAddress(`${venue.address}`);
-            }
-        };
-        fetchVenueAddress();
-    }, [event.locationid]);
 
     return (
         <div className="min-h-screen bg-bg">

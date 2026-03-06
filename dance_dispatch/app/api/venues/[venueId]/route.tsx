@@ -1,4 +1,4 @@
-import { getVenues } from '@/lib/utils';
+import { getVenues } from '@/lib/utils_supabase_server';
 
 export async function GET(
     request: Request,

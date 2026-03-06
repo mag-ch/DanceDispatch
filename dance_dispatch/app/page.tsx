@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { getEvents } from "@/lib/utils"; 
+import { getCachedEvents } from "@/lib/utils_supabase_server";
 import { EventCard } from "./components/EventCard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -71,7 +71,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
 
 async function TrendingEvents({ userId }: { userId?: string }) {
-  const events = await getEvents();
+  const events = await getCachedEvents();
 
   if (!events.length) {
     return <p>No events available.</p>;

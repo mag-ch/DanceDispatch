@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { use } from 'react';
 import Image from 'next/image';
 import { MapPin, Clock, Calendar } from 'lucide-react';
-import { getEvents, Venue } from '@/lib/utils';
+import {  Venue } from '@/lib/utils';
+import { getEvents } from '@/lib/utils_supabase_server';
 import { SearchResult } from '@/app/components/EventCard';
 
 
@@ -97,7 +98,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                     {/* Main Content */}
                     <div className="lg:col-span-2">
                         {/* Header */}
-                        <section className="mb-8 bg-white p-6 rounded-lg">
+                        <section className="mb-8 bg-surface p-6 rounded-lg">
                             <div className="flex items-start gap-4 mb-4">
                                 <div>
                                     <h2 className="text-sm text-text uppercase">{venue.type}</h2>
@@ -107,20 +108,19 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                         </section>
 
                         {/* Bio */}
-                        {venue.tags && <section className="mb-8 bg-white p-6 rounded-lg">
+                        {venue.type && <section className="mb-8 bg-surface p-6 rounded-lg">
                             <h2 className="font-semibold text-text text-lg mb-4">Tags</h2>
                             <p className="text-text">{venue.bio}</p>
                             <div className="flex flex-wrap gap-2">
-                                {venue.tags.split(',').map((feature) => (
-                                    <span key={feature} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                                        {feature}
+                                    <span key={venue.bio} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                        {venue.bio}
                                     </span>
-                                ))}
+                                
                             </div>
                         </section>}
 
                         {/* Address & Map */}
-                        <section className="mb-8 bg-white p-6 rounded-lg">
+                        <section className="mb-8 bg-surface p-6 rounded-lg">
                             <div className="flex items-start gap-4 mb-4">
                                 <MapPin className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
                                 <div>
@@ -144,7 +144,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                         {/* Events */}
                         <div className="grid md:grid-cols-2 gap-8">
                             {/* Upcoming Events */}
-                            <section className="bg-white p-6 rounded-lg">
+                            <section className="bg-surface p-6 rounded-lg">
                                 <div className="flex items-center gap-2 mb-4">
                                     <Calendar className="w-6 h-6 text-purple-500" />
                                     <h2 className="font-semibold text-text text-lg">Upcoming Events</h2>
@@ -164,7 +164,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
                             </section>
 
                             {/* Recent Events */}
-                            <section className="bg-white p-6 rounded-lg">
+                            <section className="bg-surface p-6 rounded-lg">
                                 <h2 className="font-semibold text-text text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {pastEvents.map((event, index) => (
@@ -181,7 +181,7 @@ export default function VenuePage({ params }: { params: Promise<{ venueId: strin
 
                     {/* Sidebar */}
                     <div>
-                        <section className="bg-white p-6 rounded-lg sticky top-4">
+                        <section className="bg-surface p-6 rounded-lg sticky top-4">
                             <h2 className="font-semibold text-text text-lg mb-4">Similar Venues</h2>
                             <div className="space-y-4">
                                 {similarVenues.map((v) => (

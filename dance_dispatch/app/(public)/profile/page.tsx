@@ -1,50 +1,20 @@
-'use client';
-
-import { redirect } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { Event, Venue, Host, getAllSavedEventsForUser, getAllFollowedVenues, getAllFollowedHosts } from '@/lib/utils';
-import { supabase } from "@/lib/supabase/client";
-import type { User } from '@supabase/supabase-js';
+import { Event } from '@/lib/utils';
+import { getAllFollowedVenues, getAllFollowedHosts } from '@/lib/utils_supabase_server';
+import { requireAuth } from '@/lib/auth-helpers';
+import { getSavedEventsForUserServer, getUserReviews } from '@/lib/server_utils';
 
 
-export default function ProfilePage() {
-    const [user, setUser] = useState<User | null>(null);
 
-    const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
-    // const [followedUsers, setFollowedUsers] = useState<User[]>([]);
-    const [followedVenues, setFollowedVenues] = useState<Venue[]>([]);
-    const [favoriteDJs, setFavoriteDJs] = useState<Host[]>([]);
+export default async function ProfilePage() {
+    const user = await requireAuth();
 
-    useEffect(() => {
-            const fetchUserId = async () => {
-                const { data: { user } } = await supabase.auth.getUser();
-                setUser(user);
-            }
-            fetchUserId();
-        }, []);
-
-    useEffect(() => {
-            const fetchFollowedData = async () => {
-                try {
-                    const [upcomingEvents, followedVenues, favoriteDJs] = await Promise.all([
-                        getAllSavedEventsForUser(user!.id),
-                        getAllFollowedVenues(user!.id),
-                        getAllFollowedHosts(user!.id)
-                    ]);
-                    setUpcomingEvents(upcomingEvents);
-                    setFollowedVenues(followedVenues);
-                    setFavoriteDJs(favoriteDJs);
-                }
-                catch (error) {
-                    console.error('Failed to fetch followed data:', error);
-                }
-            }
-            fetchFollowedData();
-        }, [user]);
-
-    if (!user) {
-        return <div>Loading...</div>;
-    }
+    const [followedVenues, favoriteDJs, upcomingEvents, pastEvents, userReviews] = await Promise.all([
+        getAllFollowedVenues(user.id),
+        getAllFollowedHosts(user.id),
+        getSavedEventsForUserServer(user.id, 'upcoming'),
+        getSavedEventsForUserServer(user.id, 'past'),
+        getUserReviews(user.id),
+    ]);
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -135,23 +105,43 @@ export default function ProfilePage() {
                 </div>
             </section>
 
-            {/* Past Comments */}
-            {/* <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Recent Comments</h2>
+            {/* Past Events */}
+            <section className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4 text-text">Past Events ({pastEvents.length})</h2>
                 <div className="space-y-4">
-                    {user.comments.map((comment) => (
-                        <div key={comment.id} className="border rounded-lg p-4">
-                            <p className="text-sm text-text mb-2">
-                                On {comment.event.name} - {new Date(comment.createdAt).toLocaleDateString()}
+                    {pastEvents.map((event) => (
+                        <div key={event.id} className="border rounded-lg p-4">
+                            <p className="font-medium text-text">{event.title}</p>
+                                <p className="text-sm text-text">{event.location}</p>
+                            <p className="text-sm text-text">
+                                {new Date(event.startdate).toLocaleDateString()}
                             </p>
-                            <p className="text-text">{comment.content}</p>
                         </div>
                     ))}
-                    {user.comments.length === 0 && (
-                        <p className="text-text">No comments yet</p>
+                    {pastEvents.length === 0 && (
+                        <p className="text-text">No past events</p>
                     )}
                 </div>
-            </section> */}
+            </section>
+
+            {/* Past Comments */}
+            <section className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4 text-text">Reviews ({userReviews.length})</h2>
+                <div className="space-y-4">
+                    {userReviews.map((review) => (
+                        <div key={review.id} className="border rounded-lg p-4">
+                            <p className="font-medium text-text">{review.event_id}</p>
+                                <p className="text-sm text-text">{review.comment}</p>
+                            <p className="text-sm text-text">
+                                {new Date(review.created_at).toLocaleDateString()}
+                            </p>
+                        </div>
+                    ))}
+                    {userReviews.length === 0 && (
+                        <p className="text-text">No past comments</p>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

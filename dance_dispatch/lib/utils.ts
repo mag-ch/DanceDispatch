@@ -3,7 +3,6 @@
 import path from 'path';
 import  {parse}  from 'csv-parse/sync';
 import { promises as fs } from "fs";
-import { Underdog } from 'next/font/google';
 
 export interface Event {
     id: string;
@@ -28,7 +27,6 @@ export interface Venue {
     address: string;
     type: string;
     bio: string;
-    tags: string;
     residents: string;
     photourls: string;
     // Add other fields as needed based on your CSV structure
@@ -67,6 +65,7 @@ export interface EventReview {
 let eventsCache: Event[] | null = null;
 let eventsCacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 
 // Helper function to build venue lookup map
 async function buildVenueMap(): Promise<Map<number, string>> {
@@ -269,49 +268,49 @@ export async function getHostById(hostId: string): Promise<Host | null> {
     return hosts.find(e => e.id === hostId) || null;
 }
 
-export async function userSaveEvent(eventId: string, userId: string, saveBool: boolean): Promise<string> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
-    const recordId = `${userId}-${eventId}`;
+// export async function userSaveEvent(eventId: string, userId: string, saveBool: boolean): Promise<string> {
+//     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
+//     const recordId = `${userId}-${eventId}`;
     
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
+//     try {
+//         const fileContent = await fs.readFile(filePath, 'utf-8');
+//         const records = parse(fileContent, {
+//             columns: true,
+//             skip_empty_lines: true,
+//             trim: true,
+//         });
         
-        // Use Map for O(1) lookup
-        const recordMap = new Map<string, any>();
-        records.forEach((record: any) => {
-            recordMap.set(record.ID, record);
-        });
+//         // Use Map for O(1) lookup
+//         const recordMap = new Map<string, any>();
+//         records.forEach((record: any) => {
+//             recordMap.set(record.ID, record);
+//         });
         
-        // Update or add the record
-        if (recordMap.has(recordId)) {
-            recordMap.get(recordId)!.Saved = saveBool.toString();
-        } else {
-            recordMap.set(recordId, {
-                ID: recordId,
-                UserID: userId,
-                EventID: eventId,
-                Saved: saveBool.toString()
-            });
-        }
+//         // Update or add the record
+//         if (recordMap.has(recordId)) {
+//             recordMap.get(recordId)!.Saved = saveBool.toString();
+//         } else {
+//             recordMap.set(recordId, {
+//                 ID: recordId,
+//                 UserID: userId,
+//                 EventID: eventId,
+//                 Saved: saveBool.toString()
+//             });
+//         }
         
-        // Build file content once
-        let newFileContent = 'ID,UserID,EventID,Saved\n';
-        recordMap.forEach((record) => {
-            newFileContent += `${record.ID},${record.UserID},${record.EventID},${record.Saved}\n`;
-        });
+//         // Build file content once
+//         let newFileContent = 'ID,UserID,EventID,Saved\n';
+//         recordMap.forEach((record) => {
+//             newFileContent += `${record.ID},${record.UserID},${record.EventID},${record.Saved}\n`;
+//         });
         
-        await fs.writeFile(filePath, newFileContent, 'utf-8');
-        return recordId;
-    } catch (error) {
-        console.error('Error updating user saved events CSV:', error);
-        throw error;
-    }  
-}
+//         await fs.writeFile(filePath, newFileContent, 'utf-8');
+//         return recordId;
+//     } catch (error) {
+//         console.error('Error updating user saved events CSV:', error);
+//         throw error;
+//     }  
+// }
 
 
 export async function userSaveVenue(venueId: string, userId: string, saveBool: boolean): Promise<string> {
@@ -482,31 +481,31 @@ export async function checkVenueSaved(venue: Venue): Promise<boolean> {
     return false;
 }   
 
-export async function checkEventSaved(event: Event, userId: string | null): Promise<boolean> {
-    if (!userId) return false;
+// export async function checkEventSaved(event: Event, userId: string | null): Promise<boolean> {
+//     if (!userId) return false;
     
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
-    const targetId = `${userId}-${event.id}`;
+//     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
+//     const targetId = `${userId}-${event.id}`;
 
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
+//     try {
+//         const fileContent = await fs.readFile(filePath, 'utf-8');
+//         const records = parse(fileContent, {
+//             columns: true,
+//             skip_empty_lines: true,
+//             trim: true,
+//         });
         
-        // Direct lookup - exits early when found
-        for (const record of records as any[]) {
-            if (record.ID === targetId) {
-                return record.Saved === 'true';
-            }
-        }
-    } catch (error) {
-        console.error('Error reading user saved events CSV:', error);
-    }   
-    return false;
-}
+//         // Direct lookup - exits early when found
+//         for (const record of records as any[]) {
+//             if (record.ID === targetId) {
+//                 return record.Saved === 'true';
+//             }
+//         }
+//     } catch (error) {
+//         console.error('Error reading user saved events CSV:', error);
+//     }   
+//     return false;
+// }
 
 
 async function getLocation(locationField: any): Promise<string> {
@@ -561,7 +560,6 @@ export async function getVenues(forceRefresh = false): Promise<Venue[]> {
                 address: record.Address,
                 type: record.Type,
                 bio: record.Bio,
-                tags: record.Tags,
                 residents: record.Residents,
                 photourls: record.PhotoURLs,
             };

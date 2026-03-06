@@ -1,12 +1,13 @@
-import { getAllSavedEventsForUser } from '@/lib/utils';
 import { requireAuth } from '@/lib/auth-helpers';
+import { getSavedEventsForUserServer } from '@/lib/server_utils';
 
 
 //returns all of current user's saved events
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     try {
         const user = await requireAuth();
-        const savedEvents = await getAllSavedEventsForUser(user.id);
+        const savedEvents = await getSavedEventsForUserServer(user.id);
+
         return new Response(JSON.stringify(savedEvents), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },

@@ -1,5 +1,7 @@
 import React from 'react';
-import { Event, processUrl } from '@/lib/utils'
+import { processUrl } from '@/lib/utils'
+import type { Event } from '@/lib/utils'
+import { formatDateOnly } from '@/lib/date-utils';
 import { SaveEventButton } from './SaveEventButton';
 import CustomLink from './CustomLink';
 import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
@@ -19,6 +21,7 @@ interface SearchResultProps {
     entityId?: string;
     entity?: string;
 }
+
 
 export const SearchResult: React.FC<SearchResultProps> = ({
     header,
@@ -54,7 +57,9 @@ export const SearchResult: React.FC<SearchResultProps> = ({
                 </div>
                 <div className={styles.searchText}>
                     <h4 className={styles.searchTitle}>{header}</h4>
-                    <p className={styles.searchSub}>{subheader}</p>
+                    <p className={styles.searchSub}>
+                        {subheader ? (subheader.length > 50 ? subheader.substring(0, 50) + '...' : subheader) : ''}
+                    </p>
                     <div className={styles.searchMeta}>
                         {date && <span>{formatDate(date)}</span>}
                         {price && <span>${price}</span>}
@@ -69,7 +74,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({
 
 
 export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
-    const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
+    const defaultThumbnail = (event.imageurl == "" || !event.imageurl) ? '/images/default_event.jpg' : event.imageurl;
     return (
 
         <CustomLink href={`/events/${event.id}`} className={styles.card}>
@@ -77,7 +82,7 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
             <div className={styles.content}>
                 <h3 className={styles.titleMd}>{event.title}</h3>
                 <p className={styles.description}>
-                    {event.startdate ?? ""} @ {event.location ?? ""}
+                    {formatDateOnly(event.startdate, event.starttime)} @ {event.location ?? ""}
                 </p>
             </div>
         </CustomLink>
@@ -85,17 +90,7 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
 }
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
-    const defaultThumbnail = event.imageurl == "" ? '/images/default_event.jpg' : event.imageurl;
-
-    const formatDateAndTime = (date: string, time: string) => {
-        return new Intl.DateTimeFormat('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        }).format(new Date([date, time].join(" ")));
-    };
+    const defaultThumbnail = (event.imageurl == "" || !event.imageurl) ? '/images/default_event.jpg' : event.imageurl;
 
     const extLink = event.externallink ? await processUrl(event.externallink) : undefined;
 
@@ -118,11 +113,11 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                     <div className={styles.metaList}>
                         <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>Start:</span>
-                            {formatDateAndTime(event.startdate, event.starttime)}
+                            {formatDateOnly(event.startdate, event.starttime)}
                         </div>
                         <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>End:</span>
-                            {formatDateAndTime(event.enddate, event.endtime)}
+                            {formatDateOnly(event.enddate, event.endtime)}
                         </div>
                         <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>Location:</span>
@@ -150,3 +145,9 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
         </div>
     );
 };
+
+
+// add venue info table and info display
+// add host soundclod/spotify links
+// fix review display format, make private comments visible only to followers
+// user profile page

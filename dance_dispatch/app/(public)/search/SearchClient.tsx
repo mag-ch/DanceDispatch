@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
-import { Event, getUniqueBoroughs } from '@/lib/utils';
+import { Event } from '@/lib/utils';
 import Select from 'react-select';
 
 type SearchCategory = 'events' | 'venues' | 'hosts' | 'users';
@@ -11,6 +11,7 @@ interface SearchClientProps {
     initialEvents: any[];
     initialVenues: any[];
     initialHosts: any[];
+    initialUsers: any[];
     initialBoroughs: any[];
 }
 
@@ -18,8 +19,15 @@ export default function SearchClient({
     initialEvents, 
     initialVenues, 
     initialHosts,
+    initialUsers,
     initialBoroughs
 }: SearchClientProps) {
+    const safeEvents = Array.isArray(initialEvents) ? initialEvents : [];
+    const safeVenues = Array.isArray(initialVenues) ? initialVenues : [];
+    const safeHosts = Array.isArray(initialHosts) ? initialHosts : [];
+    const safeUsers = Array.isArray(initialUsers) ? initialUsers : [];
+    const safeBoroughs = Array.isArray(initialBoroughs) ? initialBoroughs : [];
+
     const [searchQuery, setSearchQuery] = useState('');
     const [pastEventsBool, setPastEventsBool] = useState(false);
     const [activeCategories, setActiveCategories] = useState<SearchCategory[]>([
@@ -33,8 +41,8 @@ export default function SearchClient({
     const [boroughs, setBoroughs] = useState<any[]>([]);
 
     const boroughOptions = useMemo(() => 
-        initialBoroughs.map(borough => ({ value: borough, label: borough })),
-        [initialBoroughs]
+        safeBoroughs.map(borough => ({ value: borough, label: borough })),
+        [safeBoroughs]
     );
     // useEffect(() => {
     //     const fetchBoroughs = async () => {
@@ -59,8 +67,8 @@ export default function SearchClient({
 
     // Filter events based on search query and filters
     let filteredEvents = searchQuery === '' 
-        ? initialEvents 
-        : initialEvents.filter(event => {
+        ? safeEvents 
+        : safeEvents.filter(event => {
             const matchesQuery = event.title?.toLowerCase().includes(searchQuery.toLowerCase());
             // Add more filter logic here
             return matchesQuery;
@@ -83,8 +91,8 @@ export default function SearchClient({
     });
 
     let filteredVenues = searchQuery === '' 
-        ? initialVenues 
-        : initialVenues.filter(venue => {
+        ? safeVenues 
+        : safeVenues.filter(venue => {
             const matchesQuery = venue.name?.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesQuery;
         });
@@ -92,9 +100,16 @@ export default function SearchClient({
         return boroughs.some(borough => venue.address?.toLowerCase().includes(borough.value.toLowerCase()));
     });
     let filteredHosts = searchQuery === '' 
-        ? initialHosts 
-        : initialHosts.filter(host => {
+        ? safeHosts 
+        : safeHosts.filter(host => {
             const matchesQuery = host.name?.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesQuery;
+        });
+    let filteredUsers = Array.isArray(safeUsers) ? safeUsers : [];
+    filteredUsers = searchQuery === ''
+        ? filteredUsers
+        : filteredUsers.filter(user => {
+            const matchesQuery = user.username?.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesQuery;
         });
 
@@ -116,7 +131,7 @@ export default function SearchClient({
                 </div>
 
                 {/* Category Toggles */}
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-6 items-center">
                     {(['events', 'venues', 'hosts', 'users'] as SearchCategory[]).map(
                         (category) => (
                             <button
@@ -124,7 +139,7 @@ export default function SearchClient({
                                 onClick={() => toggleCategory(category)}
                                 className={`px-4 py-2 rounded-full font-medium capitalize transition-colors ${
                                     activeCategories.includes(category)
-                                        ? 'bg-blue-600 text-white'
+                                        ? ' btn-highlighted bg-blue-600 text-white'
                                         : 'bg-gray-200 text-text hover:bg-gray-300'
                                 }`}
                             >
@@ -132,6 +147,17 @@ export default function SearchClient({
                             </button>
                         )
                     )}
+                    <button
+                        onClick={() => setActiveCategories([])}
+                        className="flex items-center px-3 py-2 rounded-full bg-gray-200 text-text hover:bg-gray-300 ml-2"
+                        title="Clear all"
+                        type="button"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear all
+                    </button>
                 </div>
 
                 {/* Main Layout with Sidebar */}
@@ -240,7 +266,7 @@ export default function SearchClient({
                             <h2 className="text-xl font-bold mb-4 text-text">Venues</h2>
                             <div className="space-y-3">
                                 {filteredVenues.map((venue: any, index: number) => (
-                                        <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.imageurl} entityId={venue.id} entity="venues"/>
+                                        <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.type} location={venue.address} img={venue.photourls} entityId={venue.id} entity="venues"/>
                                       ))}                                
                                 {filteredVenues.length === 0 && <p className="text-text">No venues found</p>}
                             </div>
@@ -252,7 +278,7 @@ export default function SearchClient({
                             <h2 className="text-xl font-bold mb-4 text-text">Hosts</h2>
                             <div className="space-y-3">
                               {filteredHosts.map((host: any, index: number) => (
-                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.description} location={host.address} img={host.imageurl} entityId={host.id} entity="hosts"/>
+                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.tags?.join(', ')} location={host.address} img={host.photoUrl} entityId={host.id} entity="hosts"/>
                                       ))}                                
                                 {filteredHosts.length === 0 && <p className="text-text">No hosts found</p>}
                             </div>
@@ -263,8 +289,24 @@ export default function SearchClient({
                         <section>
                             <h2 className="text-xl font-bold mb-4 text-text">Users</h2>
                             <div className="space-y-3">
-                                {/* User results will be mapped here */}
-                                <p className="text-text">No users found</p>
+                                {filteredUsers.map((user: any, index: number) => {
+                                    let createdAtString = '';
+                                    if (user.created_at) {
+                                        const date = new Date(user.created_at);
+                                        createdAtString = isNaN(date.getTime()) ? '' : "Joined " + date.toLocaleDateString();
+                                    }
+                                    return (
+                                        <SearchResult
+                                            key={`${user.id}-${index}`}
+                                            header={user.username}
+                                            subheader={createdAtString}
+                                            img={user.profile_picture}
+                                            entityId={user.id}
+                                            entity="users"
+                                        />
+                                    );
+                                })}                                
+                                {filteredUsers.length === 0 && <p className="text-text">No users found</p>}
                             </div>
                         </section>
                     )}

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from 'next/navigation';
 
@@ -7,10 +7,37 @@ import { useRouter } from 'next/navigation';
 
 export default function SignUp() {
     const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [returnPath, setReturnPath] = useState('/');
     const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        let nextPath = '/';
+        const referrer = document.referrer;
+
+        if (referrer) {
+            try {
+                const refUrl = new URL(referrer);
+                const sameOrigin = refUrl.origin === window.location.origin;
+                if (sameOrigin) {
+                    const candidate = `${refUrl.pathname}${refUrl.search}${refUrl.hash}`;
+                    if (candidate && candidate !== window.location.pathname && !candidate.startsWith('/auth/')) {
+                        nextPath = candidate;
+                    }
+                }
+            } catch {
+                nextPath = '/';
+            }
+        }
+
+        setReturnPath(nextPath);
+    }, []);
 
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,13 +50,35 @@ export default function SignUp() {
                 password,
                 options: {
                     emailRedirectTo: `${location.origin}/auth/callback`,
+                    data: {
+                        full_name: fullName,
+                        username: username,
+                    },
                 },
             });
             if (error) throw error;
             const uuid = data.user?.id;
+            if (!uuid) {
+                throw new Error('Sign up succeeded but user id is missing');
+            }
 
-            // router.push('/auth/verify-email');
-            router.push('/?userId=' + uuid);
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert(
+                    {
+                        id: uuid,
+                        full_name: fullName.trim(),
+                        username: username.trim(),
+                        email: email.trim().toLowerCase(),
+                    },
+                    { onConflict: 'id' }
+                );
+
+            if (profileError) {
+                throw profileError;
+            }
+
+            router.push(returnPath || '/');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sign up failed');
         } finally {
@@ -45,12 +94,28 @@ export default function SignUp() {
                 {error && <p className="text-red-500">{error}</p>}
                 
                 <input
+                    type="text"
+                    placeholder="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="w-full border rounded-lg px-4 py-2"
+                />
+                <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="w-full border rounded-lg px-4 py-2"
+                />
+                <input
                     type="email"
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full border px-4 py-2"
+                    className="w-full border rounded-lg px-4 py-2"
                 />
                 
                 <input
@@ -59,16 +124,17 @@ export default function SignUp() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full border px-4 py-2"
+                    className="w-full border rounded-lg px-4 py-2"
                 />
-                
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-                >
-                    {loading ? 'Signing up...' : 'Sign Up'}
-                </button>
+                <span className="w-full flex flex-col items-center">
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-highlighted rounded-lg px-8 py-2 text-white disabled:opacity-50"
+                    >
+                        {loading ? 'Signing up...' : 'Sign Up'}
+                    </button>
+                </span>
                 <a href="/auth/login" className="text-sm text-blue-600 hover:underline">
                     Already have an account? Log in
                 </a>

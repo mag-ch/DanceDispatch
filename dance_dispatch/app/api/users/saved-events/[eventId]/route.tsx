@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
+import { userSaveEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
     _request: Request,
@@ -9,6 +10,11 @@ export async function GET(
 ) {
     try {
         const { eventId } = await params;
+        const numericEventId = Number(eventId);
+        if (Number.isNaN(numericEventId)) {
+            return NextResponse.json({ error: 'Invalid event id' }, { status: 400 });
+        }
+
         const user = await requireAuth();
         const supabase = await createClient();
 
@@ -16,7 +22,7 @@ export async function GET(
             .from('SavedEvents')
             .select('id')
             .eq('user_id', user.id)
-            .eq('event_id', eventId)
+            .eq('event_id', numericEventId)
             .maybeSingle();
 
         if (error) {
@@ -39,36 +45,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
         }
 
         const { eventId } = await params;
+        const numericEventId = Number(eventId);
+        if (Number.isNaN(numericEventId)) {
+            return NextResponse.json({ error: 'Invalid event id' }, { status: 400 });
+        }
+
         const user = await requireAuth();
         const supabase = await createClient();
         // query event id from Events table to ensure it exists
         const { data: eventData, error: eventError } = await supabase
             .from('Events')
             .select('id')
-            .eq('id', eventId)
+            .eq('id', numericEventId)
             .maybeSingle();
+        if (eventError) {
+            console.error('Error finding event:', eventError);
+            return NextResponse.json({ error: 'Failed to load event' }, { status: 500 });
+        }
         if (!eventData) {
             return NextResponse.json({ error: 'Event not found' }, { status: 404 });
         }
-        if (saveToggle) {
-            const { error } = await supabase
-                .from('SavedEvents')
-                .insert({ event_id: eventData.id, user_id: user.id });
-            if (error) {
-                console.error('Error saving event:', error);
-                return NextResponse.json({ error: 'Failed to save event' }, { status: 500 });
-            }
-        } else {
-            const { error } = await supabase
-                .from('SavedEvents')
-                .delete()
-                .eq('user_id', user.id)
-                .eq('event_id', eventData.id);
-            if (error) {
-                console.error('Error unsaving event:', error);
-                return NextResponse.json({ error: 'Failed to save event' }, { status: 500 });
-            }
-        }
+
+        await userSaveEvent(String(eventData.id), user.id, saveToggle);
 
         return NextResponse.json({ success: true });
     } catch (error) {

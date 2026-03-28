@@ -27,7 +27,7 @@ export interface Venue {
     address: string;
     type: string;
     bio: string;
-    residents: string;
+    website: string;
     photourls: string;
     // Add other fields as needed based on your CSV structure
 }
@@ -36,23 +36,107 @@ export interface Host {
     name: string;
     bio: string;
     photoUrl: string;
-    tags: string;
+    tags: string[];
+    externalLinks?: HostExternalLink[];
     // Add other fields as needed based on your CSV structure
 }
 
+export interface HostExternalLink {
+    url: string;
+    platform?: string;
+    label?: string;
+}
 
+function inferPlatformFromUrl(url: string): string {
+    const normalized = url.toLowerCase();
+    if (normalized.includes('soundcloud.com')) return 'soundcloud';
+    if (normalized.includes('youtube.com') || normalized.includes('youtu.be')) return 'youtube';
+    if (normalized.includes('spotify.com')) return 'spotify';
+    if (normalized.includes('instagram.com')) return 'instagram';
+    if (normalized.includes('mixcloud.com')) return 'mixcloud';
+    return 'website';
+}
+
+function parseExternalLinks(value: unknown): HostExternalLink[] {
+    if (Array.isArray(value)) {
+        return value
+            .map((entry) => String(entry).trim())
+            .filter(Boolean)
+            .map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
+    }
+
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+        return [];
+    }
+
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+        const matches = Array.from(raw.matchAll(/'([^']+)'|"([^"]+)"/g))
+            .map((match) => (match[1] ?? match[2] ?? '').trim())
+            .filter(Boolean);
+
+        if (matches.length > 0) {
+            return matches.map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
+        }
+    }
+
+    const separator = raw.includes('|') ? '|' : ',';
+    return raw
+        .split(separator)
+        .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean)
+        .map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
+}
+
+export async function getBoroughFromAddress(address: string): Promise<string> {
+    const boroughs = ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island'];
+    for (const borough of boroughs) {
+        if (address.toLowerCase().includes(borough.toLowerCase())) {
+            return borough;
+        }
+    }
+    return 'Unknown';
+}
+
+const parseDateOnlyAsLocal = (dateStr: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!match) return new Date(dateStr);
+
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    return new Date(year, month, day);
+};
+
+export async function formatDateOnly(dateStr: string, timeStr?: string) {
+    const date = parseDateOnlyAsLocal(dateStr);
+    if (timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        date.setHours(hours, minutes);
+    }
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+    }).format(date);
+};
 
 export interface EventReview {
+    eventName: string;
     eventId: string;
     username:string;
     dateSubmitted: string;
     mainComment?: string;
     venueReview?: {
+        venueName: string;
         rating: number;
         comments: string;
     };
     djReviews?: {
-        djId: string;
+        djName: string;
         rating: number;
         comments: string;
     }[];
@@ -61,799 +145,13 @@ export interface EventReview {
 }
 
 
-
-let eventsCache: Event[] | null = null;
-let eventsCacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-
-// Helper function to build venue lookup map
-async function buildVenueMap(): Promise<Map<number, string>> {
-    const venueMap = new Map<number, string>();
-    
-    try {
-        const venues = await getVenues();
-        for (const venue of venues) {
-            if (venue.id && venue.name) {
-                venueMap.set(Number(venue.id), venue.name);
-            }
-        }
-    } catch (error) {
-        console.error('Error building venue map:', error);
-    }
-    
-    return venueMap;
-}
-
-// Helper function to build host lookup map
-async function buildHostMap(): Promise<Map<number, string>> {
-    const hostMap = new Map<number, string>();
-    
-    try {
-        const hosts = await getHosts();
-        for (const host of hosts) {
-            if (host.id && host.name) {
-                hostMap.set(Number(host.id), host.name);
-            }
-        }
-    } catch (error) {
-        console.error('Error building host map:', error);
-    }
-    
-    return hostMap;
-}
-
-export async function getEvents(onlyUpcoming = true, venueId?: string|number, hostId?: string|number, forceRefresh = false): Promise<Event[]> {
-    const now = Date.now();
-    // Return cached data if available, not expired, and no filters applied
-    if (!forceRefresh && eventsCache && (now - eventsCacheTimestamp < CACHE_DURATION)) {
-        if (venueId) {
-            return eventsCache.filter(event => event.locationid === venueId.toString());
-        }
-        if (hostId) {
-            console.log('Filtering events by hostId:', hostId);
-            return eventsCache.filter(event => event.hostIDs && event.hostIDs.some(h => h === hostId.toString()));
-        }
-        return !onlyUpcoming ? eventsCache : eventsCache.filter(event => {
-            const eventDate = new Date(`${event.startdate} ${event.starttime}`);
-            return eventDate >= new Date();
-        });
-    }
-    
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'events.csv');
-    
-    try {
-        // Build lookup maps for venues and hosts (read once instead of for each event)
-        const venueMap = await buildVenueMap();
-        const hostMap = await buildHostMap();
-        
-        var res: Event[] = [];
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        }) as any[];
-        
-        const now = new Date();
-       
-        for (const record of records) {
-            // Parse hosts from string format to array of strings
-            let hostIds: number[] = [];
-            let hostNames: string[] = [];
-            if (record.Hosts) {
-                const hostsStr = record.Hosts.toString().trim();
-                // Check if it's in bracket format like "[]" or "[1,2,3]"
-                if (hostsStr.startsWith('[') && hostsStr.endsWith(']')) {
-                    const content = hostsStr.slice(1, -1).trim();
-                    if (content) {
-                        // Extract numbers from formats like "np.int64(5)" or plain "5"
-                        hostIds = content.split(',').map((id: string) => {
-                            const cleaned = id.trim();
-                            // Match number inside int64() or np.int64() or plain number
-                            const match = cleaned.match(/(?:np\.)?int64\((\d+)\)|(\d+)/);
-                            return match ? Number(match[1] || match[2]) : NaN;
-                        }).filter((id: number) => !isNaN(id));
-                    }
-                } else if (hostsStr) {
-                    // Plain comma-separated format
-                    hostIds = hostsStr.split(',').map((id: string) => Number(id.trim())).filter((id: number) => !isNaN(id));
-                }
-                // Use the lookup map instead of async calls
-                hostNames = hostIds.map(id => hostMap.get(id) || 'Unknown Host');
-            }
-
-            // Use the lookup map for location
-            const locationName = venueMap.get(Number(record.Location)) || (typeof record.Location === 'string' ? record.Location : 'Unknown Location');
-
-            var event: Event = {
-                id: record.ID.toString(),
-                title: record.Title,
-                startdate: record.StartDate,
-                starttime: record.StartTime,
-                enddate: record.EndDate,
-                endtime: record.EndTime,
-                locationid: Number(record.Location).toString(),
-                location: locationName,
-                description: record.Description,
-                price: isNaN(parseFloat(record.Price)) ? undefined : parseFloat(record.Price),
-                imageurl: record.PhotoURL,
-                externallink: record.ExternalURLs,
-                hostNames: hostNames,
-                hostIDs: hostIds.map(id => id.toString()),
-            };
-            res.push(event);
-        }
-        
-        // Sort by date ascending
-        res.sort((a, b) => {
-            const dateA = new Date(`${a.startdate} ${a.starttime}`);
-            const dateB = new Date(`${b.startdate} ${b.starttime}`);
-            return dateA.getTime() - dateB.getTime();
-        });
-        
-     
-        eventsCache = res;
-        eventsCacheTimestamp = Date.now();
-        
-        // if venueId is provided, filter by venueId
-        if (venueId) {
-            res = res.filter(event => event.locationid === Number(venueId).toString());
-        }
-        
-        // if hostId is provided, filter by hostId
-        if (hostId) {
-            res = res.filter(event => {
-                const recordHostIds = event.hostIDs?.map((host: string) => Number(host)).filter((id: number) => !isNaN(id));
-                return recordHostIds?.includes(Number(hostId));
-            });
-        }
-
-        // Only add upcoming events if includeUpcoming is true
-        if (onlyUpcoming) {
-            res = res.filter(event => {
-                const eventDate = new Date(`${event.startdate} ${event.starttime}`);
-                return eventDate >= now;
-            });
-        }
-        return res;
-    } catch (error) {
-        console.error('Error reading events CSV:', error);
-        return [];
-    }
-}
-
-async function getHost(hostId: string): Promise<string> {
-    if (!hostId) return '';
-    if (parseFloat(hostId).toString() !== '') {
-        // get location from venues.csv by ID
-        const filePath = path.join(process.cwd(), 'data', 'csv_files', 'hosts.csv');
-        try {
-            const fileContent = await fs.readFile(filePath, 'utf-8');
-            const records = parse(fileContent, {
-                columns: true,
-                skip_empty_lines: true,
-                trim: true,
-            });
-            
-             for (const record of records as any[]) {
-                if (record.ID == hostId) {
-                    return record.Name;
-                }
-            }
-            
-        } catch (error) {
-            console.error('Error reading hosts CSV:', error);
-        } 
-    }
-    if (typeof hostId === 'string') return hostId;
-    return "Unknown Host";
-}
-
-
-export async function getEventById(eventId: string): Promise<Event | null> {
-    // Try to use cache first
-    const events = await getEvents(true);
-    return events.find(e => e.id === eventId) || null;
-}
-
-export async function getVenueById(venueId: string): Promise<Venue | null> {
-    // Try to use cache first
-    const venues = await getVenues(false);
-    return venues.find(e => e.id === venueId) || null;
-}
-export async function getHostById(hostId: string): Promise<Host | null> {
-    // Try to use cache first
-    const hosts = await getHosts(false);
-    return hosts.find(e => e.id === hostId) || null;
-}
-
-// export async function userSaveEvent(eventId: string, userId: string, saveBool: boolean): Promise<string> {
-//     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
-//     const recordId = `${userId}-${eventId}`;
-    
-//     try {
-//         const fileContent = await fs.readFile(filePath, 'utf-8');
-//         const records = parse(fileContent, {
-//             columns: true,
-//             skip_empty_lines: true,
-//             trim: true,
-//         });
-        
-//         // Use Map for O(1) lookup
-//         const recordMap = new Map<string, any>();
-//         records.forEach((record: any) => {
-//             recordMap.set(record.ID, record);
-//         });
-        
-//         // Update or add the record
-//         if (recordMap.has(recordId)) {
-//             recordMap.get(recordId)!.Saved = saveBool.toString();
-//         } else {
-//             recordMap.set(recordId, {
-//                 ID: recordId,
-//                 UserID: userId,
-//                 EventID: eventId,
-//                 Saved: saveBool.toString()
-//             });
-//         }
-        
-//         // Build file content once
-//         let newFileContent = 'ID,UserID,EventID,Saved\n';
-//         recordMap.forEach((record) => {
-//             newFileContent += `${record.ID},${record.UserID},${record.EventID},${record.Saved}\n`;
-//         });
-        
-//         await fs.writeFile(filePath, newFileContent, 'utf-8');
-//         return recordId;
-//     } catch (error) {
-//         console.error('Error updating user saved events CSV:', error);
-//         throw error;
-//     }  
-// }
-
-
-export async function userSaveVenue(venueId: string, userId: string, saveBool: boolean): Promise<string> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_venues.csv');
-    const recordId = `${userId}-${venueId}`;
-    
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        
-        // Use Map for O(1) lookup
-        const recordMap = new Map<string, any>();
-        records.forEach((record: any) => {
-            recordMap.set(record.ID, record);
-        });
-        
-        // Update or add the record
-        if (recordMap.has(recordId)) {
-            recordMap.get(recordId)!.Saved = saveBool.toString();
-        } else {
-            recordMap.set(recordId, {
-                ID: recordId,
-                UserID: userId,
-                VenueID: venueId,
-                Saved: saveBool.toString()
-            });
-        }
-        
-        // Build file content once
-        let newFileContent = 'ID,UserID,VenueID,Saved\n';
-        recordMap.forEach((record) => {
-            newFileContent += `${record.ID},${record.UserID},${record.VenueID},${record.Saved}\n`;
-        });
-        
-        await fs.writeFile(filePath, newFileContent, 'utf-8');
-        return recordId;
-    } catch (error) {
-        console.error('Error updating user saved events CSV:', error);
-        throw error;
-    }  
-}
-
-
-export async function userSaveHost(hostId: string, userId: string, saveBool: boolean): Promise<string> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_hosts.csv');
-    const recordId = `${userId}-${hostId}`;
-    
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        
-        // Use Map for O(1) lookup
-        const recordMap = new Map<string, any>();
-        records.forEach((record: any) => {
-            recordMap.set(record.ID, record);
-        });
-        
-        // Update or add the record
-        if (recordMap.has(recordId)) {
-            recordMap.get(recordId)!.Saved = saveBool.toString();
-        } else {
-            recordMap.set(recordId, {
-                ID: recordId,
-                UserID: userId,
-                HostID: hostId,
-                Saved: saveBool.toString()
-            });
-        }
-        
-        // Build file content once
-        let newFileContent = 'ID,UserID,HostID,Saved\n';
-        recordMap.forEach((record) => {
-            newFileContent += `${record.ID},${record.UserID},${record.HostID},${record.Saved}\n`;
-        });
-        
-        await fs.writeFile(filePath, newFileContent, 'utf-8');
-        return recordId;
-    } catch (error) {
-        console.error('Error updating user saved events CSV:', error);
-        throw error;
-    }  
-}
-
-export async function userSubmitReview(reviewData: any, userId: string, eventId:string): Promise<string> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'reviews.csv');
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const timestamp = new Date().toISOString().split('.')[0] + 'Z';
-        let newFileContent = fileContent.trim() + `\n${userId},${eventId},${reviewData.entityType},${reviewData.entityId},${reviewData.rating},"${reviewData.comment}",${reviewData.privacyLevel},${timestamp}\n`;
-        await fs.writeFile(filePath, newFileContent, 'utf-8');
-        return 'success';
-    } catch (error) {
-        console.error('Error writing to reviews CSV:', error);
-        throw error;
-    }   
-}
-
-export async function updateEvent(eventId: string, updatedFields: Partial<Event>): Promise<string | null> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'events.csv');
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        let eventFound = false;
-        let newFileContent = 'ID,Title,StartDate,StartTime,EndDate,EndTime,Location,Description,Price,PhotoURL,ExternalURLs,Hosts\n';
-        console.log('Updating event with ID:', updatedFields);
-        records.forEach((record: any) => {
-            if (record.ID === eventId) {
-                eventFound = true;  
-                // Update fields
-
-                // for (const key in record){
-                //     if (key in updatedFields) {
-                //         const recordKey = key.charAt(0).toUpperCase() + key.slice(1);
-                //         (record as any)[recordKey] = (updatedFields as any)[key].includes(',') ? `"${(updatedFields as any)[key]}"` : (updatedFields as any)[key];
-                //     }
-                //     else {
-                //         (record as any)[key] = (record as any)[key].includes(',') ? `"${(record as any)[key]}"` : (record as any)[key];
-                //     }
-
-                // }
-
-                for (const key in updatedFields) {
-                    const recordKey = key.charAt(0).toUpperCase() + key.slice(1);   
-                    if (recordKey in record) {
-                        (record as any)[recordKey] = (updatedFields as any)[key];
-                    }
-                }
-            }
-            newFileContent += `${record.ID},"${record.Title}",${record.StartDate},${record.StartTime},${record.EndDate},${record.EndTime},${record.Location},"${record.Description}",${record.Price},"${record.PhotoURL}","${record.ExternalURLs}","${record.Hosts}"\n`;
-        });
-        if (!eventFound) {
-            return null;    
-        }   
-        console.log('Updated event CSV content:\n', newFileContent);
-        await fs.writeFile(filePath, newFileContent, 'utf-8');
-        // Invalidate cache
-        eventsCache = null;
-        eventsCacheTimestamp = 0;
-        return eventId;
-    } catch (error) {
-        console.error('Error updating event in CSV:', error);
-        return null;
-    }   
-}
-
 export async function processUrl(url: string): Promise<string> {
     // strip [ and ] and " and ' from url if present
     url = url.replace(/[\[\]"']/g, '');
     return url;
 }
 
-export async function checkHostSaved(host: Host): Promise<boolean> {
-    return false;
-}   
-export async function checkVenueSaved(venue: Venue): Promise<boolean> {
-    return false;
-}   
 
-// export async function checkEventSaved(event: Event, userId: string | null): Promise<boolean> {
-//     if (!userId) return false;
-    
-//     const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
-//     const targetId = `${userId}-${event.id}`;
-
-//     try {
-//         const fileContent = await fs.readFile(filePath, 'utf-8');
-//         const records = parse(fileContent, {
-//             columns: true,
-//             skip_empty_lines: true,
-//             trim: true,
-//         });
-        
-//         // Direct lookup - exits early when found
-//         for (const record of records as any[]) {
-//             if (record.ID === targetId) {
-//                 return record.Saved === 'true';
-//             }
-//         }
-//     } catch (error) {
-//         console.error('Error reading user saved events CSV:', error);
-//     }   
-//     return false;
-// }
-
-
-async function getLocation(locationField: any): Promise<string> {
-    if (!locationField) return '';
-    if (parseFloat(locationField).toString() !== 'NaN') {
-        locationField = parseFloat(locationField);
-        // get location from venues.csv by ID
-        const filePath = path.join(process.cwd(), 'data', 'csv_files', 'venues.csv');
-        try {
-            const fileContent = await fs.readFile(filePath, 'utf-8');
-            const records = parse(fileContent, {
-                columns: true,
-                skip_empty_lines: true,
-                trim: true,
-            });
-            
-             for (const record of records as any[]) {
-                if (record.ID == locationField) {
-                    return record.Name;
-                }
-            }
-            
-        } catch (error) {
-            console.error('Error reading events CSV:', error);
-        } 
-    }
-    if (typeof locationField === 'string') return locationField;
-    return "Unknown Location";
+export async function prettifyCase(str: string): Promise<string> {
+    return str.slice(0,1).toUpperCase() + str.replace("_", " ").slice(1);
 }
-
-let venuesCache: Venue[] | null = null;
-
-export async function getVenues(forceRefresh = false): Promise<Venue[]> {
-    if (venuesCache && !forceRefresh) {
-        return venuesCache;
-    }
-
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'venues.csv');
-    
-    try {
-        var res: Venue[] = [];
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        records.forEach((record: any) => {
-            var venue: Venue = {
-                id: Number(record.ID).toString(),
-                name: record.Name,
-                address: record.Address,
-                type: record.Type,
-                bio: record.Bio,
-                residents: record.Residents,
-                photourls: record.PhotoURLs,
-            };
-            res.push(venue);
-        });
-        venuesCache = res;
-        return venuesCache;
-    } catch (error) {
-        console.error('Error reading venues CSV:', error);
-        return [];
-    }
-}
-
-
-let hostsCache: Host[] | null = null;
-
-export async function getHosts(forceRefresh = false): Promise<Host[]> {
-    if (hostsCache && !forceRefresh) {
-        return hostsCache;
-    }
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'hosts.csv');
-    
-    try {
-        var res: Host[] = [];
-
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        records.forEach((record: any) => {
-            var host: Host = {
-                id: record.ID,
-                name: record.Name,
-                bio: record.Bio,
-                photoUrl: record.PhotoURL,
-                tags: record.Tags,
-            };
-            res.push(host);
-        });
-        hostsCache = res;
-        return hostsCache;
-    } catch (error) {
-        console.error('Error reading events CSV:', error);
-        return [];
-    }
-}
-
-export async function getTags(): Promise<Event[]> {
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'tags.csv');
-    
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        });
-        return records as Event[];
-    } catch (error) {
-        console.error('Error reading events CSV:', error);
-        return [];
-    }
-}
-export async function getUniqueBoroughs(): Promise<string[]> {
-    const venues = await getVenues();
-    const boroughs = new Set<string>();
-    
-    venues.forEach((venue) => {
-        const parts = venue.address.split(',');
-        if (parts.length >= 2) {
-            const borough = parts[1].trim();
-            boroughs.add(borough);
-        }
-    });
-    
-    return Array.from(boroughs).sort();
-}
-
-export async function getRelatedEvents(currentEvent: Event, numResults: number): Promise<Event[]> {
-    // For simplicity, related events are those that share the same locationid
-    let currNumResults = 0;
-    const relatedEvents: Event[] = [];
-    const events = await getEvents();
-    events
-        .filter((event) => event.id !== currentEvent.id)
-        .sort((a, b) => {
-            const dateA = new Date(`${a.startdate} ${a.starttime}`);
-            const dateB = new Date(`${b.startdate} ${b.starttime}`);
-            return dateA.getTime() - dateB.getTime();
-        })
-        .slice(0, numResults)
-        .forEach((event) => {
-            relatedEvents.push(event);
-        });
-    return relatedEvents;
-}
-
-
-// Reviews cache
-let reviewsCache: Map<string, EventReview[]> | null = null;
-let reviewsCacheTimestamp: number = 0;
-
-async function getAllReviews(): Promise<Map<string, EventReview[]>> {
-    const now = Date.now();
-    
-    // Return cached reviews if available and not expired
-    if (reviewsCache && (now - reviewsCacheTimestamp < CACHE_DURATION)) {
-        return reviewsCache;
-    }
-
-    const filePath = path.join(process.cwd(), 'data', 'csv_files', 'reviews.csv');
-    const reviewsByEvent = new Map<string, EventReview[]>();
-    
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        }) as any[];
-        
-        // Group all records by eventId first
-        const eventRecordsMap = new Map<string, any[]>();
-        records.forEach((record: any) => {
-            if (!eventRecordsMap.has(record.EventID)) {
-                eventRecordsMap.set(record.EventID, []);
-            }
-            eventRecordsMap.get(record.EventID)!.push(record);
-        });
-        
-        // Process each event's reviews
-        eventRecordsMap.forEach((eventRecords, eventId) => {
-            const res: EventReview[] = [];
-            
-            // Group reviews by UserID and Timestamp
-            const groupedReviews = new Map<string, any[]>();
-            eventRecords.forEach((record: any) => {
-                const key = `${record.UserID}-${record.SubmitDate || new Date().toISOString()}`;
-                if (!groupedReviews.has(key)) {
-                    groupedReviews.set(key, []);
-                }
-                groupedReviews.get(key)!.push(record);
-            });
-            
-            // Create EventReview for each group
-            groupedReviews.forEach((records, key) => {
-                const mainComment = records.find((record: any) => record.EntityType === 'event')?.Comment;
-                const venueReviewRecord = records.find((record: any) => record.EntityType === 'venue');
-                const venueReview = venueReviewRecord ? {
-                    rating: parseInt(venueReviewRecord.Rating),
-                    comments: venueReviewRecord.Comment
-                } : undefined;
-                const djReviews = records.filter((record: any) => record.EntityType === 'dj').map((record: any) => ({
-                    djId: record.EntityID,
-                    rating: parseInt(record.Rating),
-                    comments: record.Comment
-                }));
-                
-                const eventReview: EventReview = {
-                    eventId: eventId,
-                    username: records[0]?.UserID || 'Anonymous',
-                    dateSubmitted: records[0]?.SubmitDate || new Date().toISOString(),
-                    mainComment: mainComment,
-                    venueReview: venueReview,
-                    djReviews: djReviews,
-                    privacyLevel: records[0]?.PrivacyLevel || 'public'
-                };
-                res.push(eventReview);
-            });
-            
-            reviewsByEvent.set(eventId, res);
-        });
-        
-        reviewsCache = reviewsByEvent;
-        reviewsCacheTimestamp = Date.now();
-        
-        return reviewsByEvent;
-    } catch (error) {
-        console.error('Error reading reviews CSV:', error);
-        return reviewsByEvent;
-    }
-}
-
-export async function getEventReviews(eventId: string): Promise<EventReview[]> {
-    const allReviews = await getAllReviews();
-    return allReviews.get(eventId) || [];
-}
-
-
-
-
-
-
-
-
-export async function refreshCaches(): Promise<void> {
-    eventsCache = null;
-    hostsCache = null;
-    venuesCache = null;
-    savedEventsCache = null;
-}
-
-let savedEventsCache: Event[] | null = null;
-let savedEventsCacheTimestamp: number = 0;
-
-export async function getAllSavedEventsForUser(userId: string): Promise<Event[]> {
-     if ( savedEventsCache && (Date.now() - savedEventsCacheTimestamp < CACHE_DURATION)) {
-        return savedEventsCache.filter(event => {
-            const eventDate = new Date(`${event.startdate} ${event.starttime}`);
-            return eventDate >= new Date();
-        });
-    }
-    try {
-        var res: Event[] = [];
-        const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_events.csv');
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        }) as any[];
-        const userEventIds = records.filter(record => record.UserID === userId && record.Saved === 'true').map(record => record.EventID);
-        var results = await Promise.all(userEventIds.map(id => getEventById(id)));
-        res = results.filter((event): event is Event => event !== null);
-        savedEventsCache = res;
-        savedEventsCacheTimestamp = Date.now();
-        return res;
-    } catch (error) {
-        console.error('Error reading user saved events CSV:', error);
-        return [];
-    }
-}
-
-
-
-
-let followedVenuesCache: Venue[] | null = null;
-let followedVenuesCacheTimestamp: number = 0;
-
-export async function getAllFollowedVenues(userId: string): Promise<Venue[]> {
-     if ( followedVenuesCache && (Date.now() - followedVenuesCacheTimestamp < CACHE_DURATION)) {
-        return followedVenuesCache;
-    }
-    try {
-        var res: Venue[] = [];
-        const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_venues.csv');
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        }) as any[];
-        const userVenueIds = records.filter(record => record.UserID === userId && record.Saved === 'true').map(record => record.VenueID);
-        var results = await Promise.all(userVenueIds.map(id => getVenueById(id)));
-        res = results.filter((venue): venue is Venue => venue !== null);
-        followedVenuesCache = res;
-        followedVenuesCacheTimestamp = Date.now();
-        return res;
-    } catch (error) {
-        console.error('Error reading user followed venues CSV:', error);
-        return [];
-    }
-}
-
-
-
-
-let followedHostsCache: Host[] | null = null;
-let followedHostsCacheTimestamp: number = 0;
-
-export async function getAllFollowedHosts(userId: string): Promise<Host[]> {
-     if ( followedHostsCache && (Date.now() - followedHostsCacheTimestamp < CACHE_DURATION)) {
-        return followedHostsCache;
-    }
-    try {
-        var res: Host[] = [];
-        const filePath = path.join(process.cwd(), 'data', 'csv_files', 'user_saved_hosts.csv');
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const records = parse(fileContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-        }) as any[];
-        const userHostIds = records.filter(record => record.UserID === userId && record.Saved === 'true').map(record => record.HostID);
-        var results = await Promise.all(userHostIds.map(id => getHostById(id)));
-        res = results.filter((host): host is Host => host !== null);
-        followedHostsCache = res;
-        followedHostsCacheTimestamp = Date.now();
-        return res;
-    } catch (error) {
-        console.error('Error reading user followed hosts CSV:', error);
-        return [];
-    }
-}
-

@@ -10,7 +10,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from data_objects import Event
-from data_pipeline import get_max_date_for_events, handle_event_entry, check_if_event_exists
+from migrate_supabase import  handle_event_entry, check_if_event_exists
 
 
 # app = Flask(__name__)
@@ -122,7 +122,6 @@ def process_event(event):
         photo_url=None,
         price=None,
         external_links=None,
-        tags=None
     )
     editing = True
     while editing:

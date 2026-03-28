@@ -10,7 +10,7 @@ export default function AuthPrompt() {
           <Link href="/auth/login" className="px-6 py-3 bg-black text-white rounded-md hover:bg-gray-800">
             Sign In
           </Link>
-          <Link href="/auth/signup" className="px-6 py-3 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300">
+          <Link href="/auth/signup" className="px-6 py-3 bg-gray-200 text-text rounded-md hover:bg-gray-300">
             Sign Up
           </Link>
         </div>

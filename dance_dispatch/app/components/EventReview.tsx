@@ -37,7 +37,7 @@ export const RatingCommentCombo: React.FC<RatingCommentComboProps> = ({
             {/* Star rating */}
 
             <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Rating</label>
+            <label className="block text-sm font-semibold text-text mb-2">Rating</label>
             <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -61,12 +61,12 @@ export const RatingCommentCombo: React.FC<RatingCommentComboProps> = ({
             </div>
             {/* Comment box */}
             <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Comments</label>
+            <label className="block text-sm font-semibold text-text mb-2">Comments</label>
             <textarea
                 value={comment}
                 onChange={(e) => onCommentChange(e.target.value)}
                 placeholder="Share your thoughts..."
-                className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 rounded-lg p-3 text-text focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 rows={1}
             />
             </div>
@@ -172,21 +172,21 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[70vh] flex flex-col shadow-lg">
+            <div className="bg-surface rounded-lg p-6 w-full max-w-md max-h-[70vh] flex flex-col shadow-lg">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-text">Leave a Review</h2>
-                    <button onClick={onClose} className="text-text hover:text-gray-700">
+                    <button onClick={onClose} className="text-text hover:text-text">
                     <X size={24} />
                     </button>
                 </div>
                 {/* Sub header */}
                 <div className="mb-4 flex-shrink-0">
-                    <p className="text-xs font-medium text-gray-800">{event.title}</p>
+                    <p className="text-xs font-medium text-text">{event.title}</p>
                 </div>
                 {/* Privacy Level Selection */}
                 <div className="mb-2 pb-4 border-b">
-                    <label className="block text-sm font-semibold text-gray-900 mb-3">Privacy Level</label>
+                    <label className="block text-sm font-semibold text-text mb-3">Privacy Level</label>
                     <div className="flex gap-4">
                     {(['public', 'private', 'anonymous'] as const).map((level) => (
                         <label key={level} className="flex items-center gap-2 cursor-pointer">
@@ -195,7 +195,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                             name="privacy"
                             value={level}
                             checked={privacyLevel === level}
-                            onChange={(e) => setPrivacyLevel(e.target.value as typeof level)}
+                            onChange={() => setPrivacyLevel(level)}
                             className="w-4 h-4"
                         />
                         <span className="text-text capitalize">{level}</span>
@@ -219,7 +219,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     </div>
                     
                     {/* Section 2: Venue Toggle */}
-                    <div className="mb-3 sticky top-0 bg-white z-10 py-2">
+                    <div className="mb-3 sticky top-0 bg-surface z-10 py-2">
                         <button
                             onClick={() => setShowVenueSection(!showVenueSection)}
                             className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
@@ -240,7 +240,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     )}
 
                      {/* Section 4: DJ Toggle */}
-                    <div className="mb-3 sticky top-0 bg-white z-10 py-2">
+                    <div className="mb-3 sticky top-0 bg-surface z-10 py-2">
                         <button
                             onClick={() => setShowDJSection(!showDJSection)}
                             className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
@@ -251,9 +251,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                     </div>
                     {/* Section 5: DJ Reviews */}
                     {showDJSection && (
-                        event.hostNames?.map((dj) => (
+                        event.hostIDs?.map((dj, index) => (
                             <div key={dj} className="mb-6">
-                                <h3 className="text-md font-semibold text-text mb-2">{dj}</h3>
+                                <h3 className="text-md font-semibold text-text mb-2">{event.hostNames?.[index] ?? dj}</h3>
                                 <RatingCommentCombo 
                                     rating={djReviews[dj]?.rating || 0}
                                     comment={djReviews[dj]?.comment || ''}
@@ -286,12 +286,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 };
 
 export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }) => {
+
+    const username = review.privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
     return (
     <div className="bg-surface rounded-lg shadow p-4 mb-4">
         {/* Header: username, date, privacy */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b">
             <div className="flex items-center gap-2">
-                <span className="font-semibold text-text">{review.username}</span>
+                <span className="font-semibold text-text">{username}</span>
                 <span className="text-sm text-text">•</span>
                 <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
             </div>
@@ -305,7 +307,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
             {/* Main Comment Section */}
             {review.mainComment && (
                 <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">General Comment</h4>
+                    <h4 className="text-sm font-semibold text-text mb-2">{review.eventName}</h4>
                     <p className="text-sm text-text">{review.mainComment}</p>
                 </div>
             )}
@@ -313,7 +315,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
             {/* Venue Review Section */}
             {review.venueReview && (
                 <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">Venue</h4>
+                    <h4 className="text-sm font-semibold text-text mb-2">{review.venueReview.venueName}</h4>
                     <div className="flex gap-1 mb-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <Star
@@ -331,8 +333,8 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
 
             {/* DJ Reviews Section */}
             {review.djReviews && review.djReviews.map((djReview) => (
-                <div key={djReview.djId} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">{djReview.djId}</h4>
+                <div key={djReview.djName} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
+                    <h4 className="text-sm font-semibold text-text mb-2">{djReview.djName}</h4>
                     <div className="flex gap-1 mb-2">
                         {[1, 2, 3, 4, 5].map((star) => (
                             <Star

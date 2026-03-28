@@ -6,6 +6,7 @@ import { Event, EventReview } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
+import { ShareModal } from '@/app/components/ShareModal';
 
 interface EventDetailClientProps {
     event: Event;
@@ -16,6 +17,11 @@ interface EventDetailClientProps {
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress }: EventDetailClientProps) {
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+
+    const eventStartAt = event.startdate && event.starttime
+        ? `${event.startdate}T${event.starttime}`
+        : event.startdate ?? null;
 
     return (
         <div className="min-h-screen bg-bg">
@@ -58,18 +64,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold mb-4 text-text">{event.title}</h1>
                             <div className="flex gap-4">
-                                {event.price && <a
-                                    href={event.externallink?.replace(/[\[\]"']/g, '') || '#'}
+                                <SaveEventButton entity='events' entityId={event.id} />
+                                <button className="p-2 hover:bg-accent" onClick={() => setShowShareModal(true)} type="button">
+                                    <Share2 className="text-gray-600"/>
+                                </button>
+                                {(event.externallink && event.externallink.length > 3) && <a
+                                    href={event.externallink || '#'}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-6 py-2 rounded-lg font-semibold transition bg-blue-600 text-white hover:bg-blue-700"
+                                    className=" btn-highlighted px-6 py-2 rounded-lg font-semibold transition"
                                 >
-                                    {event.price === 0 ? 'Free' : `Buy Tickets - From $${event.price}`}
+                                    {event.price ? (event.price === 0 ? 'Free' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
-                                <SaveEventButton entity='events' entityId={event.id} />
-                                <button className="p-2 border rounded-lg hover:bg-gray-100">
-                                    <Share2 className="text-gray-600" />
-                                </button>
                             </div>
                         </div>
 
@@ -78,28 +84,22 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             <div className="flex items-center gap-3">
                                 <Calendar className="text-blue-600" />
                                 <div>
-                                    <p className="text-sm text-muted">Start</p>
-                                    <p className="font-semibold text-text">{event.startdate} • {event.starttime}</p>
+                                    <p className="text-sm text-muted">Date</p>
+                                    <p className="font-semibold text-text"> {new Date(event.startdate).toDateString()}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Calendar className="text-blue-600" />
                                 <div>
-                                    <p className="text-sm text-muted">End</p>
-                                    <p className="font-semibold text-text">{event.enddate} • {event.endtime}</p>
+                                    <p className="text-sm text-muted">Time</p>
+                                    <p className="font-semibold text-text">{new Date(`2000-01-01 ${event.starttime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} to {new Date(`2000-01-01 ${event.endtime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <MapPin className="text-blue-600" />
                                 <div>
-                                    <p className="text-sm text-gray-600">Location</p>
-                                    <p className="font-semibold text-gray-700">{event.location}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Users className="text-blue-600" />
-                                <div>
-                                    <p className="text-sm text-gray-600">Attendees</p>
+                                    <p className="text-sm text-muted">Location</p>
+                                    <p className="font-semibold text-text">{event.location}</p>
                                 </div>
                             </div>
                         </div>
@@ -118,7 +118,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             <h2 className="text-2xl font-bold mb-4 text-text">Hosted By</h2>
                         {event.hostNames.map((host,index) => (
                            
-                                <a key={host} href={`/hosts/${encodeURIComponent(event.hostIDs ? event.hostIDs[index] : '')}`} className="text-sm font-bold text-gray-600 bg-gray-200 px-3 py-1 rounded m-2 inline-block hover:bg-gray-300 transition">
+                                <a key={host} href={`/hosts/${encodeURIComponent(event.hostIDs ? event.hostIDs[index] : '')}`} className="text-sm font-bold  px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
                                     {host.trim().replace(/[\[\]']/g, '')}
                                 </a>
                         ))}
@@ -149,7 +149,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             </div>
                             <button
                                 onClick={() => setShowReviewModal(true)}
-                                className="w-full mt-4 px-4 py-2 border rounded-lg hover:bg-gray-50 font-semibold text-text"
+                                className="w-full mt-4 px-4 py-2 border rounded-lg hover-bg-accent-soft font-semibold text-text"
                             >
                                 Write a Review
                             </button>
@@ -172,6 +172,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     }}
                                 />
                             }
+                            <ShareModal
+                                isOpen={showShareModal}
+                                onClose={() => setShowShareModal(false)}
+                                entity="events"
+                                entityId={event.id}
+                                entityTitle={event.title}
+                                eventStartAt={eventStartAt}
+                            />
                         </div>
                     </div>
 

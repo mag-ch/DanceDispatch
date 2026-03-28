@@ -17,7 +17,6 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const checkSession = async () => {
-            const supa = await supabase;
             const { data } = await supabase.auth.getSession();
             setSession(data.session);
             setLoading(false);

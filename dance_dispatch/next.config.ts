@@ -12,7 +12,16 @@ const hostnames = [
   'dice-media.imgix.net',
   'scontent-lga3-2.cdninstagram.com',
   'cityparksfoundation.org',
-  'scontent-lga3-1.cdninstagram.com'
+  'scontent-lga3-1.cdninstagram.com',
+  'www.newyorkbyrail.com',
+  'encrypted-tbn0.gstatic.com',
+  'upload.wikimedia.org',
+  'lh3.googleusercontent.com',
+  'images.sideways.nyc',
+  'gibneydance.org',
+  'www.bkmag.com',
+  'cdn.mos.cms.futurecdn.net',
+  
 ];
 
 const nextConfig: NextConfig = {

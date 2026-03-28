@@ -54,6 +54,9 @@ def handle_event_entry(event: Event):
     print(f"Added new event: {event.title} with ID {event.id}")
     return event.id
 
+     
+        
+
 def get_venue_id(venue_name, venue_address):
     global VENUES
     if venue_name == "" and venue_address == "":

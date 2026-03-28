@@ -93,7 +93,7 @@ function SearchBar() {
         type="text"
         name="query"
         placeholder="Search events, organizers, or hosts..."
-        className="flex-grow p-3 rounded-md border border-gray-300"
+        className="flex-grow p-3 rounded-md border border-default focus:outline-none focus:ring-2 focus:ring-accent transition"
       />
       <button type="submit" className="btn-highlighted px-4 py-3 bg-accent rounded-md">
         Search

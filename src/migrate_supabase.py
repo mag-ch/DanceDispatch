@@ -1,3 +1,4 @@
+import datetime
 import os
 import csv
 from pathlib import Path
@@ -5,6 +6,7 @@ from typing import Any
 import numpy
 import supabase
 from supabase import create_client, Client
+from data_objects import Event
 
 # Load environment variables
 
@@ -228,5 +230,150 @@ def migrate_csv_files():
     #         else:
     #             print(f"✗ No data found in {csv_file.name}")
 
+
+def check_if_event_exists(event: Event):
+    eventIds = _fetch_existing_ids(get_supabase_client(), "Events", "google_cal_id")
+    if (eventIds and event.id in eventIds):
+        print("Skipping existing event with Google Cal ID: " + str(event.id))
+        # EVENTS.loc[EVENTS['ID'] == event.id, ['Title', 'StartTime', 'EndTime']] = event.title, event.start_time, event.end_time
+        return True
+    return False
+
+def _client() -> Client:
+    """Return a fresh Supabase client to avoid stale connections (WinError 10054)."""
+    return get_supabase_client()
+
+
+import time
+
+def _execute_with_retry(fn, retries: int = 3, delay: float = 2.0):
+    """Call fn() retrying on httpx connection errors."""
+    import httpx
+    for attempt in range(retries):
+        try:
+            return fn()
+        except (httpx.ConnectError, httpx.RemoteProtocolError) as exc:
+            if attempt < retries - 1:
+                print(f"Connection error ({exc}), retrying in {delay}s... ({attempt + 1}/{retries})")
+                time.sleep(delay)
+            else:
+                raise
+
+
+def get_venue_id(venue_name, venue_address):
+    response_by_name = _execute_with_retry(lambda: _client().table("Venues").select("id").eq("name", venue_name).limit(1).execute())
+    if response_by_name.data:
+        return response_by_name.data[0]["id"]
+
+    response_by_address = _execute_with_retry(lambda: _client().table("Venues").select("id").eq("address", venue_address).limit(1).execute())
+    if response_by_address.data:
+        return response_by_address.data[0]["id"]
+
+    loc = input(f"Venue '{venue_name}' not found. Enter location for new venue, leave blank to use {venue_address}, or 'skip' to skip: ").strip()
+    if loc == "":
+        temp_json = {
+            'name': venue_name,
+            'address': venue_address,
+            'temp_id': None,
+        }
+        response = _execute_with_retry(lambda: _client().table("Venues").insert(temp_json).execute())
+        print(f"Added new venue: {venue_name} with ID {response.data[0]['id']}")
+        return response.data[0]["id"]
+    elif loc.lower() == "skip":
+        print(f"Skipping adding venue for event at '{venue_name}'")
+        return None
+    else:
+        temp_json = {
+            'name': venue_name,
+            'address': loc,
+            'temp_id': None,
+        }
+        response = _execute_with_retry(lambda: _client().table("Venues").insert(temp_json).execute())
+        print(f"Added new venue: {venue_name} with ID {response.data[0]['id']}")
+        return response.data[0]["id"]
+    
+def get_host_id(hosts):
+    host_ids = []
+    if not hosts:
+        return host_ids
+    for host in hosts.strip("[]").split(","):
+        if host.strip() == "":
+            continue
+        response = _execute_with_retry(lambda h=host: _client().table("Hosts").select("id").eq("name", h.strip()).execute())
+        if response.data:
+            host_ids.append(response.data[0]["id"])
+        else:
+            name = input(f"Host with name '{host.strip()}' not found. Type 'skip' to skip adding host or leave blank to use {host}: ").strip()
+            if name.lower() == "skip":
+                print(f"Skipping adding host with name '{host.strip()}'")
+                continue
+            elif name == "":
+                name = host.strip()
+                tags = input(f"Enter tags for host '{name}' (comma-separated) or leave blank: ").strip()
+                temp_json = {
+                    'name': name,
+                    'bio': None,
+                    'tags': "{" +  ",".join([s.replace("'", "") for s in tags.split(",")]) + "}" if tags else None,
+                }
+                response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
+                print(f"Added new host: {name} with ID {response.data[0]['id']}")
+                host_ids.append(response.data[0]["id"])
+            else:
+                temp_json = {
+                    'name': host.strip(),
+                    'bio': None,
+                    'tags': None,}
+                response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
+                print(f"Added new host: {host.strip()} with ID {response.data[0]['id']}")
+                host_ids.append(response.data[0]["id"])
+    return host_ids
+
+def handle_event_entry(event: Event):
+
+    if check_if_event_exists(event):
+        return event.id
+    venue_id = get_venue_id(event.location, event.address)
+    host_ids = get_host_id(event.hosts)
+    new_event = {
+        'google_cal_id': event.id,
+        'title': event.title,
+        'start': datetime.datetime.strptime(
+            f"{event.start_date} {str(event.start_time)}".strip(),
+            "%Y-%m-%d %H:%M:%S"
+        ).isoformat(),
+        'end': datetime.datetime.strptime(
+            f"{event.end_date} {str(event.end_time)}".strip(),
+            "%Y-%m-%d %H:%M:%S"
+        ).isoformat(),
+        'location': venue_id,
+        'description': event.description,
+        'flyer_url': event.photo_url,
+        'price': event.price,
+        'external_url': event.external_links.split(",") if event.external_links else []   
+    }
+    response = _execute_with_retry(lambda ev=new_event: _client().table("Events").insert(ev).execute())
+    new_id = response.data[0]["id"]
+    
+    if len(host_ids) > 0:
+        new_event_hosts = list(map(lambda host_id: {
+            'event_id': new_id,
+            'host_id': host_id,
+        }, host_ids))
+        response = _execute_with_retry(lambda eh=new_event_hosts: _client().table("event_hosts").insert(eh).execute())
+
+    # new_event_tags = list(map(lambda tag: {
+    #     'event_id': new_id,
+    #     'tag': tag,
+    # }, event.tags.strip("[]").split(","))) if event.tags else []
+
+    # if new_event_tags:
+    #     response = client.table("event_tags").insert(new_event_tags).execute()
+
+    print(f"Added new event: {event.title} with ID {event.id}")
+    return event.id
+
 if __name__ == "__main__":
     migrate_csv_files()
+
+
+

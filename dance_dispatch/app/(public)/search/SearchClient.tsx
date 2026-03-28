@@ -113,8 +113,6 @@ export default function SearchClient({
             return matchesQuery;
         });
 
-   
-
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-7xl mx-auto">
@@ -277,9 +275,17 @@ export default function SearchClient({
                         <section>
                             <h2 className="text-xl font-bold mb-4 text-text">Hosts</h2>
                             <div className="space-y-3">
-                              {filteredHosts.map((host: any, index: number) => (
-                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.tags?.join(', ')} location={host.address} img={host.photoUrl} entityId={host.id} entity="hosts"/>
-                                      ))}                                
+                            {filteredHosts.map((host: any, index: number) => (
+                                <SearchResult 
+                                    key={`${host.id}-${index}`} 
+                                    header={host.name} 
+                                    subheader={Array.isArray(host.tags) ? host.tags.join(', ') : null} 
+                                    location={host.address} 
+                                    img={host.photoUrl} 
+                                    entityId={host.id} 
+                                    entity="hosts"
+                                />
+                            ))}
                                 {filteredHosts.length === 0 && <p className="text-text">No hosts found</p>}
                             </div>
                         </section>

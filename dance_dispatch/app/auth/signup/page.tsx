@@ -39,6 +39,7 @@ export default function SignUp() {
         setReturnPath(nextPath);
     }, []);
 
+    //check why this doesnt auto log you in
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -76,6 +77,13 @@ export default function SignUp() {
 
             if (profileError) {
                 throw profileError;
+            }
+            const { error: loginError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (loginError){
+                throw loginError;
             }
 
             router.push(returnPath || '/');

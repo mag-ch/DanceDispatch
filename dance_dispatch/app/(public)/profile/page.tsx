@@ -3,6 +3,7 @@ import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers } from '
 import { requireAuth } from '@/lib/auth-helpers';
 import { getSavedEventsForUserServer, getUserReviews } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
+import Link from 'next/link';
 
 
 
@@ -48,7 +49,15 @@ export default async function ProfilePage() {
                         <SearchResult key={follow.id} header={follow.username} subheader={follow.full_name} entityId={follow.id} entity="users"/>
                     ))}
                     {followedUsers.length === 0 && (
+                        <div>
                         <p className="text-gray-500">Not following anyone yet</p>
+                        <Link
+                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
+                        href="/search?categories=users"
+                    >
+                        Discover Users
+                    </Link>
+                        </div>
                     )}
                 </div>
             </section>
@@ -61,7 +70,15 @@ export default async function ProfilePage() {
                                         <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.imageurl} entityId={venue.id} entity="venues"/>
                                       ))}  
                     {followedVenues.length === 0 && (
+                        <div>
                         <p className="text-text">No favorite venues yet</p>
+                        <Link
+                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
+                        href="/search?categories=venues"
+                    >
+                        Discover Venues
+                    </Link>
+                        </div>
                     )}
                 </div>
             </section>
@@ -74,7 +91,15 @@ export default async function ProfilePage() {
                                         <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.tags?.join(', ')} location={host.address} img={host.imageurl} entityId={host.id} entity="hosts"/>
                                       ))}  
                     {favoriteDJs.length === 0 && (
+                        <div>
                         <p className="text-gray-500">No favorite DJs yet</p>
+                        <Link
+                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
+                        href="/search?categories=hosts"
+                    >
+                        Discover DJs
+                    </Link>
+                    </div>
                     )}
                 </div>
             </section>
@@ -88,7 +113,15 @@ export default async function ProfilePage() {
                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
                         ))}
                     {upcomingEvents.length === 0 && (
+                        <div>
                         <p className="text-text">No upcoming events</p>
+                        <Link
+                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
+                        href="/search?categories=events"
+                    >
+                        Discover Events
+                    </Link>
+                        </div>
                     )}
                 </div>
             </section>

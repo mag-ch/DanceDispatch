@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getCachedEvents } from "@/lib/utils_supabase_server";
-import { EventCard } from "./components/EventCard";
+import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import SearchBar from "./components/SearchBar";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
@@ -83,22 +84,6 @@ async function TrendingEvents({ userId }: { userId?: string }) {
         <EventCard key={event.id} event={event}/>
       ))}
     </div>
-  );
-}
-
-function SearchBar() {
-  return (
-    <form action="/search" method="get" className="flex gap-2">
-      <input
-        type="text"
-        name="query"
-        placeholder="Search events, organizers, or hosts..."
-        className="flex-grow p-3 rounded-md border border-default focus:outline-none focus:ring-2 focus:ring-accent transition"
-      />
-      <button type="submit" className="btn-highlighted px-4 py-3 bg-accent rounded-md">
-        Search
-      </button>
-    </form>
   );
 }
 

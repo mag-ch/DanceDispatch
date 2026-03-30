@@ -21,7 +21,7 @@ const hostnames = [
   'gibneydance.org',
   'www.bkmag.com',
   'cdn.mos.cms.futurecdn.net',
-  
+  'cdn.bushwickdaily.com',
 ];
 
 const nextConfig: NextConfig = {

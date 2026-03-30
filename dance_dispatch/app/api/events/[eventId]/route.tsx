@@ -1,4 +1,5 @@
 import { getEventById, updateEvent } from '@/lib/utils_supabase_server';
+import { Condiment } from 'next/font/google';
 
 export async function GET(
     request: Request,
@@ -34,6 +35,7 @@ export async function PATCH(
     try {
         const { eventId } = await params;
         const body = await request.json();
+        console.log('Received PATCH request for event:', eventId, 'with body:', body);
         const updatedEvent = await updateEvent(eventId, body);
         
         if (!updatedEvent) {

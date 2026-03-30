@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import { MapPin, Calendar, Users, Share2 } from 'lucide-react';
+import { MapPin, Calendar, Share2, X } from 'lucide-react';
 import { Event, EventReview } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
@@ -13,11 +13,32 @@ interface EventDetailClientProps {
     eventReviews: EventReview[];
     relatedEvents: Event[];
     venueAddress: string;
+    showReviewModal?: boolean;
 }
 
-export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress }: EventDetailClientProps) {
-    const [showReviewModal, setShowReviewModal] = useState(false);
+export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false }: EventDetailClientProps) {
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(showReviewModal);
     const [showShareModal, setShowShareModal] = useState(false);
+    const [showImageModal, setShowImageModal] = useState(false);
+
+    const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
+
+    const formatEventDate = (dateStr?: string) => {
+        if (!dateStr) return 'Date TBD';
+
+        const normalized = dateStr.trim();
+        const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(normalized);
+        if (match) {
+            const year = Number(match[1]);
+            const month = Number(match[2]) - 1;
+            const day = Number(match[3]);
+            // Use local noon to avoid DST/UTC boundary shifts.
+            return new Date(year, month, day, 12, 0, 0).toDateString();
+        }
+
+        const parsed = new Date(normalized);
+        return Number.isNaN(parsed.getTime()) ? normalized : parsed.toDateString();
+    };
 
     const eventStartAt = event.startdate && event.starttime
         ? `${event.startdate}T${event.starttime}`
@@ -27,14 +48,21 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         <div className="min-h-screen bg-bg">
             {/* Flyer Section */}
             <div className="relative w-full h-96 bg-bg group">
-                <Image
-                    src={event.imageurl ? event.imageurl : '/images/default_event.jpg'}
-                    alt={event.title}
-                    fill
-                    className="object-cover"
-                    loading="eager"
-                    priority
-                />
+                <button
+                    type="button"
+                    className="absolute inset-0 block cursor-zoom-in"
+                    onClick={() => setShowImageModal(true)}
+                    aria-label={`Open full image for ${event.title}`}
+                >
+                    <Image
+                        src={eventImageSrc}
+                        alt={event.title}
+                        fill
+                        className="object-cover"
+                        loading="eager"
+                        priority
+                    />
+                </button>
                 <button
                     className="absolute top-4 left-4 bg-black bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10"
                     onClick={async () => {
@@ -43,7 +71,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             const response = await fetch(`/api/events/${event.id}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ PhotoURL: url })
+                                body: JSON.stringify({ imageurl: url })
                             });
                             if (response.ok) {
                                 window.location.reload();
@@ -54,6 +82,39 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                     📸 Upload
                 </button>
             </div>
+
+            {showImageModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4 py-6"
+                    onClick={() => setShowImageModal(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${event.title} image preview`}
+                >
+                    <div
+                        className="relative flex h-full max-h-[90vh] w-full max-w-6xl items-center justify-center"
+                        onClick={(modalEvent) => modalEvent.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="absolute right-0 top-0 z-10 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80"
+                            onClick={() => setShowImageModal(false)}
+                            aria-label="Close image preview"
+                        >
+                            <X size={20} />
+                        </button>
+                        <div className="relative h-full max-h-[85vh] w-full overflow-hidden rounded-2xl">
+                            <Image
+                                src={eventImageSrc}
+                                alt={event.title}
+                                fill
+                                className="object-contain"
+                                sizes="100vw"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-4 py-8">
@@ -85,7 +146,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <Calendar className="text-blue-600" />
                                 <div>
                                     <p className="text-sm text-muted">Date</p>
-                                    <p className="font-semibold text-text"> {new Date(event.startdate).toDateString()}</p>
+                                    <p className="font-semibold text-text">{formatEventDate(event.startdate)}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -148,16 +209,16 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 }
                             </div>
                             <button
-                                onClick={() => setShowReviewModal(true)}
+                                onClick={() => setIsReviewModalOpen(true)}
                                 className="w-full mt-4 px-4 py-2 border rounded-lg hover-bg-accent-soft font-semibold text-text"
                             >
                                 Write a Review
                             </button>
-                            {showReviewModal &&
+                            {isReviewModalOpen &&
                                 <ReviewModal
-                                    isOpen={showReviewModal}
+                                    isOpen={isReviewModalOpen}
                                     event={event}
-                                    onClose={() => setShowReviewModal(false)}
+                                    onClose={() => setIsReviewModalOpen(false)}
                                     onSubmit={async (reviews) => {
                                         if (!event?.id) return;
                                         const response = await fetch(`/api/reviews/${event.id}`, {
@@ -168,7 +229,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                         if (response.ok) {
                                             window.location.reload();
                                         }
-                                        setShowReviewModal(false);
+                                        setIsReviewModalOpen(false);
                                     }}
                                 />
                             }

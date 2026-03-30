@@ -4,7 +4,7 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Event, EventReview, Host, HostExternalLink, Venue } from '@/lib/utils';
-import {getBoroughFromAddress} from '@/lib/utils';
+import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
 
 type CatalogData = {
@@ -139,7 +139,7 @@ export async function getRelatedEvents(eventId: string): Promise<Event[]> {
     .sort((a, b) => a.score - b.score)
     .slice(0, 5)
     .map(({ event }) => event);
-    
+
   return related;
 }
 
@@ -300,7 +300,7 @@ export async function getCachedEvents(
   }
 
   const now = new Date();
-  return filtered.filter((event) => new Date(`${event.startdate} ${event.starttime}`) >= now);
+  return filtered.filter((event) => new Date(`${event.enddate} ${event.endtime}`) >= now);
 }
 
 export async function getCachedHosts(): Promise<Host[]> {
@@ -364,7 +364,7 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
     // map user id to username for easier consumption on client
     const userIds = Array.from(new Set((data ?? []).map((row: any) => row.user_id)));
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
-    const userMap = new Map(users.map((user) => [user?.id, user?.username])) ;
+    const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
     const venueReviews = (data ?? []).filter((row: any) => row.entity_type === 'venue');
     const hostReviews = (data ?? []).filter((row: any) => row.entity_type === 'host');
@@ -455,8 +455,8 @@ export async function getUsers(): Promise<any[]> {
 export async function checkUserFollow(userId: string, targetUserId: string): Promise<boolean> {
   const supabase = await createServerClient();
   const { data, error } = await supabase
-  .from('UserFollowUsers')
-  .select('*')
+    .from('UserFollowUsers')
+    .select('*')
     .eq('user_id', userId)
     .eq('followed_id', targetUserId)
     .single();
@@ -475,7 +475,7 @@ export async function getUserById(userId: string): Promise<any | null> {
   if (error) {
     console.error(`Error fetching user with ID ${userId}:`, error);
     return null;
-  } 
+  }
   return data ?? null;
 }
 
@@ -541,23 +541,23 @@ export async function userSaveHost(hostId: string, userId: string, saveBool: boo
 
 
   if (saveBool) {
-      const { error } = await supabase
-          .from('UserFollowedHosts')
-          .insert({ host_id: hostId, user_id: userId });
-      if (error) {
-          console.error('Error saving user follow:', error);
-          throw new Error('Failed to save user follow');
-      }
+    const { error } = await supabase
+      .from('UserFollowedHosts')
+      .insert({ host_id: hostId, user_id: userId });
+    if (error) {
+      console.error('Error saving user follow:', error);
+      throw new Error('Failed to save user follow');
+    }
   } else {
-      const { error } = await supabase
-          .from('UserFollowedHosts')
-          .delete()
-          .eq('user_id', userId)
-          .eq('host_id', hostId);
-      if (error) {
-          console.error('Error unsaving user follow:', error);
-          throw new Error('Failed to unsave user follow');
-      }
+    const { error } = await supabase
+      .from('UserFollowedHosts')
+      .delete()
+      .eq('user_id', userId)
+      .eq('host_id', hostId);
+    if (error) {
+      console.error('Error unsaving user follow:', error);
+      throw new Error('Failed to unsave user follow');
+    }
   }
   return `${userId}-${hostId}`;
 }
@@ -590,7 +590,7 @@ export async function getAllFollowedUsers(userId: string): Promise<any[]> {
   if (error) throw error;
 
   const followedIds = new Set((data ?? []).map((row: any) => String(row.followed_id)));
-  
+
   const users = await getUsers();
   return users.filter((user) => followedIds.has(String(user.id)));
 }
@@ -600,7 +600,8 @@ export type NotificationType =
   | 'followed_user_rsvp'
   | 'followed_user_comment'
   | 'followed_dj_new_event'
-  | 'followed_venue_new_event';
+  | 'followed_venue_new_event'
+  | 'patch_notes';
 
 export type UserNotification = {
   id: string;
@@ -632,7 +633,7 @@ function normalizeNotificationEntityType(value: string | undefined): 'event' | '
 
 function getSharedItemHref(entityType: string, entityId: string): string {
   const normalized = normalizeNotificationEntityType(entityType);
-  if (normalized === 'event') return `/events/${entityId}`;
+  if (normalized === 'event') return `/events/${entityId}?showReviewModal=true`;
   if (normalized === 'host') return `/hosts/${entityId}`;
   if (normalized === 'venue') return `/venues/${entityId}`;
   if (normalized === 'user') return `/users/${entityId}`;
@@ -699,13 +700,12 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   }
   console.log('Fetched followed user profiles:', { userId, count: usernameById.size });
   const { data: sharedItemsData, error: sharedItemsError } = await supabase
-  .from('SharedItems')
-  .select('id,sender_id,recipient_id,entity_type,entity_id,message,created_at')
-  .eq('recipient_id', userId)
-  .order('created_at', { ascending: false })
-  .limit(75);
-  
-  console.log('Fetched shared items:', { error: sharedItemsError, count: sharedItemsData?.length ?? 0 });
+    .from('SharedItems')
+    .select('id,sender_id,recipient_id,entity_type,entity_id,message,created_at')
+    .eq('recipient_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(75);
+
 
   if (sharedItemsError) {
     console.warn('Skipping shared item notifications:', sharedItemsError.message);
@@ -751,6 +751,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
       const message = String((row as any).message ?? '').trim();
       const createdAt = String((row as any).created_at ?? '').trim();
       const senderName = usernameById.get(senderId) ?? 'Someone';
+      let href = getSharedItemHref(entityType, entityId);
 
       let description = message;
       if (!description && entityType === 'event') {
@@ -758,8 +759,9 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         if (event) {
           const start = new Date(`${event.startdate} ${event.starttime}`);
           description = start < now
-            ? `${event.title} is over. Open the event page to see details and leave a review.`
+            ? `${event.title} is over. Click the link to leave a review.`
             : `${event.title} is coming up. Open the event page to RSVP.`;
+          href = `/events/${event.id}${start < now ? '?showReviewModal=true' : ''}`;
         }
       }
 
@@ -785,7 +787,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         title: `${senderName} shared ${entityType === 'event' ? 'an event' : entityType === 'host' ? 'a DJ' : entityType === 'venue' ? 'a venue' : entityType === 'user' ? 'a profile' : 'something'} with you`,
         description,
         createdAt: createdAt || new Date().toISOString(),
-        href: getSharedItemHref(entityType, entityId),
+        href,
       });
     }
   }
@@ -920,7 +922,6 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
     if (!eventVenuesError) {
       const dedupe = new Set<string>();
 
-      console.log('Processing followed venue notifications:', { count: eventVenuesData?.length ?? 0 });
 
       for (const row of eventVenuesData ?? []) {
         const venueId = Number((row as any).location);
@@ -953,6 +954,41 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
     }
   }
 
+  //5) pull recent patch notes
+  const { data: patchNotesData, error: patchNotesError } = await supabase
+    .from('patch_notes')
+    .select('id, description, created_at')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (!patchNotesError) {
+      console.log('Processing patch notes notifications:', { count: patchNotesData?.length ?? 0 });
+
+    for (const row of patchNotesData ?? []) {
+
+      const dedupe = new Set<string>();
+
+      const patchId = String((row as any).id ?? '');
+      if (Number.isNaN(patchId)) continue;
+
+
+
+      const dedupeKey = `${patchId}`;
+      if (dedupe.has(dedupeKey)) continue;
+      dedupe.add(dedupeKey);
+
+      notifications.push({
+        id: `patch-${patchId}`,
+        type: 'patch_notes',
+        title: `Patch notes #${patchId}`,
+        description: row.description,
+        createdAt: row.created_at,
+        href: `/`,
+      });
+    }
+  }
+  console.log('Total notifications before sorting and limiting:', notifications.length);
+  // check the sorting of notifications
   return notifications
     .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
     .slice(0, Math.max(1, limit));
@@ -987,18 +1023,20 @@ export async function updateEvent(eventId: string, updatedFields: Partial<Event>
   if (updatedFields.starttime !== undefined) patch.start_time = updatedFields.starttime;
   if (updatedFields.enddate !== undefined) patch.end_date = updatedFields.enddate;
   if (updatedFields.endtime !== undefined) patch.end_time = updatedFields.endtime;
-  if (updatedFields.locationid !== undefined) patch.venue_id = Number(updatedFields.locationid);
+  if (updatedFields.locationid !== undefined) patch.location = Number(updatedFields.locationid);
   if (updatedFields.description !== undefined) patch.description = updatedFields.description;
   if (updatedFields.price !== undefined) patch.price = updatedFields.price;
-  if (updatedFields.imageurl !== undefined) patch.image_url = updatedFields.imageurl;
-  if (updatedFields.externallink !== undefined) patch.external_link = updatedFields.externallink;
+  if (updatedFields.imageurl !== undefined) patch.flyer_url = updatedFields.imageurl;
+  if (updatedFields.externallink !== undefined) patch.external_url = updatedFields.externallink;
 
   const supabase = await createServerClient();
   const { error } = await supabase.from('Events').update(patch).eq('id', Number(eventId));
   if (error) {
+    console.error('Error updating event:', error);
     return null;
   }
 
+  console.log(`Event ${patch.flyer_url} updated successfully. Invalidating cache.`);
   revalidateCatalogCache();
   return eventId;
 }
@@ -1025,18 +1063,18 @@ export async function getUsernameFromId(userId: string | number): Promise<string
 }
 
 export async function getUniqueBoroughs(): Promise<string[]> {
-    const venues = await getVenues();
-    const boroughs = new Set<string>();
-    
-    venues.forEach((venue) => {
-        const parts = venue.address.split(',');
-        if (parts.length >= 2) {
-            const borough = parts[1].trim();
-            boroughs.add(borough);
-        }
-    });
-    
-    return Array.from(boroughs).sort();
+  const venues = await getVenues();
+  const boroughs = new Set<string>();
+
+  venues.forEach((venue) => {
+    const parts = venue.address.split(',');
+    if (parts.length >= 2) {
+      const borough = parts[1].trim();
+      boroughs.add(borough);
+    }
+  });
+
+  return Array.from(boroughs).sort();
 }
 
 export async function getHostById(hostId: string): Promise<Host | null> {
@@ -1052,7 +1090,7 @@ export async function checkHostSaved(hostId: string, userId: string): Promise<bo
     .eq('user_id', userId)
     .eq('host_id', Number(hostId))
     .maybeSingle();
-    
+
   if (error) {
     console.error('Error checking saved host:', error);
     return false;
@@ -1070,7 +1108,7 @@ export async function checkVenueSaved(venueId: string, userId: string): Promise<
     .eq('user_id', userId)
     .eq('venue_id', Number(venueId))
     .maybeSingle();
-    
+
   if (error) {
     console.error('Error checking saved venue:', error);
     return false;

@@ -155,3 +155,4 @@ export async function processUrl(url: string): Promise<string> {
 export async function prettifyCase(str: string): Promise<string> {
     return str.slice(0,1).toUpperCase() + str.replace("_", " ").slice(1);
 }
+

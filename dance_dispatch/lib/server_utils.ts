@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
 import { Event } from '@/lib/utils';
-import { getCachedEvents } from '@/lib/utils_supabase_server';
+import { getCachedEvents, getUsers } from '@/lib/utils_supabase_server';
 import { combineChunks } from '@supabase/ssr';
 
 export type SavedEventsMode = 'all' | 'upcoming' | 'past';
@@ -151,6 +151,54 @@ export async function getUniqueVenueAttributes(venueId: string) {
         console.error('Error fetching unique venue attributes from Supabase:', error);
         return null;
     }
+    return data;
+}
+
+export async function getVenueComments(venueId:string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('Reviews')
+        .select('event_id, user_id, rating, comment, created_at, privacy_level')
+        .eq('entity_id', venueId)
+        .eq('entity_type', 'venue')
+        .neq('privacy_level', 'private');
+        
+    if (error) {
+        console.error('Error fetching venue comments from Supabase:', error);
+        return null;
+    }
+
+    const users = await getUsers();
+    const usernameById = new Map(users.map((user) => [String(user.id), user.username]));
+
+    data.forEach((comment: any) => {
+        comment.user_id = usernameById.get(String(comment.user_id)) || 'Anon';
+    });
+
+    return data;
+}
+
+export async function getHostComments(hostId:string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('Reviews')
+        .select('event_id, user_id, rating, comment, created_at, privacy_level')
+        .eq('entity_id', hostId)
+        .eq('entity_type', 'host')
+        .neq('privacy_level', 'private');
+        
+    if (error) {
+        console.error('Error fetching host comments from Supabase:', error);
+        return null;
+    }
+
+    const users = await getUsers();
+    const usernameById = new Map(users.map((user) => [String(user.id), user.username]));
+
+    data.forEach((comment: any) => {
+        comment.user_id = usernameById.get(String(comment.user_id)) || 'Anon';
+    });
+
     return data;
 }
 

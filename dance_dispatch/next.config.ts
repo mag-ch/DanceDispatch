@@ -22,6 +22,14 @@ const hostnames = [
   'www.bkmag.com',
   'cdn.mos.cms.futurecdn.net',
   'cdn.bushwickdaily.com',
+  'scontent-lga3-3.cdninstagram.com',
+  '155089617.cdn6.editmysite.com',
+  's3-media0.fl.yelpcdn.com',
+  'magneticmag.com',
+  'starchildrooftop.com',
+  'www.compass.com',
+  'cdn.sanity.io',
+  'res.cloudinary.com',
 ];
 
 const nextConfig: NextConfig = {

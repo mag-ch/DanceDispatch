@@ -212,7 +212,7 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
                 disabled={isLoading}
                 className={`disabled:opacity-50 group px-6 py-2 rounded ${!isSaved ? 'btn-highlighted' : ''}`}
             >
-                {isSaved ? 'Unfavorite' : 'Favorite'}
+                {isSaved ? 'Unfollow' : 'Follow'}
             </button>
             {showPopup && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">

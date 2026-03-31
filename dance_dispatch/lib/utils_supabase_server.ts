@@ -372,7 +372,8 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
 
     const reviewsByUserAndTime = new Map<string, EventReview>();
     for (const row of [...venueReviews, ...hostReviews, ...eventComments]) {
-      const key = `${row.user_id}-${row.created_at}`;
+      const dateNoTime = String(row.created_at).split('T')[0] ?? '';
+      const key = `${row.user_id}-${dateNoTime}`;
       if (!reviewsByUserAndTime.has(key)) {
         reviewsByUserAndTime.set(key, {
           eventName: eventName,
@@ -462,7 +463,6 @@ export async function checkUserFollow(userId: string, targetUserId: string): Pro
     .single();
 
   if (error) {
-    console.error('Error checking user follow from Supabase:', error);
     return false;
   }
 
@@ -643,16 +643,18 @@ function getSharedItemHref(entityType: string, entityId: string): string {
 export async function getUserNotifications(userId: string, limit = 30): Promise<UserNotification[]> {
   const supabase = await createServerClient();
 
-  const [followedUsersRes, followedHostsRes, followedVenuesRes, allEvents, allHosts, allVenues] = await Promise.all([
+  const [followedUsersRes, followedHostsRes, followedVenuesRes,  newFollowers, allEvents, allHosts, allVenues, allUsers] = await Promise.all([
     supabase
       .from('UserFollowUsers')
       .select('followed_id')
       .eq('user_id', userId),
     supabase.from('UserFollowedHosts').select('host_id').eq('user_id', userId),
     supabase.from('UserFollowedVenues').select('venue_id').eq('user_id', userId),
+    supabase.from('UserFollowUsers').select('user_id').eq('followed_id', userId),
     getCachedEvents(false),
     getCachedHosts(),
     getCachedVenues(),
+    getUsers(),
   ]);
 
   if (followedUsersRes.error) {
@@ -664,7 +666,9 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   if (followedVenuesRes.error) {
     throw followedVenuesRes.error;
   }
-
+  if (newFollowers.error) {
+    throw newFollowers.error;
+  }
 
   const followedUserIds = (followedUsersRes.data ?? [])
     .map((row: any) => String(row.followed_id))
@@ -681,8 +685,8 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   const eventById = new Map(allEvents.map((event) => [String(event.id), event]));
   const hostById = new Map(allHosts.map((host) => [Number(host.id), host]));
   const venueById = new Map(allVenues.map((venue) => [Number(venue.id), venue]));
+  const usernameById = new Map(allUsers.map((user) => [String(user.id), user.username]));
 
-  const usernameById = new Map<string, string>();
   if (followedUserIds.length > 0) {
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
@@ -698,7 +702,6 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
       }
     }
   }
-  console.log('Fetched followed user profiles:', { userId, count: usernameById.size });
   const { data: sharedItemsData, error: sharedItemsError } = await supabase
     .from('SharedItems')
     .select('id,sender_id,recipient_id,entity_type,entity_id,message,created_at')
@@ -986,6 +989,28 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         href: `/`,
       });
     }
+  }
+
+  if (newFollowers.data && newFollowers.data.length > 0) {
+    console.log('Processing new follower notifications:', { count: newFollowers.data.length });
+    for (const row of newFollowers.data) {
+      const followerId = String((row as any).user_id ?? '').trim();
+      if (!followerId) continue;
+      const username = usernameById.get(followerId) ?? 'Someone';
+
+      notifications.push({
+        id: `newfollower-${followerId}`,
+        type: 'followed_user_rsvp',
+        title: `${username} started following you`,
+        description: `Check out their profile!`,
+        createdAt: new Date().toISOString(),
+        href: `/users/${followerId}`,
+      });
+    }
+  }
+
+  if (notifications.length === 0) {
+    return [];
   }
   console.log('Total notifications before sorting and limiting:', notifications.length);
   // check the sorting of notifications

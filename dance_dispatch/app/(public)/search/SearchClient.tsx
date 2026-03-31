@@ -257,6 +257,29 @@ export default function SearchClient({
                                             options={boroughOptions}
                                             onChange={(e) => setBoroughs(e ? [...e] : [])}
                                             className="bg-surface text-text text-sm"
+                                            styles={{
+                                                control: (base) => ({
+                                                    ...base,
+                                                    backgroundColor: 'rgb(var(--surface))',
+                                                }),
+                                                menu: (base) => ({
+                                                    ...base,
+                                                    backgroundColor: 'rgb(var(--surface))',
+                                                }),
+                                                menuList: (base) => ({
+                                                    ...base,
+                                                    backgroundColor: 'rgb(var(--surface))',
+                                                }),
+                                                option: (base, state) => ({
+                                                    ...base,
+                                                    backgroundColor: state.isSelected
+                                                        ? 'rgba(37, 99, 235, 0.75)'
+                                                        : state.isFocused
+                                                            ? 'rgba(37, 99, 235, 0.35)'
+                                                            : 'transparent',
+                                                    color: 'rgb(var(--text))',
+                                                }),
+                                            }}
                                         />
                                     </div>
                                 </div>

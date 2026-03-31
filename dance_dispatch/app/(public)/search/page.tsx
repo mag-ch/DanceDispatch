@@ -31,9 +31,7 @@ export default async function SearchPage({ searchParams, searchBar, categories }
     const boroughs = await getUniqueBoroughs();
 
     const rawQuery = resolvedSearchParams?.query ?? resolvedSearchParams?.q;
-    console.log('Search query from URL:', rawQuery);
     const queryString = typeof rawQuery === 'string' ? rawQuery : searchBar ?? '';
-    console.log('Final search query string:', queryString);
     const categoryParams = resolvedSearchParams?.categories;
     const parsedCategories = Array.isArray(categoryParams)
         ? categoryParams.filter((category) => isSearchCategory(category))

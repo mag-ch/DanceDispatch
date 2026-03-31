@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { use } from 'react';
 import Image from 'next/image';
-import { Calendar, ExternalLink, Globe } from 'lucide-react';
+import { Calendar, ExternalLink, Globe, Star } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import { Host } from '@/lib/utils';
 import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
@@ -18,6 +18,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
     const [similarHosts, setSimilarHosts] = useState<Host[]>([]);
     const [hostMedia, setHostMedia] = useState<any[]>([]);
+    const [hostComments, setHostComments] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchHost = async () => {
@@ -79,6 +80,22 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         };
         fetchSimilarHosts();
     }, [host, hostId]);
+
+    useEffect(() => {
+        if (!hostId) return;
+
+        const fetchHostComments = async () => {
+            try {
+                const res = await fetch(`/api/hosts/${hostId}/comments`);
+                const data = await res.json();
+                setHostComments(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Failed to fetch host comments:', error);
+            }
+        };
+
+        fetchHostComments();
+    }, [hostId]);
     
     
     if (loading) return <div className="p-8">Loading...</div>;
@@ -112,7 +129,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             <div className="flex flex-col items-start gap-2">
                                 <div className="flex flex-wrap gap-2">
                                     {host.tags?.map((tag) => (
-                                        <span key={tag} className="text-sm text-muted bg-surface border border-default px-3 py-1 rounded">
+                                        <span key={tag} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white"  style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
                                             {tag.trim().replace(/[\[\]']/g, '')}
                                         </span>
                                     ))}
@@ -152,7 +169,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                         )}
 
                         {/* Events */}
-                        <div className="grid md:grid-cols-2 gap-8">
+                        <div className="grid md:grid-cols-2 gap-8 mb-8">
                             {/* Upcoming Events */}
                             <section className="bg-surface p-6 rounded-lg">
                                 <div className="flex items-center gap-2 mb-4">
@@ -186,7 +203,36 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                     ))}
                                 </div>
                             </section>
+
+                           
                         </div>
+                         {hostComments.length > 0 && (
+                                <section className="bg-surface rounded-lg p-6 mb-6">
+                                <h2 className="font-semibold text-text text-lg mb-4">Comments</h2>
+                                      
+                                        
+
+                            {hostComments.map((comment, index) => (
+                                        <div key={index} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
+                                            <h4 className="text-sm font-semibold text-text mb-2">{comment.privacy_level === 'public' ? comment.user_id : 'Anon'}</h4>
+                                            {comment.rating && comment.rating > 0 && (
+                                                <div className="flex gap-1 mb-2">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <Star
+                                                        key={star}
+                                                        size={16}
+                                                        className={star <= (comment.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                    />
+                                                ))}
+                                            </div>
+                                            )}
+                                            {comment.comment && (
+                                                <p className="text-sm text-text">{comment.comment}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                    </section>
+                            )}
                     </div>
 
                     {/* Sidebar */}

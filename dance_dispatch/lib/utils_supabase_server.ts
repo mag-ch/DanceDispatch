@@ -260,7 +260,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     id: String(row.id),
     name: row.name,
     bio: row.bio ?? '',
-    photoUrl: row.photo_url ?? '',
+    photoUrl: row.image_url ?? '',
     tags: row.tags ?? '',
     externalLinks:
       hostLinksByHostId.get(Number(row.id)) ?? normalizeHostLinks((row as any).external_urls),
@@ -471,6 +471,7 @@ export async function checkUserFollow(userId: string, targetUserId: string): Pro
 
 export async function getUserById(userId: string): Promise<any | null> {
   const supabase = await createServerClient();
+
   const { data, error } = await supabase.from('profiles').select('id,full_name,username,profile_picture,created_at').eq('id', userId).single();
   if (error) {
     console.error(`Error fetching user with ID ${userId}:`, error);
@@ -650,7 +651,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
       .eq('user_id', userId),
     supabase.from('UserFollowedHosts').select('host_id').eq('user_id', userId),
     supabase.from('UserFollowedVenues').select('venue_id').eq('user_id', userId),
-    supabase.from('UserFollowUsers').select('user_id').eq('followed_id', userId),
+    supabase.from('UserFollowUsers').select('user_id, created_at').eq('followed_id', userId),
     getCachedEvents(false),
     getCachedHosts(),
     getCachedVenues(),
@@ -878,7 +879,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   if (followedHostIds.length > 0) {
     const { data: eventHostsData, error: eventHostsError } = await supabase
       .from('event_hosts')
-      .select('host_id,event_id')
+      .select('host_id,event_id,Events(created_at)')
       .in('host_id', followedHostIds)
       .limit(200);
 
@@ -902,12 +903,13 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
 
         const hostName = hostById.get(hostId)?.name ?? 'A DJ you follow';
 
+        const eventCreatedAt = (row.Events as { created_at?: string } | null)?.created_at;
         notifications.push({
           id: `dj-${hostId}-${eventId}`,
           type: 'followed_dj_new_event',
-          title: `${hostName} is listed on a new event`,
+          title: `${hostName} is listed on a new event: ${event.title}`,
           description: event.title,
-          createdAt: eventStartIso(event),
+          createdAt: eventCreatedAt ?? eventStartIso(event),
           href: `/events/${event.id}`,
         });
       }
@@ -948,9 +950,9 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         notifications.push({
           id: `venue-${venueId}-${eventId}`,
           type: 'followed_venue_new_event',
-          title: `${venueName} is listed on a new event`,
+          title: `${venueName} is listed on a new event: ${event.title}`,
           description: event.title,
-          createdAt: eventStartIso(event),
+          createdAt: row.created_at ?? eventStartIso(event),
           href: `/events/${event.id}`,
         });
       }
@@ -1003,7 +1005,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         type: 'followed_user_rsvp',
         title: `${username} started following you`,
         description: `Check out their profile!`,
-        createdAt: new Date().toISOString(),
+        createdAt: row.created_at || new Date().toISOString(),
         href: `/users/${followerId}`,
       });
     }
@@ -1012,7 +1014,6 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   if (notifications.length === 0) {
     return [];
   }
-  console.log('Total notifications before sorting and limiting:', notifications.length);
   // check the sorting of notifications
   return notifications
     .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))

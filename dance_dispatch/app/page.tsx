@@ -14,7 +14,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = params?.userId || user?.id;
-
   // if (!user) {
   //   return <AuthPrompt />;
   // }

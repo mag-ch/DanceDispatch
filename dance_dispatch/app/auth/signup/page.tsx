@@ -50,7 +50,7 @@ export default function SignUp() {
                 email,
                 password,
                 options: {
-                    emailRedirectTo: `${location.origin}/auth/callback`,
+                    emailRedirectTo: `${location.origin}/auth/confirm?next=${encodeURIComponent(returnPath || '/')}`,
                     data: {
                         full_name: fullName,
                         username: username,

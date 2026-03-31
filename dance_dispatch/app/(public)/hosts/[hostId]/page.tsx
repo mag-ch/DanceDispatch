@@ -100,6 +100,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     
     if (loading) return <div className="p-8">Loading...</div>;
     if (!host) return <div className="p-8">Host not found</div>;
+    console.log('Fetched host data:', host); // Debugging log
 
     return (
         <div className="min-h-screen bg-bg text-text">

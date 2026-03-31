@@ -42,7 +42,6 @@ export default function SearchClient({
         }
 
         const parsed = new Date(normalized);
-        console.log('Parsed date:', parsed, 'from input:', normalized);
         return Number.isNaN(parsed.getTime()) ? normalized : parsed.toDateString();
     };
     const safeEvents = Array.isArray(initialEvents) ? initialEvents : [];
@@ -82,7 +81,6 @@ export default function SearchClient({
         // Handle borough filter change
         setBoroughs(selectedOptions || []);
     }
-    console.log("search query = " +searchQuery);
 
     // Filter events based on search query and filters
     let filteredEvents = searchQuery === '' 

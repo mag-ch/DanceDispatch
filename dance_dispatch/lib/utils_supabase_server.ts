@@ -994,7 +994,6 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
   }
 
   if (newFollowers.data && newFollowers.data.length > 0) {
-    console.log('Processing new follower notifications:', { count: newFollowers.data.length });
     for (const row of newFollowers.data) {
       const followerId = String((row as any).user_id ?? '').trim();
       if (!followerId) continue;

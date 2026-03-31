@@ -135,8 +135,11 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     rel="noopener noreferrer"
                                     className=" btn-highlighted px-6 py-2 rounded-lg font-semibold transition"
                                 >
-                                    {event.price ? (event.price === 0 ? 'Free' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
+                                    {event.price != undefined ? (event.price == 0 ? 'Free RSVP' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
+                                {(!event.externallink || event.externallink.length <= 3) && event.price != undefined && <span className="px-2 py-2 rounded-lg font-semibold text-muted">
+                                    {event.price != undefined ? (event.price == 0 ? 'Free Event' : `$${event.price}`) : 'Price TBD'}
+                                </span>}
                             </div>
                         </div>
 

@@ -602,7 +602,8 @@ export type NotificationType =
   | 'followed_user_comment'
   | 'followed_dj_new_event'
   | 'followed_venue_new_event'
-  | 'patch_notes';
+  | 'patch_notes'
+  | 'new_user_missions';
 
 export type UserNotification = {
   id: string;
@@ -644,7 +645,7 @@ function getSharedItemHref(entityType: string, entityId: string): string {
 export async function getUserNotifications(userId: string, limit = 30): Promise<UserNotification[]> {
   const supabase = await createServerClient();
 
-  const [followedUsersRes, followedHostsRes, followedVenuesRes,  newFollowers, allEvents, allHosts, allVenues, allUsers] = await Promise.all([
+  const [followedUsersRes, followedHostsRes, followedVenuesRes, newFollowers, allEvents, allHosts, allVenues, allUsers, userProfileRes] = await Promise.all([
     supabase
       .from('UserFollowUsers')
       .select('followed_id')
@@ -656,6 +657,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
     getCachedHosts(),
     getCachedVenues(),
     getUsers(),
+    supabase.from('profiles').select('created_at').eq('id', userId).single(),
   ]);
 
   if (followedUsersRes.error) {
@@ -988,7 +990,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         title: `Patch notes #${patchId}`,
         description: row.description,
         createdAt: row.created_at,
-        href: `/`,
+        href: `/notifications?patchNotes=${patchId}`,
       });
     }
   }
@@ -1010,9 +1012,17 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
     }
   }
 
-  if (notifications.length === 0) {
-    return [];
-  }
+  // 6) New user missions — always present, dated to account creation
+  const userCreatedAt = (userProfileRes.data as any)?.created_at ?? new Date().toISOString();
+  notifications.push({
+    id: `new-user-missions-${userId}`,
+    type: 'new_user_missions',
+    title: 'Welcome! Complete your first missions',
+    description: 'Save an event, follow a DJ, and write a review to earn your Explorer Badge.',
+    createdAt: userCreatedAt,
+    href: `/notifications?newUserMissions=true`,
+  });
+
   // check the sorting of notifications
   return notifications
     .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
@@ -1087,6 +1097,28 @@ export async function getUsernameFromId(userId: string | number): Promise<string
   }
 }
 
+
+export async function getPatchNoteFromId(id: string | number): Promise<any | null> {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('patch_notes')
+      .select('description, created_at')
+      .eq('id', id)
+      .single<{ description: string; created_at: string }>();
+
+    if (error) {
+      console.error('Error fetching patch note:', error.message);
+      return null;
+    }
+
+    return data;
+  } catch (error: unknown) {
+    console.error('An unexpected error occurred:', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
 export async function getUniqueBoroughs(): Promise<string[]> {
   const venues = await getVenues();
   const boroughs = new Set<string>();
@@ -1140,4 +1172,62 @@ export async function checkVenueSaved(venueId: string, userId: string): Promise<
   }
 
   return !!data;
+}
+
+export type NewUserMissionsStatus = {
+  savedEvent: boolean;
+  followedHost: boolean;
+  wroteReview: boolean;
+  followedVenue: boolean;
+  followedUser: boolean;
+  allComplete: boolean;
+  userCreatedAt: string;
+};
+
+export async function checkNewUserMissions(userId: string): Promise<NewUserMissionsStatus> {
+  const supabase = await createServerClient();
+
+  const [savedEventRes, followedHostRes, reviewRes, profileRes, savedVenueRes, followedUserRes] = await Promise.all([
+    supabase
+      .from('SavedEvents')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    supabase
+      .from('UserFollowedHosts')
+      .select('host_id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    supabase
+      .from('Reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    supabase
+      .from('profiles')
+      .select('created_at')
+      .eq('id', userId)
+      .single(),
+    supabase
+      .from('UserFollowedVenues')
+      .select('venue_id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .single(),
+    supabase
+      .from('UserFollowUsers')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+  ]);
+  
+  console.log('New user missions status:', {
+    userId: userId,
+    followedUserCount: followedUserRes.count,
+  });
+
+  const savedEvent = (savedEventRes.count ?? 0) > 0;
+  const followedHost = (followedHostRes.count ?? 0) > 0;
+  const wroteReview = (reviewRes.count ?? 0) > 0;
+  const followedVenue = (savedVenueRes.count ?? 0) > 0;
+  const followedUser = (followedUserRes.count ?? 0) > 0;
+  const allComplete = savedEvent && followedHost && wroteReview && followedVenue && followedUser;
+  const userCreatedAt = (profileRes.data as any)?.created_at ?? new Date().toISOString();
+
+  return { savedEvent, followedHost, wroteReview, followedVenue, followedUser, allComplete, userCreatedAt };
 }

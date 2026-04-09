@@ -15,6 +15,19 @@ export default function SignUp() {
     const [returnPath, setReturnPath] = useState('/');
     const router = useRouter();
 
+    const waitForSession = async (attempts = 10, delayMs = 120) => {
+        for (let i = 0; i < attempts; i += 1) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+                return data.session;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+        return null;
+    };
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
@@ -39,21 +52,24 @@ export default function SignUp() {
         setReturnPath(nextPath);
     }, []);
 
-    //check why this doesnt auto log you in
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
         try {
+            const normalizedEmail = email.trim().toLowerCase();
+            const trimmedUsername = username.trim();
+            const trimmedFullName = fullName.trim();
+
             const { error, data } = await supabase.auth.signUp({
-                email,
+                email: normalizedEmail,
                 password,
                 options: {
-                    emailRedirectTo: `${location.origin}/auth/confirm?next=${encodeURIComponent(returnPath || '/')}`,
+                    emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(returnPath || '/')}`,
                     data: {
-                        full_name: fullName,
-                        username: username,
+                        full_name: trimmedFullName,
+                        username: trimmedUsername,
                     },
                 },
             });
@@ -68,9 +84,9 @@ export default function SignUp() {
                 .upsert(
                     {
                         id: uuid,
-                        full_name: fullName.trim(),
-                        username: username.trim(),
-                        email: email.trim().toLowerCase(),
+                        full_name: trimmedFullName,
+                        username: trimmedUsername,
+                        email: normalizedEmail,
                     },
                     { onConflict: 'id' }
                 );
@@ -78,15 +94,24 @@ export default function SignUp() {
             if (profileError) {
                 throw profileError;
             }
-            const { error: loginError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (loginError){
-                throw loginError;
+
+            if (!data.session) {
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: normalizedEmail,
+                    password,
+                });
+                if (loginError) {
+                    throw loginError;
+                }
             }
 
-            router.push(returnPath || '/');
+            const activeSession = await waitForSession();
+            if (!activeSession) {
+                throw new Error('Could not establish a login session after sign up.');
+            }
+
+            router.replace(returnPath || '/');
+            window.location.assign(returnPath || '/');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sign up failed');
         } finally {

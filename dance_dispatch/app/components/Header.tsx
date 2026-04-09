@@ -1,7 +1,7 @@
 'use client';
 import { useAuth } from '@/app/providers/AuthContext';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { getUsernameFromId } from '@/lib/utils_supabase';
 import { ThemeToggle } from './ThemeProvider';
@@ -41,6 +41,8 @@ function formatRelativeTime(dateValue: string): string {
 export function Header() {
     const { session, loading, logout } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [username, setUsername] = useState<string | null>(null);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -50,6 +52,22 @@ export function Header() {
     const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+    const resolveNotificationHref = useCallback((href: string) => {
+        if (!href.startsWith('?')) {
+            return href;
+        }
+
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        const nextParams = new URLSearchParams(href.slice(1));
+
+        nextParams.forEach((value, key) => {
+            params.set(key, value);
+        });
+
+        const query = params.toString();
+        return query ? `${pathname}?${query}` : pathname;
+    }, [pathname, searchParams]);
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -319,7 +337,7 @@ export function Header() {
                                             type="button"
                                             onClick={() => {
                                                 setIsNotificationModalOpen(false);
-                                                router.push(notification.href);
+                                                router.push(resolveNotificationHref(notification.href));
                                             }}
                                             className="w-full text-left"
                                         >

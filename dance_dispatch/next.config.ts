@@ -30,6 +30,11 @@ const hostnames = [
   'www.compass.com',
   'cdn.sanity.io',
   'res.cloudinary.com',
+  'pyxis.nymag.com',
+  'www.therotunda.org',
+  'scontent-phl2-1.xx.fbcdn.net',
+  'hypersoul.co',
+  'uploads.tickettailorassets.com',
 ];
 
 const nextConfig: NextConfig = {

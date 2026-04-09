@@ -1,10 +1,11 @@
 import { Event } from '@/lib/utils';
-import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById } from '@/lib/utils_supabase_server';
+import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { getSavedEventsForUserServer, getUserReviews } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
 import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
+import ExplorerBadgeModal from './ExplorerBadgeModal';
 
 
 
@@ -15,13 +16,14 @@ export default async function ProfilePage() {
     const userdata = await getUserById(user.id);
     const displayName = userdata?.full_name || userdata?.username || user.email || 'User';
     
-    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews] = await Promise.all([
+    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus] = await Promise.all([
         getAllFollowedVenues(user.id),
         getAllFollowedHosts(user.id),
         getAllFollowedUsers(user.id),
         getSavedEventsForUserServer(user.id, 'upcoming'),
         getSavedEventsForUserServer(user.id, 'past'),
         getUserReviews(user.id),
+        checkNewUserMissions(user.id),
     ]);
 
     return (
@@ -55,6 +57,14 @@ export default async function ProfilePage() {
                     </div>
                 </section>
             </div>
+
+            {missionStatus.allComplete && (
+                <section className="mb-8">
+                    <h2 className="text-2xl font-semibold mb-4 text-text">Achievements</h2>
+                    <ExplorerBadgeModal missionStatus={missionStatus} />
+                </section>
+            )}
+
             {/* Followed Users */}
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Following ({followedUsers.length})</h2>

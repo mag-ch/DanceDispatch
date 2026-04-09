@@ -12,13 +12,26 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    const waitForSession = async (attempts = 10, delayMs = 120) => {
+        for (let i = 0; i < attempts; i += 1) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+                return data.session;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+        return null;
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
     });
 
@@ -28,8 +41,15 @@ export default function LoginPage() {
         return;
     }
     
-    // Redirect to previous page or home on success
+    const activeSession = await waitForSession();
+    if (!activeSession) {
+        setError('Could not establish a login session. Please try again.');
+        setLoading(false);
+        return;
+    }
+
     router.back();
+    window.location.reload();
     };
 
     return (

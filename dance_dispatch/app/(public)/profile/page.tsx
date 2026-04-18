@@ -26,6 +26,43 @@ export default async function ProfilePage() {
         checkNewUserMissions(user.id),
     ]);
 
+    const partiesAttendedTotal = pastEvents.length;
+    const memberSince = new Date(user.created_at);
+    const now = new Date();
+    const monthsActive = Math.max(
+        1,
+        (now.getFullYear() - memberSince.getFullYear()) * 12 + (now.getMonth() - memberSince.getMonth()) + 1
+    );
+    const averageEventsPerMonth = partiesAttendedTotal / monthsActive;
+
+    const totalMoneySpent = pastEvents.reduce((sum, event) => {
+        const rawPrice = (event as Event).price;
+        const normalizedPrice =
+            typeof rawPrice === 'number'
+                ? rawPrice
+                : Number(String(rawPrice ?? '').replace(/[^0-9.-]/g, ''));
+        if (!Number.isFinite(normalizedPrice) || normalizedPrice < 0) {
+            return sum;
+        }
+        return sum + normalizedPrice;
+    }, 0);
+
+    const venueVisitCounts = pastEvents.reduce<Record<string, number>>((acc, event) => {
+        const venueName = String((event as Event).location ?? '').trim() || 'Unknown Venue';
+        acc[venueName] = (acc[venueName] ?? 0) + 1;
+        return acc;
+    }, {});
+
+    const topVisitedVenues = Object.entries(venueVisitCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+    const moneyFormatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 2,
+    });
+
     return (
         <div className="container mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold mb-8 text-text">My Profile</h1>
@@ -64,6 +101,42 @@ export default async function ProfilePage() {
                     <ExplorerBadgeModal missionStatus={missionStatus} />
                 </section>
             )}
+
+            <section className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4 text-text">Stats</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-default bg-surface p-5">
+                        <p className="text-sm text-muted">Parties Attended</p>
+                        <p className="mt-2 text-3xl font-bold text-text">{partiesAttendedTotal}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-default bg-surface p-5">
+                        <p className="text-sm text-muted">Average Events / Month</p>
+                        <p className="mt-2 text-3xl font-bold text-text">{averageEventsPerMonth.toFixed(1)}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-default bg-surface p-5">
+                        <p className="text-sm text-muted">Total Ticket Spend</p>
+                        <p className="mt-2 text-3xl font-bold text-text">{moneyFormatter.format(totalMoneySpent)}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-default bg-surface p-5">
+                        <p className="text-sm text-muted mb-2">Top 3 Visited Venues</p>
+                        {topVisitedVenues.length > 0 ? (
+                            <ol className="space-y-1 text-sm text-text">
+                                {topVisitedVenues.map(([venueName, visits]) => (
+                                    <li key={venueName} className="flex items-center justify-between gap-2">
+                                        <span className="truncate">{venueName}</span>
+                                        <span className="text-muted">{visits}x</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        ) : (
+                            <p className="text-sm text-muted">No venue attendance yet.</p>
+                        )}
+                    </div>
+                </div>
+            </section>
 
             {/* Followed Users */}
             <section className="mb-8">

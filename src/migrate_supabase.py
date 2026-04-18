@@ -332,6 +332,7 @@ def handle_event_entry(event: Event):
 
     if check_if_event_exists(event):
         return event.id
+    
     venue_id = get_venue_id(event.location, event.address)
     host_ids = get_host_id(event.hosts)
     new_event = {

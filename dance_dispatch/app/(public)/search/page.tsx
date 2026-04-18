@@ -3,13 +3,26 @@ import SearchClient, { SearchCategory } from './SearchClient';
 
 type SearchPageProps = {
     searchParams?: Promise<{
-        q?: string | string[];
         query?: string | string[];
         categories?: string | string[];
     }>;
     searchBar?: string;
     categories?: SearchCategory[];
 };
+
+function firstParam(value?: string | string[]): string | undefined {
+    if (typeof value === 'string') {
+        const normalized = value.trim();
+        return normalized.length > 0 ? normalized : undefined;
+    }
+
+    if (Array.isArray(value)) {
+        const candidate = value.find((item) => typeof item === 'string' && item.trim().length > 0);
+        return candidate?.trim();
+    }
+
+    return undefined;
+}
 
 function isSearchCategory(value: string): value is SearchCategory {
     return value === 'events' || value === 'venues' || value === 'hosts' || value === 'users';
@@ -30,8 +43,7 @@ export default async function SearchPage({ searchParams, searchBar, categories }
     const users = await getUsers();
     const boroughs = await getUniqueBoroughs();
 
-    const rawQuery = resolvedSearchParams?.query ?? resolvedSearchParams?.q;
-    const queryString = typeof rawQuery === 'string' ? rawQuery : searchBar ?? '';
+    const queryString = firstParam(resolvedSearchParams?.query) ?? searchBar ?? '';
     const categoryParams = resolvedSearchParams?.categories;
     const parsedCategories = Array.isArray(categoryParams)
         ? categoryParams.filter((category) => isSearchCategory(category))

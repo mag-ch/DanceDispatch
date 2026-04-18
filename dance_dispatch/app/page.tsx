@@ -29,6 +29,14 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </p>
         <div className="max-w-2xl mx-auto">
           <SearchBar />
+          <div className="mt-4 flex justify-center">
+            <Link
+              href="/party-calendar"
+              className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
+            >
+              Party Calendar
+            </Link>
+          </div>
         </div>
       </section>
 

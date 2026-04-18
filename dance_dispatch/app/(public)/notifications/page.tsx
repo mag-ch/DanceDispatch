@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Bell, CheckCircle2, Circle, Trophy, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 
@@ -44,7 +44,7 @@ function formatRelativeTime(dateValue: string): string {
   return `${diffDays}d ago`;
 }
 
-export default function NotificationsFeedPage() {
+function NotificationsFeedPageContent() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [patchNoteMetadata, setPatchNoteMetadata] = useState<PatchNoteMetadata | null>(null);
@@ -458,5 +458,13 @@ export default function NotificationsFeedPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function NotificationsFeedPage() {
+  return (
+    <Suspense fallback={<section className="mx-auto max-w-3xl rounded-xl border border-default bg-surface p-6 shadow-sm"><p className="text-sm text-muted">Loading notifications...</p></section>}>
+      <NotificationsFeedPageContent />
+    </Suspense>
   );
 }

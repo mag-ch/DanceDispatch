@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, Calendar, Share2, X } from 'lucide-react';
-import { Event, EventReview } from '@/lib/utils';
+import { useAuth } from '@/app/providers/AuthContext';
+import { Event, EventReview, Host } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
@@ -17,11 +18,62 @@ interface EventDetailClientProps {
 }
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false }: EventDetailClientProps) {
+    const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(showReviewModal);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
+    const [isEditingHosts, setIsEditingHosts] = useState(false);
+    const [eventHosts, setEventHosts] = useState(() =>
+        (event.hostNames ?? []).map((name, index) => ({
+            id: event.hostIDs?.[index] ?? `${index}`,
+            name,
+        }))
+    );
+    const [allHosts, setAllHosts] = useState<Host[]>([]);
+    const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
+    const [isLoadingHostOptions, setIsLoadingHostOptions] = useState(false);
+    const [isSavingHosts, setIsSavingHosts] = useState(false);
+    const [hostEditorError, setHostEditorError] = useState<string | null>(null);
 
     const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
+    const canEditHosts = !authLoading && Boolean(session);
+    const availableHosts = allHosts.filter((host) => !eventHosts.some((eventHost) => eventHost.id === String(host.id)));
+
+    useEffect(() => {
+        setEventHosts(
+            (event.hostNames ?? []).map((name, index) => ({
+                id: event.hostIDs?.[index] ?? `${index}`,
+                name,
+            }))
+        );
+    }, [event.hostIDs, event.hostNames]);
+
+    useEffect(() => {
+        if (!isEditingHosts || !session || allHosts.length > 0) {
+            return;
+        }
+
+        const loadHosts = async () => {
+            try {
+                setIsLoadingHostOptions(true);
+                setHostEditorError(null);
+                const response = await fetch('/api/hosts');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data?.error ?? 'Failed to load hosts');
+                }
+
+                setAllHosts(Array.isArray(data) ? data : []);
+            } catch (error) {
+                setHostEditorError(error instanceof Error ? error.message : 'Failed to load hosts');
+            } finally {
+                setIsLoadingHostOptions(false);
+            }
+        };
+
+        loadHosts();
+    }, [allHosts.length, isEditingHosts, session]);
 
     const formatEventDate = (dateStr?: string) => {
         if (!dateStr) return 'Date TBD';
@@ -43,6 +95,69 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const eventStartAt = event.startdate && event.starttime
         ? `${event.startdate}T${event.starttime}`
         : event.startdate ?? null;
+
+    const toggleSelectedHost = (hostId: string) => {
+        setSelectedHostIds((current) => (
+            current.includes(hostId)
+                ? current.filter((id) => id !== hostId)
+                : [...current, hostId]
+        ));
+    };
+
+    const handleHostEditorToggle = async () => {
+        if (!canEditHosts) {
+            return;
+        }
+
+        if (!isEditingHosts) {
+            setHostEditorError(null);
+            setSelectedHostIds([]);
+            setIsEditingHosts(true);
+            return;
+        }
+
+        if (selectedHostIds.length === 0) {
+            setHostEditorError(null);
+            setIsEditingHosts(false);
+            return;
+        }
+
+        try {
+            setIsSavingHosts(true);
+            setHostEditorError(null);
+
+            const response = await fetch(`/api/events/${event.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hostIdsToAdd: selectedHostIds }),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.error ?? 'Failed to update hosts');
+            }
+
+            const selectedHosts = allHosts
+                .filter((host) => selectedHostIds.includes(String(host.id)))
+                .map((host) => ({ id: String(host.id), name: host.name }));
+
+            setEventHosts((current) => {
+                const next = [...current];
+                for (const host of selectedHosts) {
+                    if (!next.some((existingHost) => existingHost.id === host.id)) {
+                        next.push(host);
+                    }
+                }
+                return next;
+            });
+            setSelectedHostIds([]);
+            setIsEditingHosts(false);
+        } catch (error) {
+            setHostEditorError(error instanceof Error ? error.message : 'Failed to update hosts');
+        } finally {
+            setIsSavingHosts(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-bg">
@@ -177,15 +292,58 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         )}
 
                         {/* Hosts */}
-                        {event.hostNames && event.hostNames.length > 0 && 
+                        {(eventHosts.length > 0 || canEditHosts) &&
                         ( <div className="bg-surface rounded-lg p-4 mb-6"> 
-                            <h2 className="text-2xl font-bold mb-4 text-text">Hosted By</h2>
-                        {event.hostNames.map((host,index) => (
-                           
-                                <a key={host} href={`/hosts/${encodeURIComponent(event.hostIDs ? event.hostIDs[index] : '')}`} className="text-sm font-bold  px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
-                                    {host.trim().replace(/[\[\]']/g, '')}
+                            <div className="mb-4 flex items-center justify-between gap-4">
+                                <h2 className="text-2xl font-bold text-text">Hosted By</h2>
+                                {canEditHosts && (
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-text transition hover-bg-accent-soft disabled:opacity-60"
+                                        onClick={handleHostEditorToggle}
+                                        disabled={isSavingHosts}
+                                    >
+                                        {isEditingHosts ? (isSavingHosts ? 'Saving...' : 'Done') : 'Edit Hosts'}
+                                    </button>
+                                )}
+                            </div>
+                            {eventHosts.length > 0 ? eventHosts.map((host) => (
+                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} className="text-sm font-bold px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
+                                    {host.name.trim().replace(/[\[\]']/g, '')}
                                 </a>
-                        ))}
+                            )) : (
+                                <p className="text-sm text-muted">No hosts listed yet.</p>
+                            )}
+                            {isEditingHosts && (
+                                <div className="mt-4 rounded-lg border border-default p-4">
+                                    <p className="mb-3 text-sm text-muted">Choose additional hosts to attach to this event.</p>
+                                    {isLoadingHostOptions ? (
+                                        <p className="text-sm text-muted">Loading hosts...</p>
+                                    ) : availableHosts.length > 0 ? (
+                                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
+                                            {availableHosts.map((host) => {
+                                                const hostId = String(host.id);
+                                                const isSelected = selectedHostIds.includes(hostId);
+
+                                                return (
+                                                    <label key={hostId} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 hover-bg-accent-soft">
+                                                        <span className="text-sm font-medium text-text">{host.name}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleSelectedHost(hostId)}
+                                                            className="h-4 w-4"
+                                                        />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted">All hosts are already attached to this event.</p>
+                                    )}
+                                    {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
+                                </div>
+                            )}
                         </div>)}  
 
                         {/* Venue */}

@@ -976,6 +976,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
       const dedupe = new Set<string>();
 
       const patchId = String((row as any).id ?? '');
+      const href = String((row as any).href ?? `/notifications?patchNotes=${patchId}`);
       if (Number.isNaN(patchId)) continue;
 
 
@@ -990,7 +991,7 @@ export async function getUserNotifications(userId: string, limit = 30): Promise<
         title: `Patch notes #${patchId}`,
         description: row.description,
         createdAt: row.created_at,
-        href: `/notifications?patchNotes=${patchId}`,
+        href: href,
       });
     }
   }
@@ -1076,6 +1077,47 @@ export async function updateEvent(eventId: string, updatedFields: Partial<Event>
   return eventId;
 }
 
+export async function addHostsToEvent(eventId: string, hostIds: string[]): Promise<string[]> {
+  const numericEventId = Number(eventId);
+  if (Number.isNaN(numericEventId)) {
+    throw new Error('Invalid event id');
+  }
+
+  const normalizedHostIds = Array.from(
+    new Set(
+      hostIds
+        .map((hostId) => Number(hostId))
+        .filter((hostId) => !Number.isNaN(hostId))
+    )
+  );
+
+  if (normalizedHostIds.length === 0) {
+    throw new Error('Invalid host ids');
+  }
+
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from('event_hosts')
+    .upsert(
+      normalizedHostIds.map((hostId) => ({
+        event_id: numericEventId,
+        host_id: hostId,
+      })),
+      {
+        onConflict: 'event_id,host_id',
+        ignoreDuplicates: true,
+      }
+    );
+
+  if (error) {
+    console.error('Error updating event hosts:', error);
+    throw error;
+  }
+
+  revalidateCatalogCache();
+  return normalizedHostIds.map(String);
+}
+
 export async function getUsernameFromId(userId: string | number): Promise<string | null> {
   try {
     const supabase = await createServerClient();
@@ -1103,9 +1145,9 @@ export async function getPatchNoteFromId(id: string | number): Promise<any | nul
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('patch_notes')
-      .select('description, created_at')
+      .select('description, created_at, href')
       .eq('id', id)
-      .single<{ description: string; created_at: string }>();
+      .single<{ description: string; created_at: string; href: string }>();
 
     if (error) {
       console.error('Error fetching patch note:', error.message);
@@ -1216,10 +1258,6 @@ export async function checkNewUserMissions(userId: string): Promise<NewUserMissi
       .eq('user_id', userId),
   ]);
   
-  console.log('New user missions status:', {
-    userId: userId,
-    followedUserCount: followedUserRes.count,
-  });
 
   const savedEvent = (savedEventRes.count ?? 0) > 0;
   const followedHost = (followedHostRes.count ?? 0) > 0;

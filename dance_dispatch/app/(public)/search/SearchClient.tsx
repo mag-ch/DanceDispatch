@@ -4,8 +4,14 @@ import { Search } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import { Event } from '@/lib/utils';
 import Select from 'react-select';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export type SearchCategory = 'events' | 'venues' | 'hosts' | 'users';
+const ALL_CATEGORIES: SearchCategory[] = ['events', 'venues', 'hosts', 'users'];
+
+function isSearchCategory(value: string): value is SearchCategory {
+    return value === 'events' || value === 'venues' || value === 'hosts' || value === 'users';
+}
 
 interface SearchClientProps {
     initialEvents: any[];
@@ -26,6 +32,9 @@ export default function SearchClient({
     categories,
     searchBar
 }: SearchClientProps) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
     
     const formatEventDate = (dateStr?: string) => {
@@ -50,17 +59,78 @@ export default function SearchClient({
     const safeUsers = Array.isArray(initialUsers) ? initialUsers : [];
     const safeBoroughs = Array.isArray(initialBoroughs) ? initialBoroughs : [];
 
-    const [searchQuery, setSearchQuery] = useState(searchBar ?? "");
-    const [pastEventsBool, setPastEventsBool] = useState(false);
-    const [activeCategories, setActiveCategories] = useState<SearchCategory[]>(categories);
-    const [dateFilter, setDateFilter] = useState('');
-    const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-    const [boroughs, setBoroughs] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState(() => searchParams?.get('query') ?? searchBar ?? '');
+    const [pastEventsBool, setPastEventsBool] = useState(() => searchParams?.get('includePast') === 'true');
+    const [activeCategories, setActiveCategories] = useState<SearchCategory[]>(() => {
+        const fromUrl = searchParams?.getAll('categories') ?? [];
+        const valid = fromUrl.filter((category) => isSearchCategory(category));
+        return valid.length > 0 ? valid : categories;
+    });
+    const [dateFilter, setDateFilter] = useState(() => searchParams?.get('date') ?? '');
+    const [priceRange, setPriceRange] = useState(() => ({
+        min: searchParams?.get('minPrice') ?? '',
+        max: searchParams?.get('maxPrice') ?? '',
+    }));
+    const [boroughs, setBoroughs] = useState<any[]>(() => {
+        const fromUrl = searchParams?.getAll('boroughs') ?? [];
+        return fromUrl.map((borough) => ({ value: borough, label: borough }));
+    });
 
     const boroughOptions = useMemo(() => 
         safeBoroughs.map(borough => ({ value: borough, label: borough })),
         [safeBoroughs]
     );
+
+    useEffect(() => {
+        const nextParams = new URLSearchParams();
+
+        const query = searchQuery.trim();
+        if (query) {
+            nextParams.set('query', query);
+        }
+
+        const hasAllCategoriesSelected =
+            activeCategories.length === ALL_CATEGORIES.length &&
+            ALL_CATEGORIES.every((category) => activeCategories.includes(category));
+
+        if (!hasAllCategoriesSelected) {
+            for (const category of activeCategories) {
+                nextParams.append('categories', category);
+            }
+        }
+
+        if (pastEventsBool) {
+            nextParams.set('includePast', 'true');
+        }
+
+        if (dateFilter) {
+            nextParams.set('date', dateFilter);
+        }
+
+        if (priceRange.min !== '') {
+            nextParams.set('minPrice', priceRange.min);
+        }
+
+        if (priceRange.max !== '') {
+            nextParams.set('maxPrice', priceRange.max);
+        }
+
+        for (const borough of boroughs) {
+            const value = String(borough?.value ?? '').trim();
+            if (value) {
+                nextParams.append('boroughs', value);
+            }
+        }
+
+        const currentQuery = searchParams?.toString() ?? '';
+        const nextQuery = nextParams.toString();
+        if (nextQuery === currentQuery) {
+            return;
+        }
+
+        const nextHref = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+        router.replace(nextHref, { scroll: false });
+    }, [activeCategories, boroughs, dateFilter, pathname, pastEventsBool, priceRange.max, priceRange.min, router, searchParams, searchQuery]);
     // useEffect(() => {
     //     const fetchBoroughs = async () => {
     //         const uniqueBoroughs = await getUniqueBoroughs();
@@ -163,7 +233,7 @@ export default function SearchClient({
                         )
                     )}
                     <button
-                        onClick={() => setActiveCategories([])}
+                        onClick={() => setActiveCategories( ['events', 'venues', 'hosts', 'users'])}
                         className="flex items-center px-3 py-2 rounded-full bg-gray-200 text-text hover:bg-gray-300 ml-2"
                         title="Clear all"
                         type="button"
@@ -190,6 +260,7 @@ export default function SearchClient({
                                         <label className="flex items-center gap-2 text-sm font-medium text-text">
                                             <input
                                                 type="checkbox"
+                                                checked={pastEventsBool}
                                                 onChange={(e) => {
                                                     setPastEventsBool(e.target.checked);
                                                 }}
@@ -253,6 +324,7 @@ export default function SearchClient({
                                         <Select
                                             isMulti
                                             options={boroughOptions}
+                                            value={boroughs}
                                             onChange={(e) => setBoroughs(e ? [...e] : [])}
                                             className="bg-surface text-text text-sm"
                                             styles={{

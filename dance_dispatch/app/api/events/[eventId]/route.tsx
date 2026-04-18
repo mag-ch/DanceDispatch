@@ -1,5 +1,5 @@
-import { getEventById, updateEvent } from '@/lib/utils_supabase_server';
-import { Condiment } from 'next/font/google';
+import { requireAuth } from '@/lib/auth-helpers';
+import { addHostsToEvent, getEventById, updateEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
     request: Request,
@@ -35,7 +35,17 @@ export async function PATCH(
     try {
         const { eventId } = await params;
         const body = await request.json();
-        console.log('Received PATCH request for event:', eventId, 'with body:', body);
+
+        if (Array.isArray(body?.hostIdsToAdd)) {
+            await requireAuth();
+            const addedHostIds = await addHostsToEvent(eventId, body.hostIdsToAdd);
+
+            return new Response(JSON.stringify({ success: true, hostIds: addedHostIds }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         const updatedEvent = await updateEvent(eventId, body);
         
         if (!updatedEvent) {
@@ -50,8 +60,16 @@ export async function PATCH(
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
-        return new Response(JSON.stringify({ error: 'Failed to update event' }), {
-            status: 500,
+        const message = error instanceof Error ? error.message : 'Failed to update event';
+        const normalizedMessage = message.toLowerCase();
+        const status = normalizedMessage.includes('unauthorized')
+            ? 401
+            : normalizedMessage.includes('invalid')
+                ? 400
+                : 500;
+
+        return new Response(JSON.stringify({ error: message }), {
+            status,
             headers: { 'Content-Type': 'application/json' },
         });
     }

@@ -155,6 +155,12 @@ def main():
     for event in events:
         if (check_if_event_exists(Event(id=event["id"]))):
             continue
+        cutoff = datetime.date.today() - datetime.timedelta(days=30)
+        date_str = event["start"].get("dateTime", event["start"].get("date"))
+        event_date = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
+        if event_date <= cutoff:
+            print(f"Skipping old event: {event['summary']} (start date {event_date})")
+            return event["id"]
         if (any(blacklisted_word in event.get('summary', '').lower() for blacklisted_word in BLACKLISTED_EVENTS)):
             continue
         process_event(event)

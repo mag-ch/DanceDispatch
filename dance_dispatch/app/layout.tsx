@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "../app/globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthContextProvider } from "./providers/AuthContext";
 import { Header } from "./components/Header";
@@ -32,7 +33,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthContextProvider>
-            <Header />
+            <Suspense fallback={null}>
+              <Header />
+            </Suspense>
             {children}
           </AuthContextProvider>
         </ThemeProvider>

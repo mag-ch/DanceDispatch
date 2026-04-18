@@ -16,7 +16,7 @@ export default function SearchBar() {
       return;
     }
 
-    const params = new URLSearchParams({ q: trimmedQuery });
+    const params = new URLSearchParams({ query: trimmedQuery });
     router.push(`/search?${params.toString()}`);
   };
 
@@ -24,7 +24,7 @@ export default function SearchBar() {
     <form onSubmit={handleSubmit} className="flex gap-2">
       <input
         type="text"
-        name="q"
+        name="query"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search events, organizers, or hosts..."

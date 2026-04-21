@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth-helpers';
-import { addHostsToEvent, getEventById, updateEvent } from '@/lib/utils_supabase_server';
+import { addHostsToEvent, getEventById, setHostsForEvent, updateEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
     request: Request,
@@ -35,6 +35,16 @@ export async function PATCH(
     try {
         const { eventId } = await params;
         const body = await request.json();
+        console.log('Received PATCH request for eventId:', eventId, 'with body:', body?.hostIds);
+        if (Array.isArray(body?.hostIds)) {
+            await requireAuth();
+            const nextHostIds = await setHostsForEvent(eventId, body.hostIds);
+
+            return new Response(JSON.stringify({ success: true, hostIds: nextHostIds }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
         if (Array.isArray(body?.hostIdsToAdd)) {
             await requireAuth();

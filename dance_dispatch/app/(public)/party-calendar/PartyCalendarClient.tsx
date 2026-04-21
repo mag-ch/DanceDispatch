@@ -14,7 +14,11 @@ type CalendarEvent = Event & {
   startAt: Date;
 };
 
-const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function weekdayIndexMondayFirst(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
 
 function parseEventStart(event: Event): Date {
   return new Date(`${event.startdate}T${event.starttime || "00:00"}`);
@@ -26,7 +30,7 @@ function startOfDay(date: Date): Date {
 
 function startOfWeek(date: Date): Date {
   const dayStart = startOfDay(date);
-  const dayOfWeek = dayStart.getDay();
+  const dayOfWeek = weekdayIndexMondayFirst(dayStart);
   dayStart.setDate(dayStart.getDate() - dayOfWeek);
   return dayStart;
 }
@@ -189,10 +193,10 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
     : "No parties match the selected date filters.";
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-default bg-surface p-4 md:p-5 shadow-sm">
+    <div className="space-y-4 md:space-y-6">
+      <div className="rounded-xl border border-default bg-surface p-3 shadow-sm md:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-3 gap-2 lg:flex lg:w-auto lg:flex-wrap lg:items-center">
             <button
               type="button"
               onClick={() => setViewMode("month")}
@@ -222,7 +226,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-3 gap-2 lg:flex lg:w-auto lg:flex-wrap lg:items-center">
             <button
               type="button"
               onClick={() => handlePeriodShift(-1)}
@@ -248,16 +252,16 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
         </div>
 
         <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <p className="text-lg font-semibold">{titleForRange(viewMode, currentDate)}</p>
+          <p className="text-base font-semibold md:text-lg">{titleForRange(viewMode, currentDate)}</p>
 
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:flex-wrap md:items-end md:gap-3">
             <label className="flex flex-col text-sm">
               Start Date
               <input
                 type="date"
                 value={startFilter}
                 onChange={(event) => setStartFilter(event.target.value)}
-                className="mt-1 rounded-md border border-default bg-surface px-3 py-2"
+                className="mt-1 w-full rounded-md border border-default bg-surface px-3 py-2"
               />
             </label>
             <label className="flex flex-col text-sm">
@@ -266,7 +270,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
                 type="date"
                 value={endFilter}
                 onChange={(event) => setEndFilter(event.target.value)}
-                className="mt-1 rounded-md border border-default bg-surface px-3 py-2"
+                className="mt-1 w-full rounded-md border border-default bg-surface px-3 py-2"
               />
             </label>
             <button
@@ -275,7 +279,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
                 setStartFilter("");
                 setEndFilter("");
               }}
-              className="rounded-md border border-default px-3 py-2 text-sm font-medium hover-bg-accent-soft"
+              className="rounded-md border border-default px-3 py-2 text-sm font-medium hover-bg-accent-soft sm:col-span-2 md:col-span-1"
             >
               Clear Filters
             </button>
@@ -284,7 +288,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
       </div>
 
       {viewMode !== "day" && (
-        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-muted">
+        <div className="hidden gap-2 text-center text-xs font-semibold uppercase tracking-wide text-muted lg:grid lg:grid-cols-7">
           {weekdayLabels.map((day) => (
             <div key={day} className="rounded-md bg-surface p-2 border border-default">
               {day}
@@ -293,7 +297,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
         </div>
       )}
 
-      <div className={viewMode === "month" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-7"}>
+      <div className={viewMode === "month" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7"}>
         {dayCells.map((day) => {
           const key = formatYmd(day);
           const dayEvents = eventsByDate.get(key) ?? [];
@@ -302,33 +306,49 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
           return (
             <div
               key={key}
-              className={`min-h-[150px] rounded-lg border p-2 ${
+              className={`min-h-[120px] rounded-lg border p-2 sm:min-h-[140px] ${
                 sameDay(day, new Date()) ? "border-accent" : "border-default"
               } ${viewMode === "month" && !inCurrentMonth ? "opacity-45" : ""} bg-surface`}
             >
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold">{day.getDate()}</p>
+                <p className="text-sm font-semibold">
+                  {viewMode !== "day" && (
+                    <span className="mr-1 text-xs text-muted lg:hidden">{weekdayLabels[weekdayIndexMondayFirst(day)]}</span>
+                  )}
+                  {day.getDate()}
+                </p>
                 <p className="text-xs text-muted">{new Intl.DateTimeFormat("en-US", { month: "short" }).format(day)}</p>
               </div>
 
               <div className="space-y-2">
                 {dayEvents.map((event) => {
                   const image = event.imageurl || "/images/default_event.jpg";
+                  const showExpandedPreview = viewMode !== "month";
                   return (
                     <Link
                       key={event.id}
                       href={`/events/${event.id}`}
-                      className="block rounded-md border border-default p-1.5 hover:border-accent transition"
+                      className={`block rounded-md border border-default hover:border-accent transition ${
+                        showExpandedPreview ? "p-2" : "p-1.5"
+                      }`}
                     >
-                      <div className="flex gap-2">
+                      <div className={`flex ${showExpandedPreview ? "items-start gap-3" : "gap-2"}`}>
                         <img
                           src={image}
                           alt={event.title}
-                          className="h-12 w-12 rounded-sm object-cover"
+                          className={showExpandedPreview ? "h-16 w-16 rounded object-cover" : "h-12 w-12 rounded-sm object-cover"}
                         />
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold">{event.title}</p>
-                          <p className="text-[11px] text-muted">{humanTime(event.startAt)}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className={`${showExpandedPreview ? "text-sm" : "text-xs"} truncate font-semibold`}>{event.title}</p>
+                          <p className={`${showExpandedPreview ? "text-xs" : "text-[11px]"} text-muted`}>{humanTime(event.startAt)}</p>
+                          {showExpandedPreview && (
+                            <>
+                              <p className="truncate text-xs text-muted">{event.location}</p>
+                              {event.description && (
+                                <p className="mt-1 line-clamp-2 text-xs text-muted">{event.description}</p>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </Link>

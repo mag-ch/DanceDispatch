@@ -49,9 +49,23 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
     const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
     const canEditHosts = !authLoading && Boolean(session);
-    const availableHosts = allHosts.filter((host) => !eventHosts.some((eventHost) => eventHost.id === String(host.id)));
     const normalizedHostSearchQuery = hostSearchQuery.trim().toLowerCase();
-    const filteredAvailableHosts = availableHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery));
+    const filteredHosts = allHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery));
+    const selectedHostTokens = selectedHostIds
+        .map((hostId) => {
+            const selectedHost = allHosts.find((host) => String(host.id) === hostId);
+            if (selectedHost) {
+                return { id: String(selectedHost.id), name: selectedHost.name };
+            }
+
+            const fallbackHost = eventHosts.find((host) => host.id === hostId);
+            if (fallbackHost) {
+                return fallbackHost;
+            }
+
+            return null;
+        })
+        .filter((host): host is { id: string; name: string } => Boolean(host));
 
     useEffect(() => {
         setEventHosts(
@@ -125,16 +139,9 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
         if (!isEditingHosts) {
             setHostEditorError(null);
-            setSelectedHostIds([]);
+            setSelectedHostIds(eventHosts.map((host) => host.id));
             setHostSearchQuery('');
             setIsEditingHosts(true);
-            return;
-        }
-
-        if (selectedHostIds.length === 0) {
-            setHostEditorError(null);
-            setHostSearchQuery('');
-            setIsEditingHosts(false);
             return;
         }
 
@@ -142,10 +149,21 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             setIsSavingHosts(true);
             setHostEditorError(null);
 
+            const currentHostIds = eventHosts.map((host) => host.id);
+            const hasChangedSelection =
+                selectedHostIds.length !== currentHostIds.length
+                || selectedHostIds.some((hostId) => !currentHostIds.includes(hostId));
+
+            if (!hasChangedSelection) {
+                setHostSearchQuery('');
+                setIsEditingHosts(false);
+                return;
+            }
+
             const response = await fetch(`/api/events/${event.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hostIdsToAdd: selectedHostIds }),
+                body: JSON.stringify({ hostIds: selectedHostIds }),
             });
             const data = await response.json().catch(() => null);
 
@@ -153,19 +171,19 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 throw new Error(data?.error ?? 'Failed to update hosts');
             }
 
-            const selectedHosts = allHosts
-                .filter((host) => selectedHostIds.includes(String(host.id)))
-                .map((host) => ({ id: String(host.id), name: host.name }));
-
-            setEventHosts((current) => {
-                const next = [...current];
-                for (const host of selectedHosts) {
-                    if (!next.some((existingHost) => existingHost.id === host.id)) {
-                        next.push(host);
+            const nextHosts = selectedHostIds
+                .map((hostId) => {
+                    const selectedHost = allHosts.find((host) => String(host.id) === hostId);
+                    if (selectedHost) {
+                        return { id: String(selectedHost.id), name: selectedHost.name };
                     }
-                }
-                return next;
-            });
+
+                    const existingHost = eventHosts.find((host) => host.id === hostId);
+                    return existingHost ?? null;
+                })
+                .filter((host): host is { id: string; name: string } => Boolean(host));
+
+            setEventHosts(nextHosts);
             setSelectedHostIds([]);
             setHostSearchQuery('');
             setIsEditingHosts(false);
@@ -324,28 +342,39 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     </button>
                                 )}
                             </div>
-                            {eventHosts.length > 0 ? eventHosts.map((host) => (
-                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} className="text-sm font-bold px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
-                                    {host.name.trim().replace(/[\[\]']/g, '')}
-                                </a>
-                            )) : (
-                                <p className="text-sm text-muted">No hosts listed yet.</p>
-                            )}
-                            {isEditingHosts && (
-                                <div className="mt-4 rounded-lg border border-default p-4">
+                            {isEditingHosts ? (
+                                <div className="rounded-lg border border-default p-4">
                                     <p className="mb-3 text-sm text-muted">Choose additional hosts to attach to this event.</p>
-                                    <input
-                                        type="text"
-                                        value={hostSearchQuery}
-                                        onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
-                                        placeholder="Search hosts by name"
-                                        className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2 text-sm text-text"
-                                    />
-                                    {isLoadingHostOptions ? (
+                                    <div className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2">
+                                        <div className="mb-2 flex flex-wrap gap-2">
+                                            {selectedHostTokens.map((host) => (
+                                                <button
+                                                    key={host.id}
+                                                    type="button"
+                                                    onClick={() => toggleSelectedHost(host.id)}
+                                                    className="rounded bg-accent px-2 py-1 text-xs font-semibold text-text transition hover-bg-accent-soft"
+                                                >
+                                                    {host.name} x
+                                                </button>
+                                            ))}
+                                            {selectedHostTokens.length === 0 && (
+                                                <span className="text-xs text-muted">No hosts selected yet.</span>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={hostSearchQuery}
+                                            onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
+                                            placeholder="Search hosts by name"
+                                            className="w-full bg-transparent text-sm text-text outline-none"
+                                        />
+                                    </div>
+                                    {isLoadingHostOptions && (
                                         <p className="text-sm text-muted">Loading hosts...</p>
-                                    ) : filteredAvailableHosts.length > 0 ? (
+                                    )}
+                                    {filteredHosts.length > 0 && (
                                         <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
-                                            {filteredAvailableHosts.map((host) => {
+                                            {filteredHosts.map((host) => {
                                                 const hostId = String(host.id);
                                                 const isSelected = selectedHostIds.includes(hostId);
 
@@ -362,13 +391,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                                 );
                                             })}
                                         </div>
-                                    ) : normalizedHostSearchQuery ? (
+                                    )}
+                                    {normalizedHostSearchQuery && filteredHosts.length === 0 && (
                                         <p className="text-sm text-muted">No hosts match your search.</p>
-                                    ) : (
-                                        <p className="text-sm text-muted">All hosts are already attached to this event.</p>
                                     )}
                                     {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
                                 </div>
+                            ) : eventHosts.length > 0 ? eventHosts.map((host) => (
+                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} className="text-sm font-bold px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
+                                    {host.name.trim().replace(/[\[\]']/g, '')}
+                                </a>
+                            )) : (
+                                <p className="text-sm text-muted">No hosts listed yet.</p>
                             )}
                         </div>)}  
 

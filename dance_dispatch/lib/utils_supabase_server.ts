@@ -1242,6 +1242,87 @@ export async function addHostsToEvent(eventId: string, hostIds: string[]): Promi
   return normalizedHostIds.map(String);
 }
 
+export async function setHostsForEvent(eventId: string, hostIds: string[]): Promise<string[]> {
+  const numericEventId = Number(eventId);
+  if (Number.isNaN(numericEventId)) {
+    throw new Error('Invalid event id');
+  }
+
+  const normalizedHostIds = Array.from(
+    new Set(
+      hostIds
+        .map((hostId) => Number(hostId))
+        .filter((hostId) => !Number.isNaN(hostId))
+        .map((hostId) => String(hostId))
+    )
+  );
+
+  const supabase = await createServerClient();
+  const { data: currentRows, error: currentError } = await supabase
+    .from('event_hosts')
+    .select('host_id')
+    .eq('event_id', numericEventId);
+
+  if (currentError) {
+    console.error('Error loading current event hosts:', currentError);
+    throw currentError;
+  }
+
+  const currentHostIdsRaw = (currentRows ?? [])
+    .map((row: { host_id: unknown }) => row.host_id)
+    .filter((hostId) => hostId !== null && hostId !== undefined);
+  const currentHostIds = currentHostIdsRaw.map((hostId) => String(hostId));
+
+  const toAdd = normalizedHostIds.filter((hostId) => !currentHostIds.includes(hostId));
+  const toRemoveRaw = currentHostIdsRaw.filter((hostId) => !normalizedHostIds.includes(String(hostId)));
+
+  if (toAdd.length > 0) {
+    const { error: addError } = await supabase
+      .from('event_hosts')
+      .upsert(
+        toAdd.map((hostId) => ({
+          event_id: numericEventId,
+          host_id: Number(hostId),
+        })),
+        {
+          onConflict: 'event_id,host_id',
+          ignoreDuplicates: true,
+        }
+      );
+
+    if (addError) {
+      console.error('Error adding event hosts:', addError);
+      throw addError;
+    }
+  }
+
+  if (toRemoveRaw.length > 0) {
+    for (const hostId of toRemoveRaw) {
+      const { data: removedRows, error: removeError } = await supabase
+        .from('event_hosts')
+        .delete()
+        .eq('event_id', numericEventId)
+        .eq('host_id', hostId)
+        .select('host_id');
+
+      if (removeError) {
+        console.error('Error removing event host:', { numericEventId, hostId, removeError });
+        throw removeError;
+      }
+
+      if (!removedRows || removedRows.length === 0) {
+        console.warn('Host delete affected 0 rows; possible RLS or type mismatch', {
+          eventId: numericEventId,
+          hostId,
+        });
+      }
+    }
+  }
+
+  revalidateCatalogCache();
+  return normalizedHostIds;
+}
+
 export async function getUsernameFromId(userId: string | number): Promise<string | null> {
   try {
     const supabase = await createServerClient();

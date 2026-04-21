@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
+import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 
 interface SaveEventButtonProps {
     entity: string;
@@ -101,27 +102,11 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
                     className="text-red-500 group-hover:fill-current group-hover:opacity-50 transition-all"
                 />
             </button>
-            {showPopup && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-                    <div className="bg-white dark:bg-surface rounded-lg p-6 shadow-lg flex flex-col items-center">
-                        <p className="mb-4 text-center text-text">Please log in or sign up to save events.</p>
-                        <button
-                            onClick={() => {
-                                window.location.href = '/auth/login';
-                            }}
-                            className="btn-highlighted bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-2"
-                        >
-                            Go to Login
-                        </button>
-                        <button
-                            onClick={() => setShowPopup(false)}
-                            className="text-muted hover:underline"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
+            <AuthRequiredModal
+                isOpen={showPopup}
+                onClose={() => setShowPopup(false)}
+                message="Please log in or sign up to save events."
+            />
         </>
     );
 };
@@ -214,27 +199,11 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
             >
                 {isSaved ? 'Unfollow' : 'Follow'}
             </button>
-            {showPopup && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-                    <div className="bg-white dark:bg-surface rounded-lg p-6 shadow-lg flex flex-col items-center">
-                        <p className="mb-4 text-center text-text">Please log in or sign up to save events.</p>
-                        <button
-                            onClick={() => {
-                                window.location.href = '/auth/login';
-                            }}
-                            className="btn-highlighted bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-2"
-                        >
-                            Go to Login
-                        </button>
-                        <button
-                            onClick={() => setShowPopup(false)}
-                            className="text-muted hover:underline"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
+            <AuthRequiredModal
+                isOpen={showPopup}
+                onClose={() => setShowPopup(false)}
+                message="Please log in or sign up to follow users."
+            />
         </>
     );
 };

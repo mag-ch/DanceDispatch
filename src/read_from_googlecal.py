@@ -1,6 +1,7 @@
 import datetime
 import os.path
 import hashlib
+import re
 import signal
 import sys
 from flask import Flask, request, jsonify
@@ -98,6 +99,24 @@ def get_synced_events(synctoken = None):
     except HttpError as error:
         print(f"An error occurred: {error}")    
 
+
+
+def extract_artists(title: str) -> str:
+    # If text is inside parentheses, extract that part
+    match = re.search(r'\((.*?)\)', title)
+    if match:
+        artists_part = match.group(1)
+    else:
+        artists_part = title
+
+    # Split by "/" and clean up whitespace
+    artists = [artist.strip() for artist in artists_part.split('/')]
+
+    # Join with commas
+    return ",".join(artists)
+
+
+
 def process_event(event):
     try:
         venue_name, venue_address = event['location'].split(", ", 1)
@@ -107,6 +126,8 @@ def process_event(event):
         venue_name, venue_address = None, None
     start = datetime.datetime.fromisoformat(event["start"].get("dateTime", event["start"].get("date")))
     end = datetime.datetime.fromisoformat(event["end"].get("dateTime", event["end"].get("date")))
+    hosts = extract_artists(event["summary"])
+
     # split hosts from title
     e = Event(
         id = event["id"],
@@ -118,7 +139,7 @@ def process_event(event):
         description=event.get("description", ""),
         location= venue_name,
         address= venue_address,
-        hosts=None,
+        hosts=hosts,
         photo_url=None,
         price=None,
         external_links=None,

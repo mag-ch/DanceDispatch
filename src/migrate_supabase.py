@@ -2,6 +2,7 @@ import datetime
 import os
 import csv
 from pathlib import Path
+import re
 from typing import Any
 import numpy
 import supabase
@@ -328,6 +329,7 @@ def get_host_id(hosts):
                 host_ids.append(response.data[0]["id"])
     return host_ids
 
+
 def handle_event_entry(event: Event):
 
     if check_if_event_exists(event):
@@ -350,7 +352,7 @@ def handle_event_entry(event: Event):
         'description': event.description,
         'flyer_url': event.photo_url,
         'price': event.price,
-        'external_url': event.external_links.split(",") if event.external_links else []   
+        'external_url': event.external_links 
     }
     response = _execute_with_retry(lambda ev=new_event: _client().table("Events").insert(ev).execute())
     new_id = response.data[0]["id"]

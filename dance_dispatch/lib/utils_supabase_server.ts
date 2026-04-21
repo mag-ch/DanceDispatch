@@ -1077,6 +1077,130 @@ export async function updateEvent(eventId: string, updatedFields: Partial<Event>
   return eventId;
 }
 
+export interface SubmitEventInput {
+  title: string;
+  startdate: string;   // YYYY-MM-DD
+  starttime: string;   // HH:MM:SS
+  endtime: string;     // HH:MM:SS
+  locationid?: string;
+  newVenueName?: string;
+  newVenueAddress?: string;
+  description?: string;
+  price?: number;
+  imageurl?: string;
+  externallink?: string;
+}
+
+export async function submitEvent(input: SubmitEventInput): Promise<{ id: string } | { duplicate: true; id: string }> {
+  const supabase = await createServerClient();
+  let resolvedLocationId = input.locationid;
+
+  const normalizeTime = (time: string) => (time.length === 5 ? `${time}:00` : time);
+  const startTime = normalizeTime(input.starttime);
+  const endTime = normalizeTime(input.endtime);
+
+  const toSeconds = (time: string) => {
+    const [hours, minutes, seconds] = time.split(':').map((part) => Number(part));
+    return (hours * 3600) + (minutes * 60) + (seconds || 0);
+  };
+
+  let endDate = input.startdate;
+  if (toSeconds(endTime) < toSeconds(startTime)) {
+    const [year, month, day] = input.startdate.split('-').map((part) => Number(part));
+    const nextDateUtc = new Date(Date.UTC(year, month - 1, day));
+    nextDateUtc.setUTCDate(nextDateUtc.getUTCDate() + 1);
+
+    const nextYear = nextDateUtc.getUTCFullYear();
+    const nextMonth = String(nextDateUtc.getUTCMonth() + 1).padStart(2, '0');
+    const nextDay = String(nextDateUtc.getUTCDate()).padStart(2, '0');
+    endDate = `${nextYear}-${nextMonth}-${nextDay}`;
+  }
+
+  const trimmedVenueName = input.newVenueName?.trim();
+  const trimmedVenueAddress = input.newVenueAddress?.trim();
+
+  if (trimmedVenueName || trimmedVenueAddress) {
+    if (!trimmedVenueName || !trimmedVenueAddress) {
+      throw new Error('Both new venue name and address are required');
+    }
+
+    const { data: existingVenue, error: existingVenueError } = await supabase
+      .from('Venues')
+      .select('id')
+      .ilike('name', trimmedVenueName)
+      .ilike('address', trimmedVenueAddress)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingVenueError) {
+      console.error('Error checking for duplicate venue:', existingVenueError);
+      throw new Error('Failed to check for duplicate venue');
+    }
+
+    if (existingVenue) {
+      resolvedLocationId = String(existingVenue.id);
+    } else {
+      const { data: createdVenue, error: createVenueError } = await supabase
+        .from('Venues')
+        .insert({
+          name: trimmedVenueName,
+          address: trimmedVenueAddress,
+          type: 'Venue',
+          bio: '',
+          image_url: '',
+          external_url: '',
+        })
+        .select('id')
+        .single();
+
+      if (createVenueError) {
+        console.error('Error creating venue:', createVenueError);
+        throw new Error('Failed to create venue');
+      }
+
+      resolvedLocationId = String(createdVenue.id);
+    }
+  }
+
+  // Duplicate check: same title + same start date (case-insensitive)
+  const { data: existing, error: checkError } = await supabase
+    .from('Events')
+    .select('id')
+    .ilike('title', input.title.trim())
+    .eq('start', input.startdate)
+    .limit(1)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('Error checking for duplicate event:', checkError);
+    throw new Error('Failed to check for duplicate events');
+  }
+
+  if (existing) {
+    return { duplicate: true, id: String(existing.id) };
+  }
+
+  const row: Record<string, unknown> = {
+    title: input.title.trim(),
+    start: input.startdate + 'T' + startTime,
+    end: endDate + 'T' + endTime,
+  };
+  if (resolvedLocationId !== undefined) row.location = Number(resolvedLocationId);
+  if (input.description !== undefined) row.description = input.description;
+  if (input.price !== undefined) row.price = input.price;
+  if (input.imageurl !== undefined) row.flyer_url = input.imageurl;
+  if (input.externallink !== undefined) row.external_url = input.externallink;
+
+  const { data, error } = await supabase.from('Events').insert(row).select('id').single();
+  if (error) {
+    console.error('Error inserting event:', error);
+    throw new Error('Failed to insert event');
+  }
+
+  revalidateCatalogCache();
+  return { id: String(data.id) };
+}
+
 export async function addHostsToEvent(eventId: string, hostIds: string[]): Promise<string[]> {
   const numericEventId = Number(eventId);
   if (Number.isNaN(numericEventId)) {

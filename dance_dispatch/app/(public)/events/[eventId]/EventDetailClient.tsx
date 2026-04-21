@@ -8,6 +8,7 @@ import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
 import { ShareModal } from '@/app/components/ShareModal';
+import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 
 interface EventDetailClientProps {
     event: Event;
@@ -19,7 +20,7 @@ interface EventDetailClientProps {
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState(showReviewModal);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [isEditingHosts, setIsEditingHosts] = useState(false);
@@ -31,13 +32,26 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     );
     const [allHosts, setAllHosts] = useState<Host[]>([]);
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
+    const [hostSearchQuery, setHostSearchQuery] = useState('');
     const [isLoadingHostOptions, setIsLoadingHostOptions] = useState(false);
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+
+    useEffect(() => {
+        if (authLoading || !showReviewModal) return;
+        if (session) {
+            setIsReviewModalOpen(true);
+        } else {
+            setShowAuthModal(true);
+        }
+    }, [authLoading, showReviewModal, session]);
 
     const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
     const canEditHosts = !authLoading && Boolean(session);
     const availableHosts = allHosts.filter((host) => !eventHosts.some((eventHost) => eventHost.id === String(host.id)));
+    const normalizedHostSearchQuery = hostSearchQuery.trim().toLowerCase();
+    const filteredAvailableHosts = availableHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery));
 
     useEffect(() => {
         setEventHosts(
@@ -112,12 +126,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         if (!isEditingHosts) {
             setHostEditorError(null);
             setSelectedHostIds([]);
+            setHostSearchQuery('');
             setIsEditingHosts(true);
             return;
         }
 
         if (selectedHostIds.length === 0) {
             setHostEditorError(null);
+            setHostSearchQuery('');
             setIsEditingHosts(false);
             return;
         }
@@ -151,6 +167,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 return next;
             });
             setSelectedHostIds([]);
+            setHostSearchQuery('');
             setIsEditingHosts(false);
         } catch (error) {
             setHostEditorError(error instanceof Error ? error.message : 'Failed to update hosts');
@@ -317,11 +334,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             {isEditingHosts && (
                                 <div className="mt-4 rounded-lg border border-default p-4">
                                     <p className="mb-3 text-sm text-muted">Choose additional hosts to attach to this event.</p>
+                                    <input
+                                        type="text"
+                                        value={hostSearchQuery}
+                                        onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
+                                        placeholder="Search hosts by name"
+                                        className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2 text-sm text-text"
+                                    />
                                     {isLoadingHostOptions ? (
                                         <p className="text-sm text-muted">Loading hosts...</p>
-                                    ) : availableHosts.length > 0 ? (
+                                    ) : filteredAvailableHosts.length > 0 ? (
                                         <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
-                                            {availableHosts.map((host) => {
+                                            {filteredAvailableHosts.map((host) => {
                                                 const hostId = String(host.id);
                                                 const isSelected = selectedHostIds.includes(hostId);
 
@@ -338,6 +362,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                                 );
                                             })}
                                         </div>
+                                    ) : normalizedHostSearchQuery ? (
+                                        <p className="text-sm text-muted">No hosts match your search.</p>
                                     ) : (
                                         <p className="text-sm text-muted">All hosts are already attached to this event.</p>
                                     )}
@@ -370,7 +396,13 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 }
                             </div>
                             <button
-                                onClick={() => setIsReviewModalOpen(true)}
+                                onClick={() => {
+                                    if (!session) {
+                                        setShowAuthModal(true);
+                                        return;
+                                    }
+                                    setIsReviewModalOpen(true);
+                                }}
                                 className="w-full mt-4 px-4 py-2 border rounded-lg hover-bg-accent-soft font-semibold text-text"
                             >
                                 Write a Review
@@ -389,11 +421,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                         });
                                         if (response.ok) {
                                             window.location.reload();
+                                            return;
                                         }
+
                                         setIsReviewModalOpen(false);
                                     }}
                                 />
                             }
+                            <AuthRequiredModal
+                                isOpen={showAuthModal}
+                                onClose={() => setShowAuthModal(false)}
+                                message={`Please log in or sign up to submit a review for ${event.title}.`}
+                            />
                             <ShareModal
                                 isOpen={showShareModal}
                                 onClose={() => setShowShareModal(false)}

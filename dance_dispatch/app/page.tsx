@@ -7,6 +7,7 @@ import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SearchBar from "./components/SearchBar";
+import { SubmitEventButton } from "./components/SubmitEventButton";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
@@ -29,13 +30,14 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </p>
         <div className="max-w-2xl mx-auto">
           <SearchBar />
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4 flex justify-center gap-3">
             <Link
               href="/party-calendar"
               className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
             >
               Party Calendar
             </Link>
+            <SubmitEventButton />
           </div>
         </div>
       </section>

@@ -297,7 +297,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }
                 <span className="text-sm text-text">•</span>
                 <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
             </div>
-            <span className="text-xs px-2 py-1 bg-gray-100 text-text rounded-full capitalize">
+            <span className="text-xs px-2 py-1 bg-accent text-text rounded-full capitalize">
                 {review.privacyLevel}
             </span>
         </div>

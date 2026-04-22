@@ -417,8 +417,9 @@ export async function getHostMedia(hostId: string): Promise<any[]> {
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('host_media')
-      .select('host_id,type,embed_code')
-      .eq('host_id', Number(hostId));
+      .select('id,host_id,type,link,embed_code')
+      .eq('host_id', Number(hostId))
+      .order('id', { ascending: false });
 
     if (error) {
       throw error;

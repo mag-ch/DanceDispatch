@@ -71,10 +71,14 @@ export default function SearchClient({
         min: searchParams?.get('minPrice') ?? '',
         max: searchParams?.get('maxPrice') ?? '',
     }));
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [boroughs, setBoroughs] = useState<any[]>(() => {
         const fromUrl = searchParams?.getAll('boroughs') ?? [];
         return fromUrl.map((borough) => ({ value: borough, label: borough }));
     });
+
+    // An empty selection means "show all" while keeping chips visually unselected.
+    const displayCategories = activeCategories.length === 0 ? ALL_CATEGORIES : activeCategories;
 
     const boroughOptions = useMemo(() => 
         safeBoroughs.map(borough => ({ value: borough, label: borough })),
@@ -201,28 +205,28 @@ export default function SearchClient({
         });
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
             <div className="max-w-7xl mx-auto">
                 {/* Search Bar */}
-                <div className="relative mb-6">
+                <div className="relative mb-4 sm:mb-6">
                     <Search className="absolute left-3 top-3 h-5 w-5 text-text" />
                     <input
                         type="text"
-                        placeholder= {"Search " + activeCategories.join(", ") + "..."}
+                        placeholder= {"Search " + displayCategories.join(", ") + "..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-surface text-text placeholder-text text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 {/* Category Toggles */}
-                <div className="flex flex-wrap gap-2 mb-6 items-center">
-                    {(['events', 'venues', 'hosts', 'users'] as SearchCategory[]).map(
+                <div className="flex flex-wrap gap-2 mb-4 sm:mb-6 items-center">
+                    {ALL_CATEGORIES.map(
                         (category) => (
                             <button
                                 key={category}
                                 onClick={() => toggleCategory(category)}
-                                className={`px-4 py-2 rounded-full font-medium capitalize transition-colors ${
+                                className={`px-3 sm:px-4 py-2 rounded-full font-medium capitalize text-sm sm:text-base transition-colors ${
                                     activeCategories.includes(category)
                                         ? ' btn-highlighted bg-blue-600 text-white'
                                         : 'bg-gray-200 text-text hover:bg-gray-300'
@@ -233,8 +237,8 @@ export default function SearchClient({
                         )
                     )}
                     <button
-                        onClick={() => setActiveCategories( ['events', 'venues', 'hosts', 'users'])}
-                        className="flex items-center px-3 py-2 rounded-full bg-gray-200 text-text hover:bg-gray-300 ml-2"
+                        onClick={() => setActiveCategories([])}
+                        className="flex items-center px-3 py-2 rounded-full bg-gray-200 text-text hover:bg-gray-300 text-sm sm:text-base"
                         title="Clear all"
                         type="button"
                     >
@@ -245,15 +249,30 @@ export default function SearchClient({
                     </button>
                 </div>
 
+                <div className="mb-4 lg:hidden">
+                    <button
+                        onClick={() => setMobileFiltersOpen((prev) => !prev)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-surface text-text font-medium text-sm"
+                        type="button"
+                        aria-expanded={mobileFiltersOpen}
+                        aria-controls="search-mobile-filters"
+                    >
+                        {mobileFiltersOpen ? 'Hide filters' : 'Show filters'}
+                    </button>
+                </div>
+
                 {/* Main Layout with Sidebar */}
-                <div className="flex gap-6">
+                <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     {/* Sidebar - Filters */}
-                    <aside className="w-64 flex-shrink-0">
-                        <div className="bg-surface rounded-lg shadow p-4 sticky top-8">
+                    <aside
+                        id="search-mobile-filters"
+                        className={`${mobileFiltersOpen ? 'block' : 'hidden'} w-full lg:block lg:w-72 lg:flex-shrink-0`}
+                    >
+                        <div className="bg-surface rounded-lg shadow p-4 sm:p-5 lg:sticky lg:top-8">
                             <h2 className="text-lg font-bold mb-4 text-text">Filters</h2>
                             
                             {/* Category-specific Filters */}
-                            {activeCategories.includes('events') && (
+                            {displayCategories.includes('events') && (
                                 <div className="mb-6">
                                     <h3 className="font-semibold mb-3 text-text">Event Filters</h3>
                                     <div className="space-y-4">
@@ -291,7 +310,7 @@ export default function SearchClient({
                                             <label className="block text-sm font-medium mb-1 text-text">
                                                 Price Range
                                             </label>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-col sm:flex-row gap-2">
                                                 <input
                                                     type="number"
                                                     placeholder="Min"
@@ -316,7 +335,7 @@ export default function SearchClient({
                                 </div>
                             )}
 
-                            {activeCategories.includes('venues') && (
+                            {displayCategories.includes('venues') && (
                                 <div>
                                     <h3 className="font-semibold mb-3 text-text">Venue Filters</h3>
                                     <div>
@@ -358,10 +377,10 @@ export default function SearchClient({
                     </aside>
 
                     {/* Search Results */}
-                    <div className="flex-1 space-y-6">
-                    {activeCategories.includes('events') && (
+                    <div className="flex-1 min-w-0 space-y-5 sm:space-y-6">
+                    {displayCategories.includes('events') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-text">Events</h2>
+                            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Events</h2>
                             <div className="space-y-3">
                                 {filteredEvents.map((event: Event, index: number) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={formatEventDate(event.startdate) + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
@@ -371,9 +390,9 @@ export default function SearchClient({
                         </section>
                     )}
 
-                    {activeCategories.includes('venues') && (
+                    {displayCategories.includes('venues') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-text">Venues</h2>
+                            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Venues</h2>
                             <div className="space-y-3">
                                 {filteredVenues.map((venue: any, index: number) => (
                                         <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.type} location={venue.address} img={venue.photourls} entityId={venue.id} entity="venues"/>
@@ -383,9 +402,9 @@ export default function SearchClient({
                         </section>
                     )}
 
-                    {activeCategories.includes('hosts') && (
+                    {displayCategories.includes('hosts') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-text">Hosts</h2>
+                            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Hosts</h2>
                             <div className="space-y-3">
                             {filteredHosts.map((host: any, index: number) => (
                                 <SearchResult 
@@ -403,9 +422,9 @@ export default function SearchClient({
                         </section>
                     )}
 
-                    {activeCategories.includes('users') && (
+                    {displayCategories.includes('users') && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 text-text">Users</h2>
+                            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Users</h2>
                             <div className="space-y-3">
                                 {filteredUsers.map((user: any, index: number) => {
                                     let createdAtString = '';

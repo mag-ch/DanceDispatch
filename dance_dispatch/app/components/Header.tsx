@@ -52,6 +52,11 @@ export function Header() {
     const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     const resolveNotificationHref = useCallback((href: string) => {
         if (!href.startsWith('?')) {
@@ -231,7 +236,7 @@ export function Header() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [isFeedbackModalOpen]);
 
-    if (loading) {
+    if (loading || !isHydrated) {
         return (
             <header className="bg-bg site-header border-b border-border">
                 <div className="container mx-auto px-4 py-4">

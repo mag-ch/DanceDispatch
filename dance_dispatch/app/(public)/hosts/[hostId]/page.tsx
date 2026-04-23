@@ -30,7 +30,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [editTags, setEditTags] = useState('');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [mediaType, setMediaType] = useState<'soundcloud' | 'spotify' | 'mixcloud' | 'instagram'>('soundcloud');
+    const [mediaType, setMediaType] = useState('soundcloud');
     const [mediaLink, setMediaLink] = useState('');
     const [mediaEmbedCode, setMediaEmbedCode] = useState('');
     const [mediaSaving, setMediaSaving] = useState(false);
@@ -111,6 +111,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         const trimmedLink = mediaLink.trim();
         const trimmedEmbedCode = mediaEmbedCode.trim();
 
+        const trimmedType = mediaType.trim();
+
+        if (!trimmedType) {
+            setMediaError('Enter a media type.');
+            return;
+        }
+
         if (!trimmedLink && !trimmedEmbedCode) {
             setMediaError('Enter either a link or SoundCloud embed code.');
             return;
@@ -123,7 +130,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    type: mediaType,
+                    type: trimmedType,
                     link: trimmedLink,
                     embed_code: trimmedEmbedCode,
                 }),
@@ -332,16 +339,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <label className="flex flex-col gap-1">
                                             <span className="text-xs text-muted">Type</span>
-                                            <select
+                                            <input
+                                                type="text"
                                                 className="bg-bg text-text border border-default rounded p-2"
+                                                placeholder="e.g. soundcloud, youtube, bandcamp"
                                                 value={mediaType}
-                                                onChange={(e) => setMediaType(e.target.value as 'soundcloud' | 'spotify' | 'mixcloud' | 'instagram')}
-                                            >
-                                                <option value="soundcloud">SoundCloud</option>
-                                                <option value="spotify">Spotify</option>
-                                                <option value="mixcloud">Mixcloud</option>
-                                                <option value="instagram">Instagram</option>
-                                            </select>
+                                                onChange={(e) => setMediaType(e.target.value)}
+                                            />
                                         </label>
 
                                         <label className="flex flex-col gap-1 md:col-span-1">

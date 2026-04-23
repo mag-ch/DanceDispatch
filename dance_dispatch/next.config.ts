@@ -35,7 +35,16 @@ const hostnames = [
   'scontent-phl2-1.xx.fbcdn.net',
   'hypersoul.co',
   'uploads.tickettailorassets.com',
+  'images.squarespace-cdn.com',
+  'static.ra.co',
+  'assets.beatportal.com',
+  'f4.bcbits.com',
+  'image-cdn-fa',
+  'i.ytimg.com',
+  'i1.sndcdn.com',
+  'wintermusicconference.com',
   'images.squarespace-cdn.com'
+
 ];
 
 const nextConfig: NextConfig = {

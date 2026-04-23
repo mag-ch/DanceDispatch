@@ -43,9 +43,8 @@ export async function POST(
         const link = typeof body?.link === 'string' ? body.link.trim() : '';
         const embedCode = typeof body?.embed_code === 'string' ? body.embed_code.trim() : '';
 
-        const allowedTypes = new Set(['soundcloud', 'spotify', 'mixcloud', 'instagram']);
-        if (!allowedTypes.has(type)) {
-            return NextResponse.json({ error: 'Invalid media type' }, { status: 400 });
+        if (!type) {
+            return NextResponse.json({ error: 'Media type is required' }, { status: 400 });
         }
 
         if (!link && !embedCode) {

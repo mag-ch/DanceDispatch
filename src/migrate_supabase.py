@@ -233,12 +233,17 @@ def migrate_csv_files():
 
 
 def check_if_event_exists(event: Event):
-    eventIds = _fetch_existing_ids(get_supabase_client(), "Events", "google_cal_id")
-    if (eventIds and event.id in eventIds):
+    eventIds = get_existing_google_cal_event_ids()
+    if (eventIds and str(event.id) in eventIds):
         print("Skipping existing event with Google Cal ID: " + str(event.id))
         # EVENTS.loc[EVENTS['ID'] == event.id, ['Title', 'StartTime', 'EndTime']] = event.title, event.start_time, event.end_time
         return True
     return False
+
+
+def get_existing_google_cal_event_ids() -> set[str]:
+    """Fetch all existing Google Calendar IDs from Supabase Events table."""
+    return _fetch_existing_ids(get_supabase_client(), "Events", "google_cal_id")
 
 def _client() -> Client:
     """Return a fresh Supabase client to avoid stale connections (WinError 10054)."""

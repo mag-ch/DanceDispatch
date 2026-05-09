@@ -35,7 +35,6 @@ export async function PATCH(
     try {
         const { eventId } = await params;
         const body = await request.json();
-        console.log('Received PATCH request for eventId:', eventId, 'with body:', body?.hostIds);
         if (Array.isArray(body?.hostIds)) {
             await requireAuth();
             const nextHostIds = await setHostsForEvent(eventId, body.hostIds);

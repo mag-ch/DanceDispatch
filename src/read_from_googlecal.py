@@ -11,7 +11,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from data_objects import Event
-from migrate_supabase import  handle_event_entry, check_if_event_exists
+from migrate_supabase import handle_event_entry, get_existing_google_cal_event_ids
 
 
 # app = Flask(__name__)
@@ -62,47 +62,85 @@ def get_calendar_service():
     return service
 
 
-def get_synced_events(synctoken = None):
+# def get_synced_events(synctoken = None):
+#     global CALENDAR_ID
+#     try:
+#         service = get_calendar_service()
+#         page_token = None
+#         while True:
+#             if synctoken is None or synctoken == "":
+#                 # now = get_max_date_for_events()
+#                 # print("No sync token found, fetching all events.")
+#                 synctoken = None
+#                 events_result = service.events().list(
+#                     calendarId=CALENDAR_ID,
+#                     pageToken=page_token,
+#                 ).execute()
+#             else:
+#                 # now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
+#                 # end = (datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=90)).isoformat()
+#                 events_result = service.events().list(
+#                     calendarId=CALENDAR_ID,
+#                     pageToken=page_token,
+#                     # timeMin=now,   
+#                     # timeMax=end,
+#                     # singleEvents=True,
+#                     syncToken=synctoken
+#                 ).execute()
+#             if 'nextSyncToken' in events_result:
+#                 with open('src/nextSyncToken', 'w') as file:
+#                     file.write(events_result['nextSyncToken'])
+#             events = events_result.get('items', [])
+#             page_token = events_result.get('nextPageToken')
+#             if not page_token:
+#                 break
+#         return events
+#     except HttpError as error:
+#         print(f"An error occurred: {error}")    
+
+def get_synced_events(synctoken=None):
     global CALENDAR_ID
+
     try:
         service = get_calendar_service()
+
         page_token = None
+        all_events = []
+
         while True:
-            if synctoken is None or synctoken == "":
-                # now = get_max_date_for_events()
-                # print("No sync token found, fetching all events.")
-                synctoken = None
+
+            if not synctoken:
                 events_result = service.events().list(
                     calendarId=CALENDAR_ID,
                     pageToken=page_token,
                 ).execute()
-                print(events_result)
+
             else:
-                # now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-                # end = (datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=90)).isoformat()
                 events_result = service.events().list(
                     calendarId=CALENDAR_ID,
                     pageToken=page_token,
-                    # timeMin=now,   
-                    # timeMax=end,
-                    # singleEvents=True,
                     syncToken=synctoken
                 ).execute()
+
+            # accumulate events instead of overwriting
+            all_events.extend(events_result.get('items', []))
+
+            # save next sync token
             if 'nextSyncToken' in events_result:
                 with open('src/nextSyncToken', 'w') as file:
                     file.write(events_result['nextSyncToken'])
-            events = events_result.get('items', [])
+
             page_token = events_result.get('nextPageToken')
+
             if not page_token:
                 break
-        return events
+        return all_events
+
     except HttpError as error:
-        print(f"An error occurred: {error}")    
-
-
+        print(f"An error occurred: {error}")
 
 def extract_artists(title: str) -> str:
-    # If text is inside parentheses, extract that part
+    # If text is inside parentheses, extract that partz
     match = re.search(r'\((.*?)\)', title)
     if match:
         artists_part = match.group(1)
@@ -119,11 +157,15 @@ def extract_artists(title: str) -> str:
 
 def process_event(event):
     try:
-        venue_name, venue_address = event['location'].split(", ", 1)
-    except ValueError:
-        venue_name, venue_address = None, event.get('location', None)
+        if 'location' in event and ", " in event['location']:
+
+            venue_name, venue_address = event['location'].split(", ", 1)
+        else:
+            venue_name, venue_address = None, event.get('location', None)
     except KeyError:
         venue_name, venue_address = None, None
+    except ValueError:
+        venue_name, venue_address = None, event.get('location', None)
     start = datetime.datetime.fromisoformat(event["start"].get("dateTime", event["start"].get("date")))
     end = datetime.datetime.fromisoformat(event["end"].get("dateTime", event["end"].get("date")))
     hosts = extract_artists(event["summary"])
@@ -172,17 +214,22 @@ def main():
         sync_token = file.read().strip()
     events = get_synced_events(sync_token)
     print(f"Found {len(events)} events from sync.")
+    existing_event_ids = get_existing_google_cal_event_ids()
+    cutoff = datetime.date.today() - datetime.timedelta(days=30)
+    blacklisted_words = tuple(word.lower() for word in BLACKLISTED_EVENTS)
     # Prints the start and name of the next 10 events
     for event in events:
-        if (check_if_event_exists(Event(id=event["id"]))):
+        event_id = str(event.get("id", "")).strip()
+        if not event_id or not event.get("start"):
             continue
-        cutoff = datetime.date.today() - datetime.timedelta(days=30)
+        if event_id in existing_event_ids:
+            continue
         date_str = event["start"].get("dateTime", event["start"].get("date"))
         event_date = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
         if event_date <= cutoff:
             print(f"Skipping old event: {event['summary']} (start date {event_date})")
-            return event["id"]
-        if (any(blacklisted_word in event.get('summary', '').lower() for blacklisted_word in BLACKLISTED_EVENTS)):
+            continue
+        if any(blacklisted_word in event.get('summary', '').lower() for blacklisted_word in blacklisted_words):
             continue
         process_event(event)
 

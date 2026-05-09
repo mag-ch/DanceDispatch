@@ -164,11 +164,22 @@ export default function SearchClient({
             // Add more filter logic here
             return matchesQuery;
         });
-    filteredEvents = pastEventsBool ? filteredEvents : filteredEvents.filter(event => {
-        const eventDate = new Date(event.startdate);
-        const now = new Date();
-        return eventDate >= now;
-    });
+    const now = new Date();
+    const eventEndTime = (event: any) => {
+        const dateStr = event.enddate || event.startdate;
+        const timeStr = event.endtime;
+        if (dateStr && timeStr) {
+            return new Date(`${dateStr.split('T')[0]}T${timeStr}`);
+        }
+        return new Date(dateStr);
+    };
+    if (pastEventsBool) {
+        filteredEvents = filteredEvents
+            .filter(event => eventEndTime(event) < now)
+            .sort((a, b) => eventEndTime(b).getTime() - eventEndTime(a).getTime());
+    } else {
+        filteredEvents = filteredEvents.filter(event => eventEndTime(event) >= now);
+    }
     filteredEvents = (priceRange.min === '' && priceRange.max === '') ? filteredEvents : filteredEvents.filter(event => {
         const eventPrice = event.price === undefined ? 0 : event.price;
         const minPrice = priceRange.min === '' ? 0 : parseFloat(priceRange.min);
@@ -178,7 +189,7 @@ export default function SearchClient({
     filteredEvents = dateFilter === '' ? filteredEvents : filteredEvents.filter(event => {
         const eventDate = new Date(event.startdate);
         const filterDate = new Date(dateFilter);
-        return eventDate.toISOString().split('T')[0] >= filterDate.toISOString().split('T')[0];
+        return eventDate.toISOString().split('T')[0] === filterDate.toISOString().split('T')[0];
     });
 
     let filteredVenues = searchQuery === '' 
@@ -285,7 +296,7 @@ export default function SearchClient({
                                                 }}
                                                 className="rounded border-gray-300"
                                             />
-                                            Include past events
+                                            View past events
                                         </label>
                                         
                                         <div>
@@ -381,12 +392,29 @@ export default function SearchClient({
                     {displayCategories.includes('events') && (
                         <section>
                             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Events</h2>
-                            <div className="space-y-3">
-                                {filteredEvents.map((event: Event, index: number) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={formatEventDate(event.startdate) + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
-                                      ))}
-                                {filteredEvents.length === 0 && <p className="text-text">No events found</p>}
-                            </div>
+                            {filteredEvents.length === 0 && <p className="text-text">No events found</p>}
+                            {(() => {
+                                const groups: { dateLabel: string; events: typeof filteredEvents }[] = [];
+                                for (const event of filteredEvents) {
+                                    const label = formatEventDate(event.startdate);
+                                    const last = groups[groups.length - 1];
+                                    if (last && last.dateLabel === label) {
+                                        last.events.push(event);
+                                    } else {
+                                        groups.push({ dateLabel: label, events: [event] });
+                                    }
+                                }
+                                return groups.map((group) => (
+                                    <div key={group.dateLabel} className="mb-4">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">{group.dateLabel}</p>
+                                        <div className="space-y-3">
+                                            {group.events.map((event: Event, index: number) => (
+                                                <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={formatEventDate(event.startdate) + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
                         </section>
                     )}
 

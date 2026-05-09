@@ -6,6 +6,7 @@ const hostnames = [
   'static.wixstatic.com',
   'imgproxy.ra.co',
   'yet-another-domain.com',
+  'cdn.prod.website-files.com',
   'imgix.bustle.com',
   'phosphor.utils.elfsightcdn.com',
   'www.eventbrite.com',
@@ -43,7 +44,11 @@ const hostnames = [
   'i.ytimg.com',
   'i1.sndcdn.com',
   'wintermusicconference.com',
-  'images.squarespace-cdn.com'
+  'images.squarespace-cdn.com',
+  'funkformat.com',
+  's3.eu-west-2.amazonaws.com',
+  'www.hnt.fm',
+  
 
 ];
 

@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
 type GoogleOAuthTokenResponse = {
@@ -43,6 +45,20 @@ type GoogleCalendarEventItem = {
 type GoogleCalendarEventsListResponse = {
   items?: GoogleCalendarEventItem[];
   nextPageToken?: string;
+  nextSyncToken?: string;
+};
+
+type GoogleCalendarFetchedEvents = {
+  items: GoogleCalendarEventItem[];
+  nextSyncToken: string | null;
+  syncMode: 'full' | 'incremental';
+};
+
+export type GoogleCalendarChangedEvent = {
+  googleCalId: string;
+  title: string;
+  start: string | null;
+  status: string;
 };
 
 export type GoogleCalendarSyncSummary = {
@@ -51,7 +67,11 @@ export type GoogleCalendarSyncSummary = {
   skippedExisting: number;
   skippedInvalid: number;
   pendingQueued: number;
+  syncMode: 'full' | 'incremental';
+  changedEvents: GoogleCalendarChangedEvent[];
 };
+
+const GOOGLE_CALENDAR_SYNC_TOKEN_PATH = path.join(process.cwd(), 'instance', 'google-calendar-sync-token.txt');
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -59,6 +79,36 @@ function getRequiredEnv(name: string): string {
     throw new Error(`Missing required env var: ${name}`);
   }
   return value;
+}
+
+async function readGoogleCalendarSyncToken(): Promise<string | null> {
+  try {
+    const token = await readFile(GOOGLE_CALENDAR_SYNC_TOKEN_PATH, 'utf8');
+    const trimmed = token.trim();
+    return trimmed || null;
+  } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+    if (code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function writeGoogleCalendarSyncToken(token: string): Promise<void> {
+  await mkdir(path.dirname(GOOGLE_CALENDAR_SYNC_TOKEN_PATH), { recursive: true });
+  await writeFile(GOOGLE_CALENDAR_SYNC_TOKEN_PATH, token, 'utf8');
+}
+
+async function clearGoogleCalendarSyncToken(): Promise<void> {
+  try {
+    await unlink(GOOGLE_CALENDAR_SYNC_TOKEN_PATH);
+  } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+    if (code !== 'ENOENT') {
+      throw error;
+    }
+  }
 }
 
 export function getGoogleCalendarWebhookUrl(requestUrl?: string): string {
@@ -343,20 +393,29 @@ async function getOrCreateHostIds(supabase: SupabaseClient, hostNames: string[])
   return hostIds;
 }
 
-async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarEventItem[]> {
+async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarFetchedEvents> {
   const accessToken = await getGoogleCalendarAccessToken();
   const calendarId = getRequiredEnv('GOOGLE_CALENDAR_ID');
+  const existingSyncToken = await readGoogleCalendarSyncToken();
 
   const allItems: GoogleCalendarEventItem[] = [];
   let pageToken: string | undefined;
+  let nextSyncToken: string | null = null;
+  let syncMode: 'full' | 'incremental' = existingSyncToken ? 'incremental' : 'full';
 
   do {
     const params = new URLSearchParams({
       singleEvents: 'true',
-      orderBy: 'startTime',
       maxResults: '2500',
-      timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
+
+    if (existingSyncToken) {
+      params.set('syncToken', existingSyncToken);
+    } else {
+      params.set('orderBy', 'startTime');
+      params.set('timeMin', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    }
+
     if (pageToken) {
       params.set('pageToken', pageToken);
     }
@@ -378,19 +437,39 @@ async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarEventIt
     };
 
     if (!response.ok) {
+      if (response.status === 410 && existingSyncToken) {
+        await clearGoogleCalendarSyncToken();
+        return fetchGoogleCalendarEventsForSync();
+      }
       throw new Error(payload.error?.message || 'Failed to fetch Google Calendar events');
     }
 
     allItems.push(...(payload.items || []));
     pageToken = payload.nextPageToken;
+    if (payload.nextSyncToken) {
+      nextSyncToken = payload.nextSyncToken;
+    }
   } while (pageToken);
 
-  return allItems;
+  if (nextSyncToken) {
+    await writeGoogleCalendarSyncToken(nextSyncToken);
+  }
+
+  if (!existingSyncToken) {
+    syncMode = 'full';
+  }
+
+  return {
+    items: allItems,
+    nextSyncToken,
+    syncMode,
+  };
 }
 
 export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalendarSyncSummary> {
   const supabase = getSupabaseServerClient();
-  const events = await fetchGoogleCalendarEventsForSync();
+  const fetched = await fetchGoogleCalendarEventsForSync();
+  const events = fetched.items;
 
   const summary: GoogleCalendarSyncSummary = {
     fetched: events.length,
@@ -398,6 +477,13 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
     skippedExisting: 0,
     skippedInvalid: 0,
     pendingQueued: 0,
+    syncMode: fetched.syncMode,
+    changedEvents: events.map((item) => ({
+      googleCalId: String(item.id || '').trim(),
+      title: (item.summary || 'Untitled event').trim(),
+      start: toIsoDateTime(item.start?.dateTime || item.start?.date),
+      status: item.status || 'confirmed',
+    })),
   };
 
   for (const item of events) {

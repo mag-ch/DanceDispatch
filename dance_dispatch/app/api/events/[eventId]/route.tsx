@@ -69,6 +69,8 @@ export async function PATCH(
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        // debugging: log the error to the console for better visibility during development
+        console.error('Error in PATCH /api/events/[eventId]:', error);
         const message = error instanceof Error ? error.message : 'Failed to update event';
         const normalizedMessage = message.toLowerCase();
         const status = normalizedMessage.includes('unauthorized')

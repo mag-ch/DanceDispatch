@@ -1221,22 +1221,36 @@ export async function addHostsToEvent(eventId: string, hostIds: string[]): Promi
   }
 
   const supabase = await createServerClient();
-  const { error } = await supabase
+  const { data: currentRows, error: currentError } = await supabase
     .from('event_hosts')
-    .upsert(
-      normalizedHostIds.map((hostId) => ({
+    .select('host_id')
+    .eq('event_id', numericEventId);
+
+  if (currentError) {
+    console.error('Error loading current event hosts:', currentError);
+    throw currentError;
+  }
+
+  const existingHostIds = new Set(
+    (currentRows ?? [])
+      .map((row: { host_id: unknown }) => Number(row.host_id))
+      .filter((hostId) => !Number.isNaN(hostId))
+  );
+
+  const hostIdsToInsert = normalizedHostIds.filter((hostId) => !existingHostIds.has(hostId));
+
+  if (hostIdsToInsert.length > 0) {
+    const { error: insertError } = await supabase.from('event_hosts').insert(
+      hostIdsToInsert.map((hostId) => ({
         event_id: numericEventId,
         host_id: hostId,
-      })),
-      {
-        onConflict: 'event_id,host_id',
-        ignoreDuplicates: true,
-      }
+      }))
     );
 
-  if (error) {
-    console.error('Error updating event hosts:', error);
-    throw error;
+    if (insertError) {
+      console.error('Error adding event hosts:', insertError);
+      throw insertError;
+    }
   }
 
   revalidateCatalogCache();
@@ -1278,18 +1292,12 @@ export async function setHostsForEvent(eventId: string, hostIds: string[]): Prom
   const toRemoveRaw = currentHostIdsRaw.filter((hostId) => !normalizedHostIds.includes(String(hostId)));
 
   if (toAdd.length > 0) {
-    const { error: addError } = await supabase
-      .from('event_hosts')
-      .upsert(
-        toAdd.map((hostId) => ({
-          event_id: numericEventId,
-          host_id: Number(hostId),
-        })),
-        {
-          onConflict: 'event_id,host_id',
-          ignoreDuplicates: true,
-        }
-      );
+    const { error: addError } = await supabase.from('event_hosts').insert(
+      toAdd.map((hostId) => ({
+        event_id: numericEventId,
+        host_id: Number(hostId),
+      }))
+    );
 
     if (addError) {
       console.error('Error adding event hosts:', addError);

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import type { Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../app/globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthContextProvider } from "./providers/AuthContext";
 import { Header } from "./components/Header";
+import { PWARegister } from "./components/PWARegister";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +21,28 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "DanceDispatch",
-  description: "Find your next dance party",
+  description: "Find your next dance party",  
+  applicationName: "DanceDispatch",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DanceDispatch",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.svg", type: "image/svg+xml", sizes: "192x192" },
+      { url: "/icons/icon-512.svg", type: "image/svg+xml", sizes: "512x512" },
+    ],
+    apple: [{ url: "/icons/icon-192.svg", sizes: "192x192" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#06b6d4" },
+    { media: "(prefers-color-scheme: dark)", color: "#22d3ee" },
+  ],
 };
 
 export default function RootLayout({
@@ -33,6 +57,8 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthContextProvider>
+            <PWARegister />
+            <PWAInstallPrompt />
             <Suspense fallback={null}>
               <Header />
             </Suspense>

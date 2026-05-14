@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 
 // Using remotePatterns with an array map for cleaner config
@@ -53,6 +55,9 @@ const hostnames = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.dirname(fileURLToPath(import.meta.url)),
+  },
  images: {
     remotePatterns: hostnames.map((hostname) => ({
       protocol: 'https',

@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@supabase/ssr": "^0.8.0",
-    "csv-parse": "^6.1.0"
-  }
-}

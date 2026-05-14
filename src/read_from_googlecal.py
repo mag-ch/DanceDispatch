@@ -1,4 +1,4 @@
-import datetime
+﻿import datetime
 import os.path
 import hashlib
 import re
@@ -146,9 +146,10 @@ def extract_artists(title: str) -> str:
         artists_part = match.group(1)
     else:
         artists_part = title
-
-    # Split by "/" and clean up whitespace
-    artists = [artist.strip() for artist in artists_part.split('/')]
+    if (len(artists_part.split("/")) > 1):
+        artists = [artist.strip() for artist in artists_part.split('/')]
+    else:
+        artists = []
 
     # Join with commas
     return ",".join(artists)

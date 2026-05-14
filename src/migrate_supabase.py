@@ -308,6 +308,18 @@ def get_host_id(hosts):
         response = _execute_with_retry(lambda h=host: _client().table("Hosts").select("id").eq("name", h.strip()).execute())
         if response.data:
             host_ids.append(response.data[0]["id"])
+        elif not interactive:
+            host_name = host.strip()
+            if not host_name:
+                continue
+            temp_json = {
+                'name': host_name,
+                'bio': None,
+                'tags': None,
+            }
+            response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
+            print(f"Auto-added host: {host_name} with ID {response.data[0]['id']}")
+            host_ids.append(response.data[0]["id"])
         else:
             name = input(f"Host with name '{host.strip()}' not found. Type 'skip' to skip adding host or leave blank to use {host}: ").strip()
             if name.lower() == "skip":

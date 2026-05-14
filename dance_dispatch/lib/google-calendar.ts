@@ -1,0 +1,430 @@
+import 'server-only';
+
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+
+type GoogleOAuthTokenResponse = {
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
+};
+
+type GoogleWatchResponse = {
+  kind?: string;
+  id?: string;
+  resourceId?: string;
+  resourceUri?: string;
+  expiration?: string;
+};
+
+type GoogleCalendarEventDate = {
+  date?: string;
+  dateTime?: string;
+};
+
+type GoogleCalendarEventItem = {
+  id?: string;
+  status?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  htmlLink?: string;
+  start?: GoogleCalendarEventDate;
+  end?: GoogleCalendarEventDate;
+};
+
+type GoogleCalendarEventsListResponse = {
+  items?: GoogleCalendarEventItem[];
+  nextPageToken?: string;
+};
+
+export type GoogleCalendarSyncSummary = {
+  fetched: number;
+  inserted: number;
+  skippedExisting: number;
+  skippedInvalid: number;
+  pendingQueued: number;
+};
+
+function getRequiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  return value;
+}
+
+export function getGoogleCalendarWebhookUrl(requestUrl?: string): string {
+  const configured = process.env.GOOGLE_CALENDAR_WEBHOOK_URL?.trim();
+  if (configured) {
+    const configuredUrl = new URL(configured);
+    if (configuredUrl.protocol !== 'https:') {
+      throw new Error('GOOGLE_CALENDAR_WEBHOOK_URL must use https://');
+    }
+    return configuredUrl.toString();
+  }
+
+  if (!requestUrl) {
+    throw new Error('Missing GOOGLE_CALENDAR_WEBHOOK_URL and request URL fallback');
+  }
+
+  const url = new URL(requestUrl);
+  if (url.protocol !== 'https:') {
+    throw new Error(
+      'Google Calendar webhooks require HTTPS. Set GOOGLE_CALENDAR_WEBHOOK_URL to your public https://.../google-calendar/events endpoint.'
+    );
+  }
+  return `${url.origin}/google-calendar/events`;
+}
+
+export async function getGoogleCalendarAccessToken(): Promise<string> {
+  const clientId = getRequiredEnv('GOOGLE_CALENDAR_CLIENT_ID');
+  const clientSecret = getRequiredEnv('GOOGLE_CALENDAR_CLIENT_SECRET');
+  const refreshToken = getRequiredEnv('GOOGLE_CALENDAR_REFRESH_TOKEN');
+
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: refreshToken,
+    grant_type: 'refresh_token',
+  });
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+    cache: 'no-store',
+  });
+
+  const payload = (await response.json()) as Partial<GoogleOAuthTokenResponse> & { error?: string };
+  if (!response.ok || !payload.access_token) {
+    throw new Error(payload.error || 'Failed to exchange Google refresh token');
+  }
+
+  return payload.access_token;
+}
+
+export async function createGoogleCalendarWatch(requestUrl?: string): Promise<GoogleWatchResponse> {
+  const accessToken = await getGoogleCalendarAccessToken();
+  const calendarId = getRequiredEnv('GOOGLE_CALENDAR_ID');
+  const webhookUrl = getGoogleCalendarWebhookUrl(requestUrl);
+  const channelToken = process.env.GOOGLE_CALENDAR_CHANNEL_TOKEN?.trim();
+  const channelId = process.env.GOOGLE_CALENDAR_CHANNEL_ID?.trim() || crypto.randomUUID();
+  const ttl = process.env.GOOGLE_CALENDAR_CHANNEL_TTL?.trim() || '604800';
+
+  const body: Record<string, unknown> = {
+    id: channelId,
+    type: 'web_hook',
+    address: webhookUrl,
+    params: { ttl },
+  };
+
+  if (channelToken) {
+    body.token = channelToken;
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/watch`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    }
+  );
+
+  const payload = (await response.json()) as GoogleWatchResponse & { error?: { message?: string } };
+  if (!response.ok) {
+    throw new Error(payload.error?.message || 'Failed to create Google Calendar watch');
+  }
+
+  return payload;
+}
+
+export function isValidGoogleChannelToken(headers: Headers): boolean {
+  const expectedToken = process.env.GOOGLE_CALENDAR_CHANNEL_TOKEN?.trim();
+  if (!expectedToken) {
+    return true;
+  }
+
+  return headers.get('x-goog-channel-token') === expectedToken;
+}
+
+function getSupabaseServerClient(): SupabaseClient {
+  const url = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+
+  if (!key) {
+    throw new Error('Missing required env var: SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return createSupabaseClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+function parseHostNamesFromTitle(title: string): string[] {
+  const match = title.match(/\((.*?)\)/);
+  const hostSection = (match?.[1] || '').trim();
+  if (!hostSection || !hostSection.includes('/')) {
+    return [];
+  }
+
+  return hostSection
+    .split('/')
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function toIsoDateTime(input?: string): string | null {
+  if (!input) {
+    return null;
+  }
+
+  if (input.includes('T')) {
+    return input.replace('Z', '+00:00');
+  }
+
+  return `${input}T00:00:00+00:00`;
+}
+
+function splitLocation(rawLocation?: string): { venueName: string | null; venueAddress: string | null } {
+  if (!rawLocation) {
+    return { venueName: null, venueAddress: null };
+  }
+
+  if (rawLocation.includes(', ')) {
+    const [venueName, venueAddress] = rawLocation.split(', ', 2);
+    return {
+      venueName: venueName || null,
+      venueAddress: venueAddress || null,
+    };
+  }
+
+  return { venueName: null, venueAddress: rawLocation };
+}
+
+async function getOrCreateVenueId(
+  supabase: SupabaseClient,
+  venueName: string | null,
+  venueAddress: string | null
+): Promise<string | null> {
+  if (!venueName && !venueAddress) {
+    return null;
+  }
+
+  if (venueName) {
+    const byName = await supabase.from('Venues').select('id').eq('name', venueName).limit(1).maybeSingle();
+    if (!byName.error && byName.data?.id) {
+      return String(byName.data.id);
+    }
+  }
+
+  if (venueAddress) {
+    const byAddress = await supabase.from('Venues').select('id').eq('address', venueAddress).limit(1).maybeSingle();
+    if (!byAddress.error && byAddress.data?.id) {
+      return String(byAddress.data.id);
+    }
+  }
+
+  const insertRes = await supabase
+    .from('Venues')
+    .insert({
+      name: venueName || 'Unknown venue',
+      address: venueAddress,
+      temp_id: null,
+    })
+    .select('id')
+    .single();
+
+  if (insertRes.error || !insertRes.data?.id) {
+    throw new Error(insertRes.error?.message || 'Failed to create venue');
+  }
+
+  return String(insertRes.data.id);
+}
+
+async function getOrCreateHostIds(supabase: SupabaseClient, hostNames: string[]): Promise<string[]> {
+  const hostIds: string[] = [];
+
+  for (const hostName of hostNames) {
+    const existing = await supabase.from('Hosts').select('id').eq('name', hostName).limit(1).maybeSingle();
+    if (!existing.error && existing.data?.id) {
+      hostIds.push(String(existing.data.id));
+      continue;
+    }
+
+    const created = await supabase
+      .from('Hosts')
+      .insert({
+        name: hostName,
+        bio: null,
+        tags: null,
+      })
+      .select('id')
+      .single();
+
+    if (!created.error && created.data?.id) {
+      hostIds.push(String(created.data.id));
+    }
+  }
+
+  return hostIds;
+}
+
+async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarEventItem[]> {
+  const accessToken = await getGoogleCalendarAccessToken();
+  const calendarId = getRequiredEnv('GOOGLE_CALENDAR_ID');
+
+  const allItems: GoogleCalendarEventItem[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '2500',
+      timeMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    if (pageToken) {
+      params.set('pageToken', pageToken);
+    }
+
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      }
+    );
+
+    const payload = (await response.json()) as GoogleCalendarEventsListResponse & {
+      error?: { message?: string };
+    };
+
+    if (!response.ok) {
+      throw new Error(payload.error?.message || 'Failed to fetch Google Calendar events');
+    }
+
+    allItems.push(...(payload.items || []));
+    pageToken = payload.nextPageToken;
+  } while (pageToken);
+
+  return allItems;
+}
+
+export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalendarSyncSummary> {
+  const supabase = getSupabaseServerClient();
+  const events = await fetchGoogleCalendarEventsForSync();
+
+  const summary: GoogleCalendarSyncSummary = {
+    fetched: events.length,
+    inserted: 0,
+    skippedExisting: 0,
+    skippedInvalid: 0,
+    pendingQueued: 0,
+  };
+
+  for (const item of events) {
+    const googleCalId = String(item.id || '').trim();
+    const title = (item.summary || 'Untitled event').trim();
+    const start = toIsoDateTime(item.start?.dateTime || item.start?.date);
+    const end = toIsoDateTime(item.end?.dateTime || item.end?.date);
+
+    if (!googleCalId || !start || !end || item.status === 'cancelled') {
+      summary.skippedInvalid += 1;
+      continue;
+    }
+
+    const existing = await supabase
+      .from('Events')
+      .select('id')
+      .eq('google_cal_id', googleCalId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing.data?.id) {
+      summary.skippedExisting += 1;
+      continue;
+    }
+
+    const { venueName, venueAddress } = splitLocation(item.location);
+    const venueId = await getOrCreateVenueId(supabase, venueName, venueAddress);
+    const hostIds = await getOrCreateHostIds(supabase, parseHostNamesFromTitle(title));
+
+    const insertedEvent = await supabase
+      .from('Events')
+      .insert({
+        google_cal_id: googleCalId,
+        title,
+        start,
+        end,
+        location: venueId,
+        description: item.description || '',
+        flyer_url: null,
+        price: null,
+        external_url: item.htmlLink || null,
+      })
+      .select('id')
+      .single();
+
+    if (insertedEvent.error || !insertedEvent.data?.id) {
+      throw new Error(insertedEvent.error?.message || `Failed to insert event ${googleCalId}`);
+    }
+
+    const newEventId = String(insertedEvent.data.id);
+    summary.inserted += 1;
+
+    if (hostIds.length > 0) {
+      const eventHostsPayload = hostIds.map((hostId) => ({
+        event_id: newEventId,
+        host_id: hostId,
+      }));
+      const hostInsertResult = await supabase.from('event_hosts').insert(eventHostsPayload);
+      if (hostInsertResult.error) {
+        console.warn('Failed to insert event hosts', hostInsertResult.error.message);
+      }
+    }
+
+    const pendingInsertResult = await supabase.from('pending_events').upsert(
+      {
+        google_cal_id: googleCalId,
+        linked_event_id: newEventId,
+        title,
+        start,
+        end,
+        description: item.description || '',
+        location_name: venueName,
+        location_address: venueAddress,
+        hosts: parseHostNamesFromTitle(title).join(','),
+        status: 'pending',
+        source: 'google_calendar',
+      },
+      {
+        onConflict: 'google_cal_id',
+        ignoreDuplicates: true,
+      }
+    );
+    if (!pendingInsertResult.error) {
+      summary.pendingQueued += 1;
+    } else {
+      console.warn('Failed to insert pending event', pendingInsertResult.error.message);
+    }
+  }
+
+  return summary;
+}

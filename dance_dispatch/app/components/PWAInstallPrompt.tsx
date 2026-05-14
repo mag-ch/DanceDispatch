@@ -57,13 +57,12 @@ export function PWAInstallPrompt() {
       return;
     }
 
-    setHidden(isDismissedInStorage());
+    const isDismissed = isDismissedInStorage();
+    setHidden(isDismissed);
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
-
-      setHidden(isDismissedInStorage());
     };
 
     const onInstalled = () => {
@@ -82,21 +81,27 @@ export function PWAInstallPrompt() {
   }, [isStandalone]);
 
   const handleInstall = async () => {
-    if (!installEvent || installing) {
+    if (installing) {
       return;
     }
 
     setInstalling(true);
-    await installEvent.prompt();
-    const choice = await installEvent.userChoice;
 
-    if (choice.outcome === "accepted") {
-      setHidden(true);
-      window.localStorage.removeItem(DISMISS_UNTIL_KEY);
+    if (installEvent) {
+      try {
+        await installEvent.prompt();
+        const choice = await installEvent.userChoice;
+
+        if (choice.outcome === "accepted") {
+          setHidden(true);
+          window.localStorage.removeItem(DISMISS_UNTIL_KEY);
+        }
+      } catch (error) {
+        console.error("PWA install failed:", error);
+      }
     }
 
     setInstalling(false);
-    setInstallEvent(null);
   };
 
   const handleDismiss = () => {
@@ -111,28 +116,22 @@ export function PWAInstallPrompt() {
   return (
     <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/95 backdrop-blur-md p-4 shadow-2xl">
       <p className="text-sm font-semibold text-text">Install DanceDispatch</p>
-      {installEvent ? (
-        <p className="mt-1 text-sm text-muted">
-          Add DanceDispatch to your home screen for faster launch and app-like browsing.
-        </p>
-      ) : (
-        <p className="mt-1 text-sm text-muted">
-          {isIOS
+      <p className="mt-1 text-sm text-muted">
+        {installEvent
+          ? "Add DanceDispatch to your home screen for faster launch and app-like browsing."
+          : isIOS
             ? "Open Safari Share and tap Add to Home Screen to install this app."
-            : "Use your browser menu to install this app if the install button is unavailable."}
-        </p>
-      )}
+            : "Install this app for faster access and offline support."}
+      </p>
       <div className="mt-3 flex items-center gap-2">
-        {installEvent && (
-          <button
-            type="button"
-            onClick={handleInstall}
-            disabled={installing}
-            className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
-          >
-            {installing ? "Installing..." : "Install app"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleInstall}
+          disabled={installing}
+          className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
+        >
+          {installing ? "Installing..." : "Install"}
+        </button>
         <button
           type="button"
           onClick={handleDismiss}

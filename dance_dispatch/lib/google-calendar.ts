@@ -17,6 +17,13 @@ type GoogleWatchResponse = {
   expiration?: string;
 };
 
+type GoogleChannelReference = {
+  id: string;
+  resourceId: string;
+};
+
+let lastCreatedChannel: GoogleChannelReference | null = null;
+
 type GoogleCalendarEventDate = {
   date?: string;
   dateTime?: string;
@@ -106,13 +113,62 @@ export async function getGoogleCalendarAccessToken(): Promise<string> {
   return payload.access_token;
 }
 
-export async function createGoogleCalendarWatch(requestUrl?: string): Promise<GoogleWatchResponse> {
+async function stopGoogleCalendarChannel(accessToken: string, channel: GoogleChannelReference): Promise<void> {
+  const response = await fetch('https://www.googleapis.com/calendar/v3/channels/stop', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id: channel.id,
+      resourceId: channel.resourceId,
+    }),
+    cache: 'no-store',
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: { message?: string };
+  };
+
+  const message = (payload.error?.message || '').toLowerCase();
+  const ignorable = response.status === 404 || response.status === 410 || message.includes('not found');
+  if (ignorable) {
+    return;
+  }
+
+  throw new Error(payload.error?.message || 'Failed to stop previous Google Calendar watch channel');
+}
+
+function normalizeChannelRef(input?: Partial<GoogleChannelReference> | null): GoogleChannelReference | null {
+  const id = String(input?.id || '').trim();
+  const resourceId = String(input?.resourceId || '').trim();
+  if (!id || !resourceId) {
+    return null;
+  }
+
+  return { id, resourceId };
+}
+
+export async function createGoogleCalendarWatch(
+  requestUrl?: string,
+  previousChannel?: Partial<GoogleChannelReference> | null
+): Promise<GoogleWatchResponse> {
   const accessToken = await getGoogleCalendarAccessToken();
   const calendarId = getRequiredEnv('GOOGLE_CALENDAR_ID');
   const webhookUrl = getGoogleCalendarWebhookUrl(requestUrl);
   const channelToken = process.env.GOOGLE_CALENDAR_CHANNEL_TOKEN?.trim();
   const channelId = process.env.GOOGLE_CALENDAR_CHANNEL_ID?.trim() || crypto.randomUUID();
   const ttl = process.env.GOOGLE_CALENDAR_CHANNEL_TTL?.trim() || '604800';
+
+  const channelToStop = normalizeChannelRef(previousChannel) || lastCreatedChannel;
+  if (channelToStop && channelToStop.id !== channelId) {
+    await stopGoogleCalendarChannel(accessToken, channelToStop);
+  }
 
   const body: Record<string, unknown> = {
     id: channelId,
@@ -141,6 +197,11 @@ export async function createGoogleCalendarWatch(requestUrl?: string): Promise<Go
   const payload = (await response.json()) as GoogleWatchResponse & { error?: { message?: string } };
   if (!response.ok) {
     throw new Error(payload.error?.message || 'Failed to create Google Calendar watch');
+  }
+
+  const createdRef = normalizeChannelRef({ id: payload.id, resourceId: payload.resourceId });
+  if (createdRef) {
+    lastCreatedChannel = createdRef;
   }
 
   return payload;

@@ -7,7 +7,16 @@ export async function POST(request: Request) {
   try {
     await requireAuth();
 
-    const watch = await createGoogleCalendarWatch(request.url);
+    const body = (await request.json().catch(() => null)) as
+      | {
+          previousChannel?: {
+            id?: string;
+            resourceId?: string;
+          };
+        }
+      | null;
+
+    const watch = await createGoogleCalendarWatch(request.url, body?.previousChannel || null);
 
     return NextResponse.json(
       {

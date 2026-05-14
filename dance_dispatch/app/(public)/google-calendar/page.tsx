@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRef } from 'react';
 
 const WATCH_EXPIRATION_KEY = 'google_calendar_watch_expiration_ms';
+const WATCH_CHANNEL_KEY = 'google_calendar_watch_channel';
 
 function parseExpirationToMs(value: string | number | null | undefined): number | null {
   if (value === null || value === undefined) {
@@ -42,6 +43,11 @@ type WatchResult = {
     expiration?: string;
   };
   error?: string;
+};
+
+type WatchChannel = {
+  id: string;
+  resourceId: string;
 };
 
 type WebhookLogItem = {
@@ -164,11 +170,31 @@ export default function GoogleCalendarAdminPage() {
     setResult(null);
 
     try {
+      const previousChannelRaw = window.localStorage.getItem(WATCH_CHANNEL_KEY);
+      let previousChannelParsed: Partial<WatchChannel> | null = null;
+      if (previousChannelRaw) {
+        try {
+          previousChannelParsed = JSON.parse(previousChannelRaw) as Partial<WatchChannel>;
+        } catch {
+          previousChannelParsed = null;
+        }
+      }
+      const previousChannel =
+        previousChannelParsed?.id && previousChannelParsed?.resourceId
+          ? {
+              id: String(previousChannelParsed.id),
+              resourceId: String(previousChannelParsed.resourceId),
+            }
+          : undefined;
+
       const response = await fetch('/api/google-calendar/watch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          previousChannel,
+        }),
       });
 
       const payload = (await response.json()) as WatchResult;
@@ -179,6 +205,18 @@ export default function GoogleCalendarAdminPage() {
       if (expirationMs && expirationMs > Date.now()) {
         window.localStorage.setItem(WATCH_EXPIRATION_KEY, String(expirationMs));
         setActiveExpirationMs(expirationMs);
+      }
+
+      const channelId = payload.watch?.id;
+      const resourceId = payload.watch?.resourceId;
+      if (channelId && resourceId) {
+        window.localStorage.setItem(
+          WATCH_CHANNEL_KEY,
+          JSON.stringify({
+            id: channelId,
+            resourceId,
+          })
+        );
       }
     } catch {
       setResult({ error: 'Request failed. Check your network and try again.' });

@@ -8,8 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_UNTIL_KEY = "dd_install_prompt_dismiss_until";
-// const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
-const DISMISS_MS = 3 * 60 * 1000;
+const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
+// const DISMISS_MS = 3 * 60 * 1000;
 
 function isDismissedInStorage() {
   if (typeof window === "undefined") {

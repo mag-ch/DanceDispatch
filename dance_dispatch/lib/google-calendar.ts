@@ -72,6 +72,7 @@ export type GoogleCalendarSyncSummary = {
 };
 
 const GOOGLE_CALENDAR_SYNC_TOKEN_PATH = path.join(process.cwd(), 'instance', 'google-calendar-sync-token.txt');
+const GOOGLE_CALENDAR_WEBHOOK_PATH = '/google-calendar/events';
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -118,6 +119,11 @@ export function getGoogleCalendarWebhookUrl(requestUrl?: string): string {
     if (configuredUrl.protocol !== 'https:') {
       throw new Error('GOOGLE_CALENDAR_WEBHOOK_URL must use https://');
     }
+    if (configuredUrl.pathname !== GOOGLE_CALENDAR_WEBHOOK_PATH) {
+      throw new Error(
+        `GOOGLE_CALENDAR_WEBHOOK_URL must point to ${GOOGLE_CALENDAR_WEBHOOK_PATH}, received ${configuredUrl.pathname}`
+      );
+    }
     return configuredUrl.toString();
   }
 
@@ -131,7 +137,7 @@ export function getGoogleCalendarWebhookUrl(requestUrl?: string): string {
       'Google Calendar webhooks require HTTPS. Set GOOGLE_CALENDAR_WEBHOOK_URL to your public https://.../google-calendar/events endpoint.'
     );
   }
-  return `${url.origin}/google-calendar/events`;
+  return `${url.origin}${GOOGLE_CALENDAR_WEBHOOK_PATH}`;
 }
 
 export async function getGoogleCalendarAccessToken(): Promise<string> {

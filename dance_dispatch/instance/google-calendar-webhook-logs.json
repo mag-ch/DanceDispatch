@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1778792227569-0roel31i",
+    "createdAt": "2026-05-14T20:57:07.569Z",
+    "level": "info",
+    "event": "watch_registered",
+    "details": {
+      "channelId": "238b3982-646e-4f07-a420-bccd5fbc8e64",
+      "resourceId": "sIclV3V6LHAK2Ghr0_YD54iahyE",
+      "expiration": "1779397025000"
+    }
+  },
+  {
+    "id": "1778792338772-2nz9iuqb",
+    "createdAt": "2026-05-14T20:58:58.772Z",
+    "level": "info",
+    "event": "watch_registered",
+    "details": {
+      "channelId": "6b081ff8-6b3f-4bd9-b2b0-cfadfb83b303",
+      "resourceId": "sIclV3V6LHAK2Ghr0_YD54iahyE",
+      "expiration": "1779397136000"
+    }
+  },
+  {
+    "id": "1778793220194-esqbenk8",
+    "createdAt": "2026-05-14T21:13:40.194Z",
+    "level": "info",
+    "event": "webhook_received",
+    "details": {
+      "eventType": "changed",
+      "triggerDate": "2026-05-14T21:13:40.191Z",
+      "resourceState": "exists",
+      "channelId": "debug-channel",
+      "resourceId": "debug-resource",
+      "messageNumber": "1"
+    }
+  }
+]

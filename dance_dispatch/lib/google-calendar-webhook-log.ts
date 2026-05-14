@@ -15,6 +15,19 @@ export type GoogleCalendarWebhookLog = {
 
 const MAX_LOG_ENTRIES = 500;
 const LOG_FILE_PATH = path.join(process.cwd(), 'instance', 'google-calendar-webhook-logs.json');
+const inMemoryLogs: GoogleCalendarWebhookLog[] = [];
+
+function isNonFatalFsError(error: unknown): boolean {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+  return code === 'ENOENT' || code === 'EROFS' || code === 'EACCES' || code === 'EPERM';
+}
+
+function capLogs(logs: GoogleCalendarWebhookLog[]): GoogleCalendarWebhookLog[] {
+  if (logs.length <= MAX_LOG_ENTRIES) {
+    return logs;
+  }
+  return logs.slice(logs.length - MAX_LOG_ENTRIES);
+}
 
 function createLogId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -36,17 +49,25 @@ async function readLogsFromDisk(): Promise<GoogleCalendarWebhookLog[]> {
       return !!entry && typeof entry === 'object' && 'id' in entry && 'createdAt' in entry && 'event' in entry;
     });
   } catch (error) {
-    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-    if (code === 'ENOENT') {
-      return [];
+    if (isNonFatalFsError(error)) {
+      return [...inMemoryLogs];
     }
     throw error;
   }
 }
 
 async function writeLogsToDisk(logs: GoogleCalendarWebhookLog[]): Promise<void> {
-  await ensureLogDir();
-  await writeFile(LOG_FILE_PATH, JSON.stringify(logs, null, 2), 'utf8');
+  inMemoryLogs.splice(0, inMemoryLogs.length, ...capLogs(logs));
+
+  try {
+    await ensureLogDir();
+    await writeFile(LOG_FILE_PATH, JSON.stringify(inMemoryLogs, null, 2), 'utf8');
+  } catch (error) {
+    if (isNonFatalFsError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function addGoogleCalendarWebhookLog(
@@ -64,15 +85,16 @@ export async function addGoogleCalendarWebhookLog(
 
   const webhookLogs = await readLogsFromDisk();
   webhookLogs.push(entry);
-  if (webhookLogs.length > MAX_LOG_ENTRIES) {
-    webhookLogs.splice(0, webhookLogs.length - MAX_LOG_ENTRIES);
-  }
 
-  await writeLogsToDisk(webhookLogs);
+  await writeLogsToDisk(capLogs(webhookLogs));
 
   return entry;
 }
 
 export async function getGoogleCalendarWebhookLogs(): Promise<GoogleCalendarWebhookLog[]> {
-  return readLogsFromDisk();
+  try {
+    return await readLogsFromDisk();
+  } catch {
+    return [...inMemoryLogs];
+  }
 }

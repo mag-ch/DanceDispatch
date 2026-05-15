@@ -38,6 +38,8 @@ type GoogleCalendarEventItem = {
   description?: string;
   location?: string;
   htmlLink?: string;
+  recurringEventId?: string;
+  recurrence?: string[];
   start?: GoogleCalendarEventDate;
   end?: GoogleCalendarEventDate;
 };
@@ -66,6 +68,8 @@ export type GoogleCalendarSyncSummary = {
   inserted: number;
   skippedExisting: number;
   skippedInvalid: number;
+  skippedRecurring: number;
+  skippedExcluded: number;
   pendingQueued: number;
   syncMode: 'full' | 'incremental';
   changedEvents: GoogleCalendarChangedEvent[];
@@ -331,6 +335,10 @@ function splitLocation(rawLocation?: string): { venueName: string | null; venueA
   return { venueName: null, venueAddress: rawLocation };
 }
 
+function isRecurringEvent(item: GoogleCalendarEventItem): boolean {
+  return Boolean(item.recurringEventId) || Boolean(item.recurrence?.length);
+}
+
 async function getOrCreateVenueId(
   supabase: SupabaseClient,
   venueName: string | null,
@@ -482,14 +490,18 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
     inserted: 0,
     skippedExisting: 0,
     skippedInvalid: 0,
+    skippedRecurring: 0,
+    skippedExcluded: 0,
     pendingQueued: 0,
     syncMode: fetched.syncMode,
-    changedEvents: events.map((item) => ({
-      googleCalId: String(item.id || '').trim(),
-      title: (item.summary || 'Untitled event').trim(),
-      start: toIsoDateTime(item.start?.dateTime || item.start?.date),
-      status: item.status || 'confirmed',
-    })),
+    changedEvents: events
+      .filter((item) => !isRecurringEvent(item))
+      .map((item) => ({
+        googleCalId: String(item.id || '').trim(),
+        title: (item.summary || 'Untitled event').trim(),
+        start: toIsoDateTime(item.start?.dateTime || item.start?.date),
+        status: item.status || 'confirmed',
+      })),
   };
 
   for (const item of events) {
@@ -498,19 +510,44 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
     const start = toIsoDateTime(item.start?.dateTime || item.start?.date);
     const end = toIsoDateTime(item.end?.dateTime || item.end?.date);
 
+    if (isRecurringEvent(item)) {
+      summary.skippedRecurring += 1;
+      continue;
+    }
+
     if (!googleCalId || !start || !end || item.status === 'cancelled') {
       summary.skippedInvalid += 1;
       continue;
     }
 
-    const existing = await supabase
+    const excluded = await supabase
+      .from('pending_events')
+      .select('google_cal_id')
+      .eq('google_cal_id', googleCalId)
+      .eq('excluded', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (excluded.data?.google_cal_id) {
+      summary.skippedExcluded += 1;
+      continue;
+    }
+
+    const existingEvent = await supabase
       .from('Events')
       .select('id')
       .eq('google_cal_id', googleCalId)
       .limit(1)
       .maybeSingle();
 
-    if (existing.data?.id) {
+    const existingPending = await supabase
+      .from('pending_events')
+      .select('google_cal_id')
+      .eq('google_cal_id', googleCalId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingEvent.data?.id || existingPending.data?.google_cal_id) {
       summary.skippedExisting += 1;
       continue;
     }
@@ -519,6 +556,14 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
     const venueId = await getOrCreateVenueId(supabase, venueName, venueAddress);
     const hostIds = await getOrCreateHostIds(supabase, parseHostNamesFromTitle(title));
 
+    console.log('Inserting event from Google Calendar', {
+      googleCalId,
+      title,
+      start,
+      end,
+      venueId,
+      hostIds,
+    });
     const insertedEvent = await supabase
       .from('Events')
       .insert({
@@ -553,29 +598,41 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
       }
     }
 
-    const pendingInsertResult = await supabase.from('pending_events').upsert(
-      {
-        google_cal_id: googleCalId,
-        linked_event_id: newEventId,
-        title,
-        start,
-        end,
-        description: item.description || '',
-        location_name: venueName,
-        location_address: venueAddress,
-        hosts: parseHostNamesFromTitle(title).join(','),
-        status: 'pending',
-        source: 'google_calendar',
-      },
-      {
-        onConflict: 'google_cal_id',
-        ignoreDuplicates: true,
-      }
-    );
+    const pendingPayload = {
+      google_cal_id: googleCalId,
+      event_id: newEventId,
+      excluded: false,
+    };
+
+    console.info('Attempting pending_events insert for Google Calendar event', {
+      googleCalId,
+      eventId: newEventId,
+      payloadKeys: Object.keys(pendingPayload),
+    });
+
+    console.log('Pending event payload', pendingPayload);
+
+    const pendingInsertResult = await supabase.from('pending_events').insert(pendingPayload);
     if (!pendingInsertResult.error) {
       summary.pendingQueued += 1;
     } else {
-      console.warn('Failed to insert pending event', pendingInsertResult.error.message);
+      const pendingConflictCheck = await supabase
+        .from('pending_events')
+        .select('google_cal_id,event_id,excluded,created_by')
+        .or(`google_cal_id.eq.${googleCalId},event_id.eq.${newEventId}`)
+        .limit(5);
+
+      console.warn('Failed to insert pending event for Google Calendar sync', {
+        googleCalId,
+        eventId: newEventId,
+        errorMessage: pendingInsertResult.error.message,
+        errorCode: pendingInsertResult.error.code,
+        errorDetails: pendingInsertResult.error.details,
+        errorHint: pendingInsertResult.error.hint,
+        payload: pendingPayload,
+        existingRowsError: pendingConflictCheck.error?.message || null,
+        existingRows: pendingConflictCheck.data || [],
+      });
     }
   }
 

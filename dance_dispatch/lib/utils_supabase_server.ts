@@ -1090,6 +1090,7 @@ export interface SubmitEventInput {
   price?: number;
   imageurl?: string;
   externallink?: string;
+  createdBy?: string;
 }
 
 export async function submitEvent(input: SubmitEventInput): Promise<{ id: string } | { duplicate: true; id: string }> {
@@ -1198,8 +1199,42 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
     throw new Error('Failed to insert event');
   }
 
+  const newEventId = String(data.id);
+  const pendingPayload = {
+    event_id: Number(newEventId),
+    created_by: input.createdBy ?? null,
+    excluded: false,
+  };
+
+  console.info('Attempting pending_events insert for manual submit', {
+    eventId: newEventId,
+    createdBy: input.createdBy ?? null,
+    payloadKeys: Object.keys(pendingPayload),
+  });
+
+  const pendingInsertResult = await supabase.from('pending_events').insert(pendingPayload);
+  if (pendingInsertResult.error) {
+    const pendingConflictCheck = await supabase
+      .from('pending_events')
+      .select('google_cal_id,event_id,excluded,created_by')
+      .eq('event_id', Number(newEventId))
+      .limit(5);
+
+    console.warn('Failed to insert pending event for manual submit', {
+      eventId: newEventId,
+      createdBy: input.createdBy ?? null,
+      errorMessage: pendingInsertResult.error.message,
+      errorCode: pendingInsertResult.error.code,
+      errorDetails: pendingInsertResult.error.details,
+      errorHint: pendingInsertResult.error.hint,
+      payload: pendingPayload,
+      existingRowsError: pendingConflictCheck.error?.message || null,
+      existingRows: pendingConflictCheck.data || [],
+    });
+  }
+
   revalidateCatalogCache();
-  return { id: String(data.id) };
+  return { id: newEventId };
 }
 
 export async function addHostsToEvent(eventId: string, hostIds: string[]): Promise<string[]> {

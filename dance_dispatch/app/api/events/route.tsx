@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        await requireAuth();
+        const user = await requireAuth();
 
         const body = await request.json();
         const {
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
             price,
             imageurl,
             externallink,
+            createdBy: user.id,
         });
 
         if ('duplicate' in result) {

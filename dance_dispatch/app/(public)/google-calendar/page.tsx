@@ -72,6 +72,9 @@ export default function GoogleCalendarAdminPage() {
   const [webhookLogs, setWebhookLogs] = useState<WebhookLogItem[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
   const logsContainerRef = useRef<HTMLDivElement | null>(null);
+  const [excludeId, setExcludeId] = useState('');
+  const [excludeLoading, setExcludeLoading] = useState(false);
+  const [excludeResult, setExcludeResult] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(WATCH_EXPIRATION_KEY);
@@ -165,6 +168,31 @@ export default function GoogleCalendarAdminPage() {
     }
   }, [activeExpirationMs, nowMs]);
 
+  const excludeEvent = async () => {
+    const id = excludeId.trim();
+    if (!id) return;
+    setExcludeLoading(true);
+    setExcludeResult(null);
+    try {
+      const response = await fetch('/api/google-calendar/exclude-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleCalId: id }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok) {
+        setExcludeResult(`Error: ${payload.error ?? 'Unknown error'}`);
+      } else {
+        setExcludeResult(`Excluded: ${id}`);
+        setExcludeId('');
+      }
+    } catch {
+      setExcludeResult('Request failed.');
+    } finally {
+      setExcludeLoading(false);
+    }
+  };
+
   const registerWatch = async () => {
     setLoading(true);
     setResult(null);
@@ -253,7 +281,6 @@ export default function GoogleCalendarAdminPage() {
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : null}
-
       <section className="mt-6">
         <h2 className="text-sm font-semibold text-text">Webhook Event Log</h2>
         <p className="mt-1 text-xs text-muted">Auto-refreshes every 5 seconds.</p>

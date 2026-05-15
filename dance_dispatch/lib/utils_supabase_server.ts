@@ -1216,7 +1216,7 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
   if (pendingInsertResult.error) {
     const pendingConflictCheck = await supabase
       .from('pending_events')
-      .select('google_cal_id,event_id,excluded,created_by')
+      .select('google_cal_id,event_id,exclude,created_by')
       .eq('event_id', Number(newEventId))
       .limit(5);
 

@@ -88,6 +88,18 @@ export async function POST(request: Request) {
       return new NextResponse(null, { status: 204 });
     }
 
+    if (resourceState !== 'exists') {
+      await addGoogleCalendarWebhookLog('webhook_ignored_non_change', {
+        eventType,
+        triggerDate,
+        resourceState,
+        channelId,
+        resourceId,
+        messageNumber,
+      });
+      return new NextResponse(null, { status: 204 });
+    }
+
     const summary = await syncGoogleCalendarEventsToSupabase();
     console.log('Google Calendar webhook changed events', {
       eventType,

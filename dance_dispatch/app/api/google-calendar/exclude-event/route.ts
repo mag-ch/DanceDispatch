@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('pending_events').upsert(
       {
         google_cal_id: googleCalId,
-        excluded: true,
+        exclude: true,
         source: 'google_calendar',
       },
       {
@@ -67,10 +67,10 @@ export async function DELETE(request: Request) {
 
     const supabase = getSupabaseClient();
 
-    // Remove exclusion by setting excluded=false so next sync can import it.
+    // Remove exclusion by setting exclude=false so next sync can import it.
     const { error } = await supabase
       .from('pending_events')
-      .update({ excluded: false })
+      .update({ exclude: false })
       .eq('google_cal_id', googleCalId);
 
     if (error) {

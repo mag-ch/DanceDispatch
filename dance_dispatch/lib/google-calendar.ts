@@ -524,7 +524,7 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
       .from('pending_events')
       .select('google_cal_id')
       .eq('google_cal_id', googleCalId)
-      .eq('excluded', true)
+      .eq('exclude', true)
       .limit(1)
       .maybeSingle();
 
@@ -598,10 +598,15 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
       }
     }
 
+    console.info('Successfully inserted event from Google Calendar, queuing pending event for sync', {
+      googleCalId,
+      eventId: newEventId,
+    });
+
     const pendingPayload = {
       google_cal_id: googleCalId,
       event_id: newEventId,
-      excluded: false,
+      exclude: false,
     };
 
     console.info('Attempting pending_events insert for Google Calendar event', {
@@ -618,7 +623,7 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
     } else {
       const pendingConflictCheck = await supabase
         .from('pending_events')
-        .select('google_cal_id,event_id,excluded,created_by')
+        .select('google_cal_id,event_id,exclude,created_by')
         .or(`google_cal_id.eq.${googleCalId},event_id.eq.${newEventId}`)
         .limit(5);
 

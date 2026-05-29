@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRef } from 'react';
 
 const WATCH_EXPIRATION_KEY = 'google_calendar_watch_expiration_ms';
 const WATCH_CHANNEL_KEY = 'google_calendar_watch_channel';
@@ -50,17 +49,17 @@ type WatchChannel = {
   resourceId: string;
 };
 
-type WebhookLogItem = {
-  id: string;
-  createdAt: string;
-  level: 'info' | 'warn' | 'error';
-  event: string;
-  details?: Record<string, unknown>;
+type PendingReviewItem = {
+  eventId: string;
+  title: string;
+  start: string | null;
+  googleCalId: string | null;
+  createdBy: string | null;
 };
 
-type WebhookLogsResponse = {
+type PendingReviewResponse = {
   ok?: boolean;
-  logs?: WebhookLogItem[];
+  items?: PendingReviewItem[];
   error?: string;
 };
 
@@ -69,12 +68,11 @@ export default function GoogleCalendarAdminPage() {
   const [result, setResult] = useState<WatchResult | null>(null);
   const [activeExpirationMs, setActiveExpirationMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const [webhookLogs, setWebhookLogs] = useState<WebhookLogItem[]>([]);
-  const [logsError, setLogsError] = useState<string | null>(null);
-  const logsContainerRef = useRef<HTMLDivElement | null>(null);
-  const [excludeId, setExcludeId] = useState('');
-  const [excludeLoading, setExcludeLoading] = useState(false);
-  const [excludeResult, setExcludeResult] = useState<string | null>(null);
+  const [pendingReviewItems, setPendingReviewItems] = useState<PendingReviewItem[]>([]);
+  const [pendingReviewError, setPendingReviewError] = useState<string | null>(null);
+  const [pendingApproveId, setPendingApproveId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
 
   useEffect(() => {
     const raw = window.localStorage.getItem(WATCH_EXPIRATION_KEY);
@@ -107,39 +105,30 @@ export default function GoogleCalendarAdminPage() {
   }, [activeExpirationMs, nowMs]);
 
   useEffect(() => {
-    const loadLogs = async () => {
+    const loadAdminData = async () => {
       try {
-        const response = await fetch('/api/google-calendar/webhook-logs', {
+        const pendingResponse = await fetch('/api/google-calendar/pending-events', {
           method: 'GET',
           cache: 'no-store',
         });
 
-        const payload = (await response.json()) as WebhookLogsResponse;
-        if (!response.ok) {
-          setLogsError(payload.error || 'Failed to load webhook logs');
+        const pendingPayload = (await pendingResponse.json()) as PendingReviewResponse;
+        if (!pendingResponse.ok) {
+          setPendingReviewError(pendingPayload.error || 'Failed to load pending review items');
           return;
         }
 
-        setLogsError(null);
-        setWebhookLogs(payload.logs || []);
+        setPendingReviewError(null);
+        setPendingReviewItems(pendingPayload.items || []);
       } catch {
-        setLogsError('Failed to load webhook logs');
+        setPendingReviewError('Failed to load pending review items');
       }
     };
 
-    loadLogs();
-    const interval = window.setInterval(loadLogs, 5000);
+    loadAdminData();
+    const interval = window.setInterval(loadAdminData, 5000);
     return () => window.clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    const container = logsContainerRef.current;
-    if (!container) {
-      return;
-    }
-
-    container.scrollTop = container.scrollHeight;
-  }, [webhookLogs]);
 
   const remainingText = useMemo(() => {
     if (!activeExpirationMs || remainingMs <= 0) {
@@ -168,30 +157,72 @@ export default function GoogleCalendarAdminPage() {
     }
   }, [activeExpirationMs, nowMs]);
 
-  const excludeEvent = async () => {
-    const id = excludeId.trim();
-    if (!id) return;
-    setExcludeLoading(true);
-    setExcludeResult(null);
+const approvePendingReviewEvent = async (eventId: string, googleCalId: string | null) => {
+    if (!eventId || !googleCalId || pendingApproveId || pendingDeleteId) return;
+
+    setPendingApproveId(eventId);
+    setPendingReviewError(null);
+
     try {
       const response = await fetch('/api/google-calendar/exclude-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ googleCalId: id }),
+        body: JSON.stringify({ googleCalId }),
       });
+
       const payload = (await response.json()) as { ok?: boolean; error?: string };
       if (!response.ok) {
-        setExcludeResult(`Error: ${payload.error ?? 'Unknown error'}`);
-      } else {
-        setExcludeResult(`Excluded: ${id}`);
-        setExcludeId('');
+        setPendingReviewError(payload.error || 'Failed to approve pending event');
+        return;
       }
+
+      setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
     } catch {
-      setExcludeResult('Request failed.');
+      setPendingReviewError('Failed to approve pending event');
     } finally {
-      setExcludeLoading(false);
+      setPendingApproveId(null);
     }
   };
+
+  const deletePendingReviewEvent = async (eventId: string, googleCalId: string | null) => {
+    if (!eventId || !googleCalId || pendingDeleteId || pendingApproveId) return;
+
+    setPendingDeleteId(eventId);
+    setPendingReviewError(null);
+
+    try {
+      // Step 1: same as Approve (exclude from pending review)
+      const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleCalId }),
+      });
+
+      const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
+      if (!excludeResponse.ok) {
+        setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
+        return;
+      }
+
+      // Step 2: delete the event
+      const deleteResponse = await fetch(`/api/event/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      const deletePayload = (await deleteResponse.json().catch(() => ({}))) as { error?: string };
+      if (!deleteResponse.ok) {
+        setPendingReviewError(deletePayload.error || 'Failed to delete event');
+        return;
+      }
+
+      setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
+    } catch {
+      setPendingReviewError('Failed to delete pending event');
+    } finally {
+      setPendingDeleteId(null);
+    }
+  };
+
 
   const registerWatch = async () => {
     setLoading(true);
@@ -281,32 +312,64 @@ export default function GoogleCalendarAdminPage() {
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : null}
+
       <section className="mt-6">
-        <h2 className="text-sm font-semibold text-text">Webhook Event Log</h2>
-        <p className="mt-1 text-xs text-muted">Auto-refreshes every 5 seconds.</p>
-        {logsError ? (
-          <p className="mt-2 text-xs text-red-500">{logsError}</p>
+        <h2 className="text-sm font-semibold text-text">Pending Events For Manual Review</h2>
+        <p className="mt-1 text-xs text-muted">Rows with `exclude = false` from `pending_events`.</p>
+        {pendingReviewError ? (
+          <p className="mt-2 text-xs text-red-500">{pendingReviewError}</p>
         ) : null}
-        <div
-          ref={logsContainerRef}
-          className="mt-2 h-64 overflow-y-auto rounded-md border border-default bg-surface p-3"
-        >
-          {webhookLogs.length === 0 ? (
-            <p className="text-xs text-muted">No webhook events logged yet.</p>
+        <div className="mt-2 rounded-md border border-default bg-surface p-3">
+          {pendingReviewItems.length === 0 ? (
+            <p className="text-xs text-muted">No pending events for manual review.</p>
           ) : (
             <ul className="space-y-2">
-              {webhookLogs.map((entry) => (
-                <li key={entry.id} className="rounded border border-default/50 bg-surface/50 p-2">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-semibold text-text">{entry.event}</span>
-                    <span className="text-muted">{new Date(entry.createdAt).toLocaleString()}</span>
+              {pendingReviewItems.map((item) => (
+                <li
+                  key={item.eventId}
+                  className="flex items-center gap-3 rounded border border-default/50 bg-surface/50 p-2"
+                >
+                  <div
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => {
+                      window.location.href = `/events/${item.eventId}`;
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        window.location.href = `/events/${item.eventId}`;
+                      }
+                    }}
+                    className="min-w-0 flex-1 cursor-pointer rounded p-1 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20"
+                  >
+                    <div className="text-sm font-medium text-text">{item.title}</div>
+                    <div className="mt-1 text-xs text-muted">
+                      Event #{item.eventId}
+                      {item.start ? ` • ${new Date(item.start).toLocaleString()}` : ''}
+                      {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : ''}
+                    </div>
                   </div>
-                  <div className="mt-1 text-[11px] uppercase tracking-wide text-muted">{entry.level}</div>
-                  {entry.details ? (
-                    <pre className="mt-2 overflow-auto rounded bg-black/5 p-2 text-[11px] text-text">
-                      {JSON.stringify(entry.details, null, 2)}
-                    </pre>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void deletePendingReviewEvent(item.eventId, item.googleCalId);
+                    }}
+                    disabled={pendingDeleteId === item.eventId || !item.googleCalId}
+                    className="shrink-0 rounded-md border border-default px-3 py-2 text-xs font-medium text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {pendingDeleteId === item.eventId ? 'Deleting...' : item.googleCalId ? 'Delete' : 'No Google ID'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void approvePendingReviewEvent(item.eventId, item.googleCalId);
+                    }}
+                    disabled={pendingApproveId === item.eventId || !item.googleCalId}
+                    className="shrink-0 rounded-md border border-default px-3 py-2 text-xs font-medium text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {pendingApproveId === item.eventId ? 'Approving...' : item.googleCalId ? 'Approve' : 'No Google ID'}
+                  </button>
                 </li>
               ))}
             </ul>

@@ -49,8 +49,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
     const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
     const canEditHosts = !authLoading && Boolean(session);
-    const normalizedHostSearchQuery = hostSearchQuery.trim().toLowerCase();
-    const filteredHosts = allHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery));
+    const normalizedHostSearchQuery = hostSearchQuery.trim();
+    const filteredHosts = allHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery.toLowerCase()));
     const selectedHostTokens = selectedHostIds
         .map((hostId) => {
             const selectedHost = allHosts.find((host) => String(host.id) === hostId);
@@ -194,6 +194,39 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         }
     };
 
+    const [isCreatingNewHost, setIsCreatingNewHost] = useState(false);
+    const [newHostTags, setNewHostTags] = useState('');
+    const [hostCreationError, setHostCreationError] = useState<string | null>(null);
+
+    const handleCreateNewHost = async () => {
+        if (!normalizedHostSearchQuery.trim()) {
+            setHostCreationError('Host name cannot be empty');
+            return;
+        }
+
+        try {
+            setHostCreationError(null);
+            const response = await fetch('/api/hosts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: normalizedHostSearchQuery.trim(), tags: newHostTags.trim() }),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.error ?? 'Failed to create host');
+            }
+
+            const createdHost = data;
+            setAllHosts([...allHosts, createdHost]);
+            toggleSelectedHost(String(createdHost.id));
+            setNewHostTags('');
+            setIsCreatingNewHost(false);
+        } catch (error) {
+            setHostCreationError(error instanceof Error ? error.message : 'Failed to create host');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-bg">
             {/* Flyer Section */}
@@ -287,6 +320,31 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 >
                                     {event.price != undefined ? (event.price == 0 ? 'Free RSVP' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
+                                {session?.user?.id === 'ba398812-06a0-4c48-9f15-0660d3af0047' && (
+                                    <button
+                                        type="button"
+                                        className="px-4 py-2 rounded-lg font-semibold text-text border border-default hover:bg-accent transition"
+                                        onClick={() => {
+                                            const newLink = prompt('Enter external link:', event.externallink || '');
+                                            if (newLink === null) return;
+                                            const newPrice = prompt('Enter price (or 0 for free):', String(event.price || ''));
+                                            if (newPrice === null) return;
+                                            
+                                            fetch(`/api/events/${event.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ 
+                                                    externallink: newLink,
+                                                    price: newPrice ? parseFloat(newPrice) : 0
+                                                })
+                                            }).then(res => {
+                                                if (res.ok) window.location.reload();
+                                            });
+                                        }}
+                                    >
+                                        ✎ Edit Link & Price
+                                    </button>
+                                )}
                                 {(!event.externallink || event.externallink.length <= 3) && event.price != undefined && <span className="px-2 py-2 rounded-lg font-semibold text-muted">
                                     {event.price != undefined ? (event.price == 0 ? 'Free Event' : `$${event.price}`) : 'Price TBD'}
                                 </span>}
@@ -393,7 +451,50 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                         </div>
                                     )}
                                     {normalizedHostSearchQuery && filteredHosts.length === 0 && (
-                                        <p className="text-sm text-muted">No hosts match your search.</p>
+                                        <div className="space-y-3">
+                                            <p className="text-sm text-muted">No hosts match your search.</p>
+                                            {!isCreatingNewHost ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCreatingNewHost(true)}
+                                                    className="w-full text-sm px-3 py-2 rounded-lg border border-default text-text hover:bg-accent-soft transition font-semibold"
+                                                >
+                                                    + Create New Host
+                                                </button>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        value={newHostTags}
+                                                        onChange={(e) => setNewHostTags(e.target.value)}
+                                                        placeholder="Enter host tags, comma separated"
+                                                        className="w-full text-sm px-3 py-2 rounded-lg border border-default bg-bg text-text outline-none"
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleCreateNewHost}
+                                                            className="flex-1 text-sm px-3 py-2 rounded-lg bg-accent text-text font-semibold hover:bg-accent-soft transition"
+                                                        >
+                                                            Create
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setIsCreatingNewHost(false);
+                                                                setNewHostTags('');
+                                                                setHostCreationError(null);
+                                                            }}
+                                                            className="flex-1 text-sm px-3 py-2 rounded-lg border border-default text-text hover:bg-accent-soft transition"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                    {hostCreationError && <p className="text-sm text-red-500">{hostCreationError}</p>}
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                     {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
                                 </div>

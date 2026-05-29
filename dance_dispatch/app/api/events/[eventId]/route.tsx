@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth-helpers';
-import { addHostsToEvent, getEventById, setHostsForEvent, updateEvent } from '@/lib/utils_supabase_server';
+import { addHostsToEvent, deleteEvent, getEventById, setHostsForEvent, updateEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
     request: Request,
@@ -72,6 +72,42 @@ export async function PATCH(
         // debugging: log the error to the console for better visibility during development
         console.error('Error in PATCH /api/events/[eventId]:', error);
         const message = error instanceof Error ? error.message : 'Failed to update event';
+        const normalizedMessage = message.toLowerCase();
+        const status = normalizedMessage.includes('unauthorized')
+            ? 401
+            : normalizedMessage.includes('invalid')
+                ? 400
+                : 500;
+
+        return new Response(JSON.stringify({ error: message }), {
+            status,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ eventId: string }> }
+) {
+    try {
+        await requireAuth();
+        const { eventId } = await params;
+        const deleted = await deleteEvent(eventId);
+
+        if (!deleted) {
+            return new Response(JSON.stringify({ error: 'Event not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        return new Response(JSON.stringify({ ok: true, eventId }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete event';
         const normalizedMessage = message.toLowerCase();
         const status = normalizedMessage.includes('unauthorized')
             ? 401

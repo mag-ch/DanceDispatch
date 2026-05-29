@@ -34,6 +34,19 @@ function getCacheableSupabaseClient(): SupabaseClient {
   return cacheableSupabaseClient;
 }
 
+function getServiceRoleSupabaseClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url || !serviceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 function splitDbDateTime(value: unknown): { date: string; time: string } {
   if (!value) {
     return { date: '', time: '' };
@@ -66,20 +79,20 @@ function normalizeHostLinks(value: unknown): HostExternalLink[] {
       if (typeof entry === 'string') {
         const trimmed = entry.trim();
         if (!trimmed) continue;
-        links.push({ url: trimmed, platform: inferPlatformFromUrl(trimmed) });
+        links.push({ url: trimmed, type: inferPlatformFromUrl(trimmed) });
         continue;
       }
 
-      const candidate = entry as { url?: unknown; platform?: unknown; label?: unknown };
+      const candidate = entry as { url?: unknown; type?: unknown; embed_code?: unknown };
       const url = String(candidate.url ?? '').trim();
       if (!url) continue;
-      const platform = String(candidate.platform ?? '').trim() || inferPlatformFromUrl(url);
-      const label = String(candidate.label ?? '').trim();
+      const type = String(candidate.type ?? '').trim() || inferPlatformFromUrl(url);
+      const embed_code = String(candidate.embed_code ?? '').trim();
 
       links.push({
         url,
-        platform,
-        ...(label ? { label } : {}),
+        type,
+        embed_code,
       });
     }
 
@@ -169,24 +182,23 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
   const hostLinksByHostId = new Map<number, HostExternalLink[]>();
   try {
     const { data, error } = await supabase
-      .from('host_links')
-      .select('host_id,url,platform,label,display_order')
-      .order('display_order', { ascending: true });
+      .from('host_media')
+      .select('host_id,embed_code,type,link');
 
     if (!error && data) {
       for (const row of data) {
         const hostId = Number((row as any).host_id);
-        const url = String((row as any).url ?? '').trim();
+        const url = String((row as any).link ?? '').trim();
         if (Number.isNaN(hostId) || !url) continue;
 
         const existing = hostLinksByHostId.get(hostId) ?? [];
-        const platform = String((row as any).platform ?? '').trim() || inferPlatformFromUrl(url);
-        const label = String((row as any).label ?? '').trim();
+        const embed_code = String((row as any).embed_code ?? '').trim();
+        const label = String((row as any).type ?? '').trim() || inferPlatformFromUrl(url);
 
         existing.push({
+          type: label,
+          embed_code,
           url,
-          platform,
-          ...(label ? { label } : {}),
         });
         hostLinksByHostId.set(hostId, existing);
       }
@@ -410,6 +422,31 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
   }
 }
 
+
+export async function createHost(data: {
+  name: string;
+  tags?: string | null;
+}): Promise<any> {
+  const supabase = await createServerClient();
+
+  const { data: newHost, error } = await supabase
+    .from('Hosts')
+    .insert([
+      {
+        name: data.name,
+        tags: data.tags || null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating host:', error);
+    throw new Error(`Failed to create host: ${error.message}`);
+  }
+
+  return newHost;
+}
 
 export async function getHostMedia(hostId: string): Promise<any[]> {
   try {
@@ -1078,6 +1115,77 @@ export async function updateEvent(eventId: string, updatedFields: Partial<Event>
   return eventId;
 }
 
+export type DeleteEventOptions = {
+  useServiceRole?: boolean;
+};
+
+export async function deleteEvent(eventId: string, options: DeleteEventOptions = {}): Promise<boolean> {
+  const numericEventId = Number(eventId);
+  if (Number.isNaN(numericEventId)) {
+    throw new Error('Invalid event id');
+  }
+
+  const serviceRoleClient = options.useServiceRole ? getServiceRoleSupabaseClient() : null;
+  if (options.useServiceRole && !serviceRoleClient) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for deleteEvent useServiceRole mode');
+  }
+
+  const supabase = serviceRoleClient ?? await createServerClient();
+
+  const existingEventResult = await supabase
+    .from('Events')
+    .select('id,google_cal_id,title')
+    .eq('id', numericEventId)
+    .limit(1);
+
+  if (existingEventResult.error) {
+    console.error('deleteEvent: failed to check existing event row', {
+      eventId: numericEventId,
+      message: existingEventResult.error.message,
+      code: existingEventResult.error.code,
+      details: existingEventResult.error.details,
+      hint: existingEventResult.error.hint,
+    });
+    throw new Error(existingEventResult.error.message || 'Failed to verify event before delete');
+  }
+
+  const existingRows = existingEventResult.data ?? [];
+
+  const deleteEventHostsResult = await supabase
+    .from('event_hosts')
+    .delete({ count: 'exact' })
+    .eq('event_id', numericEventId);
+  if (deleteEventHostsResult.error) {
+    console.error('Error deleting event hosts:', deleteEventHostsResult.error);
+    throw new Error(deleteEventHostsResult.error.message || 'Failed to delete event hosts');
+  }
+
+  const deleteEventResult = await supabase
+    .from('Events')
+    .delete({ count: 'exact' })
+    .eq('id', numericEventId)
+    .select('id');
+  if (deleteEventResult.error) {
+    console.error('Error deleting event:', deleteEventResult.error);
+    throw new Error(deleteEventResult.error.message || 'Failed to delete event');
+  }
+
+  const deleted = (deleteEventResult.count ?? 0) > 0 || (deleteEventResult.data || []).length > 0;
+  if (deleted) {
+    revalidateCatalogCache();
+  } else {
+    console.warn('deleteEvent: no rows deleted', {
+      eventId: numericEventId,
+      preDeleteMatches: existingRows.length,
+      hint: existingRows.length > 0
+        ? 'Row existed before delete but delete affected 0 rows; verify policies/triggers'
+        : 'No matching Events row found before delete; event_id may be stale',
+    });
+  }
+
+  return deleted;
+}
+
 export interface SubmitEventInput {
   title: string;
   startdate: string;   // YYYY-MM-DD
@@ -1203,7 +1311,7 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
   const pendingPayload = {
     event_id: Number(newEventId),
     created_by: input.createdBy ?? null,
-    excluded: false,
+    exclude: false,
   };
 
   console.info('Attempting pending_events insert for manual submit', {

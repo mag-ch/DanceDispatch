@@ -1,4 +1,4 @@
-import { getHosts } from '@/lib/utils_supabase_server';
+import { getHosts , createHost} from '@/lib/utils_supabase_server';
 
 function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase();
@@ -41,6 +41,42 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error in GET /api/hosts:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch hosts' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, tags } = body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return new Response(JSON.stringify({ error: 'Host name is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    let normalizedTags = '';
+    if (tags && typeof tags === 'string') {
+      normalizedTags = '{' + (tags.split(',')).map(tag => `"${tag.trim()}"`).join(',') + '}';
+    }
+
+    const newHost = await createHost({
+      name: name.trim(),
+      tags: normalizedTags || null,
+    });
+
+    return new Response(JSON.stringify(newHost), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error in POST /api/hosts:', error);
+    return new Response(JSON.stringify({ error: 'Failed to create host' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

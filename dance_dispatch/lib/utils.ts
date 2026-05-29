@@ -42,9 +42,9 @@ export interface Host {
 }
 
 export interface HostExternalLink {
+    type?: string;
     url: string;
-    platform?: string;
-    label?: string;
+    embed_code?: string;
 }
 
 function inferPlatformFromUrl(url: string): string {

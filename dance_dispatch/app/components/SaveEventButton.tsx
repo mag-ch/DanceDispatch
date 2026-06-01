@@ -9,9 +9,10 @@ interface SaveEventButtonProps {
     entity: string;
     entityId: string | number;
     initialSaved?: boolean;
+    isDisabled?: boolean;
 }
 
-export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved }) => {
+export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
@@ -65,6 +66,10 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
     const handleClick = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (isDisabled) {
+            return;
+        }
 
         if (!session) {
             setShowPopup(true);
@@ -94,12 +99,14 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         <>
             <button
                 onClick={handleClick}
-                disabled={isLoading}
-                className="disabled:opacity-50 group"
+                disabled={isLoading || isDisabled}
+                className={`group rounded-full transition ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
+                aria-disabled={isLoading || isDisabled}
+                title={isDisabled ? 'RSVP closed for past events' : 'Save event'}
             >
                 <Heart
                     fill={isSaved ? 'currentColor' : 'none'}
-                    className="text-red-500 group-hover:fill-current group-hover:opacity-50 transition-all"
+                    className={`transition-all ${isDisabled ? 'text-slate-400' : 'text-red-500 group-hover:fill-current group-hover:opacity-50'}`}
                 />
             </button>
             <AuthRequiredModal
@@ -111,7 +118,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
     );
 };
 
-export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved }) => {
+export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
@@ -166,6 +173,10 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
         e.preventDefault();
         e.stopPropagation();
 
+        if (isDisabled) {
+            return;
+        }
+
         if (!session) {
             setShowPopup(true);
             return;
@@ -194,8 +205,10 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
         <>
             <button
                 onClick={handleClick}
-                disabled={isLoading}
-                className={`disabled:opacity-50 group px-6 py-2 rounded ${!isSaved ? 'btn-highlighted' : ''}`}
+                disabled={isLoading || isDisabled}
+                className={`group px-6 py-2 rounded transition ${!isSaved ? 'btn-highlighted' : ''} ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-90'}`}
+                aria-disabled={isLoading || isDisabled}
+                title={isDisabled ? 'Follow is unavailable for past items' : 'Follow'}
             >
                 {isSaved ? 'Unfollow' : 'Follow'}
             </button>

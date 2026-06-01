@@ -13,6 +13,7 @@ export default function SignUp() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [returnPath, setReturnPath] = useState('/');
+    const [referrerId, setReferrerId] = useState<string | null>(null);
     const router = useRouter();
 
     const waitForSession = async (attempts = 10, delayMs = 120) => {
@@ -50,6 +51,12 @@ export default function SignUp() {
         }
 
         setReturnPath(nextPath);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const ref = new URLSearchParams(window.location.search).get('ref');
+        if (ref) setReferrerId(ref);
     }, []);
 
     const handleSignUp = async (e: React.FormEvent) => {
@@ -108,6 +115,14 @@ export default function SignUp() {
             const activeSession = await waitForSession();
             if (!activeSession) {
                 throw new Error('Could not establish a login session after sign up.');
+            }
+
+            if (referrerId) {
+                await fetch('/api/referral', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ referrerId }),
+                }).catch(() => { /* non-critical — don't block sign-up */ });
             }
 
             router.replace(returnPath || '/');

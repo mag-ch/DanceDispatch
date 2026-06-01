@@ -91,6 +91,7 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const defaultThumbnail = (event.imageurl == "" || !event.imageurl) ? '/images/default_event.jpg' : event.imageurl;
+    const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
     const extLink = event.externallink ? await processUrl(event.externallink) : undefined;
 
@@ -103,7 +104,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
             <CustomLink href={`/events/${event.id}`} className={styles.cardLink}>
                 <img src={defaultThumbnail} alt={event.title} className={styles.imageLg} />
                 <div className={styles.saveOverlay}>
-                    <SaveEventButton entity='events' entityId={event.id} />
+                    <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
                 </div>
                 <div className={styles.content}>
                     <h3 className={styles.titleLg}>{event.title}</h3>

@@ -1,6 +1,7 @@
 import { userSubmitReview } from '@/lib/utils_supabase_server';
 import { validateAndSanitizeReviews } from '@/lib/validator';
 import { requireAuth } from '@/lib/auth-helpers';
+import { awardPoints, POINTS } from '@/lib/points';
 
 export async function POST(
     request: Request,
@@ -26,6 +27,8 @@ export async function POST(
         for (const entry of content) {
             await userSubmitReview(entry, user.id, eventId);
         }
+
+        await awardPoints(user.id, 'review', POINTS.review, eventId);
 
         return new Response(JSON.stringify({ success: true }), {
             status: 200,

@@ -1,7 +1,7 @@
 import { Event } from '@/lib/utils';
 import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
-import { getSavedEventsForUserServer, getUserReviews } from '@/lib/server_utils';
+import { getSavedEventsForUserServer, getUserPointsSummary, getUserReviews } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
 import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
@@ -16,7 +16,7 @@ export default async function ProfilePage() {
     const userdata = await getUserById(user.id);
     const displayName = userdata?.full_name || userdata?.username || user.email || 'User';
     
-    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus] = await Promise.all([
+    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus, pointsSummary] = await Promise.all([
         getAllFollowedVenues(user.id),
         getAllFollowedHosts(user.id),
         getAllFollowedUsers(user.id),
@@ -24,6 +24,7 @@ export default async function ProfilePage() {
         getSavedEventsForUserServer(user.id, 'past'),
         getUserReviews(user.id),
         checkNewUserMissions(user.id),
+        getUserPointsSummary(user.id),
     ]);
 
     const partiesAttendedTotal = pastEvents.length;
@@ -133,6 +134,30 @@ export default async function ProfilePage() {
                             </ol>
                         ) : (
                             <p className="text-sm text-muted">No venue attendance yet.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-yellow-400/30 bg-gradient-to-br from-yellow-50 to-surface p-5 shadow-sm dark:from-yellow-400/10 dark:to-surface">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-sm text-muted">Points Earned</p>
+                            <p className="mt-2 text-3xl font-bold text-text">{pointsSummary.totalPoints.toLocaleString()}</p>
+                        </div>
+                        <Link href="/leaderboard" className="btn-highlighted rounded-lg px-4 py-2 text-sm font-semibold w-fit">
+                            View leaderboard
+                        </Link>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                        {Object.keys(pointsSummary.breakdown).length === 0 ? (
+                            <span className="text-muted">Earn points by RSVPing, sharing, reviewing, and referring.</span>
+                        ) : (
+                            Object.entries(pointsSummary.breakdown).map(([action, points]) => (
+                                <span key={action} className="rounded-full border border-border bg-bg px-3 py-1 text-text">
+                                    {action}: {points}
+                                </span>
+                            ))
                         )}
                     </div>
                 </div>

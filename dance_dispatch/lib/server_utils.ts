@@ -231,3 +231,34 @@ export async function getFollowedUsers(userId: string) {
     
     return data?.map((row) => row.followed_user_id) || [];
 }
+
+export type UserPointsSummary = {
+    totalPoints: number;
+    breakdown: Record<string, number>;
+};
+
+export async function getUserPointsSummary(userId: string): Promise<UserPointsSummary> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('UserPoints')
+        .select('points, action')
+        .eq('user_id', userId);
+
+    if (error) {
+        console.error('Error fetching user points from Supabase:', error);
+        return { totalPoints: 0, breakdown: {} };
+    }
+
+    return (data ?? []).reduce<UserPointsSummary>(
+        (acc, row: any) => {
+            const points = Number(row.points ?? 0);
+            const safePoints = Number.isFinite(points) ? points : 0;
+            const action = String(row.action ?? 'other');
+
+            acc.totalPoints += safePoints;
+            acc.breakdown[action] = (acc.breakdown[action] ?? 0) + safePoints;
+            return acc;
+        },
+        { totalPoints: 0, breakdown: {} }
+    );
+}

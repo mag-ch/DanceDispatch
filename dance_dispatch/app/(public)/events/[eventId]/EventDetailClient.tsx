@@ -37,6 +37,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
     useEffect(() => {
         if (authLoading || !showReviewModal) return;
@@ -308,7 +309,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold mb-4 text-text">{event.title}</h1>
                             <div className="flex gap-4">
-                                <SaveEventButton entity='events' entityId={event.id} />
+                                <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
                                 <button className="p-2 hover:bg-accent" onClick={() => setShowShareModal(true)} type="button">
                                     <Share2 className="text-gray-600"/>
                                 </button>

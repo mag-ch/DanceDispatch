@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { userSaveEvent } from '@/lib/utils_supabase_server';
+import { awardPoints, POINTS } from '@/lib/points';
 
 export async function GET(
     _request: Request,
@@ -67,6 +68,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
         }
 
         await userSaveEvent(String(eventData.id), user.id, saveToggle);
+
+        if (saveToggle) {
+            await awardPoints(user.id, 'rsvp', POINTS.rsvp, String(eventData.id));
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
+import { awardPoints, POINTS } from '@/lib/points';
 
 function normalizeEntityType(value: string): 'event' | 'host' | 'venue' | 'user' | null {
   const normalized = value.trim().toLowerCase();
@@ -70,6 +71,9 @@ export async function POST(request: Request) {
       console.error('Error creating share notifications:', insertError);
       return NextResponse.json({ error: 'Unable to send share notifications.' }, { status: 500 });
     }
+
+    // Award points: 5 per unique recipient shared with
+    await awardPoints(user.id, 'share', POINTS.share * rows.length);
 
     return NextResponse.json({ success: true, count: rows.length });
   } catch (error) {

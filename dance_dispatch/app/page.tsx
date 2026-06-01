@@ -41,7 +41,26 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </div>
         </div>
       </section>
+  <section className="container mx-auto mt-10 px-6 ">
+        <div className="rounded-2xl border border-yellow-400/30 bg-gradient-to-r from-yellow-50 via-surface to-surface p-6 shadow-sm dark:from-yellow-400/10">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Leaderboard</p>
+              <h2 className="mt-1 text-xl font-semibold text-text">Climb the board by RSVPing, sharing, reviewing, and referring.</h2>
+            </div>
+            <Link
+              href="/leaderboard"
+              className="btn-highlighted rounded-lg px-5 py-2.5 text-sm font-semibold w-fit"
+            >
+              View Leaderboard
+            </Link>
+          </div>
 
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <LeaderboardPreview />
+          </div>
+        </div>
+      </section>
       <section className="container mx-auto px-6 py-16">
         <h2 className="text-2xl font-semibold mb-6">Trending Events</h2>
         <Suspense fallback={<p>Loading events...</p>}>
@@ -65,7 +84,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           />
         </div>
       </section>
-
+{/* 
       <section className="container mx-auto px-6 py-20">
         <h2 className="text-2xl font-semibold mb-8 text-center">Explore More</h2>
         <div className="grid md:grid-cols-4 gap-6">
@@ -74,7 +93,9 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           <NavCard title="My RSVPs" href="/my-events" />
           <NavCard title="Following" href="/following" />
         </div>
-      </section>
+      </section> */}
+
+      
     </main>
   );
 }
@@ -113,5 +134,57 @@ function NavCard({ title, href }: { title: string; href: string }) {
     >
       <h3 className="text-lg font-semibold">{title}</h3>
     </Link>
+  );
+}
+
+async function LeaderboardPreview() {
+  const supabase = await createClient();
+
+  const { data: pointRows, error: pointsError } = await supabase
+    .from('UserPoints')
+    .select('user_id, points')
+    .order('created_at', { ascending: false });
+
+  if (pointsError) {
+    return <p className="text-sm text-muted sm:col-span-3">Leaderboard preview unavailable right now.</p>;
+  }
+
+  const totals = new Map<string, number>();
+  for (const row of pointRows ?? []) {
+    const points = Number(row.points ?? 0);
+    totals.set(row.user_id, (totals.get(row.user_id) ?? 0) + (Number.isFinite(points) ? points : 0));
+  }
+
+  const topIds = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([userId]) => userId);
+
+  if (topIds.length === 0) {
+    return <p className="text-sm text-muted sm:col-span-3">No leaderboard activity yet. Be the first to earn points.</p>;
+  }
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in('id', topIds);
+
+  const usernameById = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.username]));
+
+  return (
+    <>
+      {topIds.map((userId, index) => {
+        const name = usernameById.get(userId) ?? 'Unknown';
+        const points = totals.get(userId) ?? 0;
+
+        return (
+          <div key={userId} className="rounded-xl border border-border bg-bg/80 px-4 py-3 text-left shadow-sm">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">Top {index + 1}</p>
+            <p className="mt-1 text-base font-semibold text-text">{name}</p>
+            <p className="text-sm text-muted">{points.toLocaleString()} points</p>
+          </div>
+        );
+      })}
+    </>
   );
 }

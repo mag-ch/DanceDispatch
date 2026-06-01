@@ -257,6 +257,7 @@ export function Header() {
                         <nav className="flex items-center text-muted gap-2">
                             <ThemeToggle />
                             <Link href="/search" className="hover:underline">Search</Link>
+                            <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
                             {session ? (
                                 <>
                                     <Link href="/profile" className="hover:underline">{username}</Link>

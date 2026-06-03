@@ -13,7 +13,7 @@ import { useAuth } from '@/app/providers/AuthContext';
 
 export default function HostPage({ params }: { params: Promise<{ hostId: string }> }) {
     const { hostId } = use(params);
-    const [host, setHost] = useState<Host | null>(null);
+    const [h, setHost] = useState<Host | null>(null);
     const [loading, setLoading] = useState(true);
     const [pastEvents, setPastEvents] = useState<any[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
@@ -37,21 +37,21 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [mediaError, setMediaError] = useState<string | null>(null);
 
     const startEditing = () => {
-        if (!host) return;
-        setEditName(host.name);
-        setEditBio(host.bio ?? '');
-        setEditTags(host.tags?.join(', ') ?? '');
+        if (!h) return;
+        setEditName(h.name);
+        setEditBio(h.bio ?? '');
+        setEditTags(Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : ''));
         setSaveError(null);
         setEditing(true);
     };
 
     const cancelEditing = () => {
         setEditing(false);
-        setSaveError(null);
+        setSaveError(null); 
     };
 
     const saveEdits = async () => {
-        if (!host) return;
+        if (!h) return;
         setSaving(true);
         setSaveError(null);
         try {
@@ -66,7 +66,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                 setSaveError(err.error ?? 'Failed to save');
                 return;
             }
-            setHost({ ...host, name: editName, bio: editBio, tags });
+            setHost({ ...h, name: editName, bio: editBio, tags });
             setEditing(false);
         } catch {
             setSaveError('Failed to save');
@@ -76,7 +76,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     };
 
     const uploadHostImageUrl = async () => {
-        if (!isAuthenticated || !host?.id) {
+        if (!isAuthenticated || !h?.id) {
             return;
         }
 
@@ -86,7 +86,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         }
 
         try {
-            const response = await fetch(`/api/hosts/${host.id}`, {
+            const response = await fetch(`/api/hosts/${h.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ photoUrl: imageUrl }),
@@ -97,7 +97,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                 throw new Error(data?.error ?? 'Failed to update host image');
             }
 
-            setHost({ ...host, photoUrl: imageUrl });
+            setHost({ ...h, photoUrl: imageUrl });
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : 'Failed to update host image');
         }
@@ -196,10 +196,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     }, [hostId]);
 
     useEffect(() => {
-        if (!host) return;
+        if (!h) return;
         const fetchSimilarHosts = async () => {
             try {
-                const res = await fetch(`/api/hosts?tags=${host.tags}&exclude=${hostId}`);
+                const res = await fetch(`/api/hosts?tags=${h.tags}&exclude=${hostId}`);
                 const data = await res.json();
                 setSimilarHosts(data.slice(0, 5));
             } catch (error) {
@@ -207,7 +207,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             }
         };
         fetchSimilarHosts();
-    }, [host, hostId]);
+    }, [h, hostId]);
 
     useEffect(() => {
         if (!hostId) return;
@@ -233,14 +233,14 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const roundedAverageStars = Math.round(averageRating);
 
     if (loading) return <div className="p-8">Loading...</div>;
-    if (!host) return <div className="p-8">Host not found</div>;
+    if (!h) return <div className="p-8">Host not found</div>;
 
     return (
         <div className="min-h-screen bg-bg text-text">
             <div className="relative h-96 bg-bg">
                 <Image
-                    src={host.photoUrl === "" ? '/images/default_host.jpg' : host.photoUrl}
-                    alt={host.name}
+                    src={h.photoUrl === "" ? '/images/default_host.jpg' : h.photoUrl}
+                    alt={h.name}
                     fill
                     className="object-cover"
                 />
@@ -272,7 +272,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         </div>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
-                                            {host.tags?.map((tag) => (
+                                            {h.tags?.map((tag) => (
                                                 <span key={tag} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
                                                     {tag.trim().replace(/[\[\]']/g, '')}
                                                 </span>
@@ -286,11 +286,11 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                             onChange={(e) => setEditName(e.target.value)}
                                         />
                                     ) : (
-                                        <h1 className="text-4xl text-text font-bold">{host.name}</h1>
+                                        <h1 className="text-4xl text-text font-bold">{h.name}</h1>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <FollowEntityButton entity="hosts" entityId={host.id} />
+                                    <FollowEntityButton entity="hosts" entityId={h.id} />
                                     {isAuthenticated && !editing && (
                                         <button onClick={startEditing} className="p-2 rounded border border-default hover:border-accent transition" title="Edit">
                                             <Pencil className="w-4 h-4" />
@@ -311,7 +311,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             {saveError && <p className="text-red-500 text-sm mt-2">{saveError}</p>}
                         </section>
 
-                        {(host.bio || editing) && (
+                        {(h.bio || editing) && (
                             <section className="mb-8 bg-surface p-6 rounded-lg">
                                 <h2 className="font-semibold text-text text-lg mb-4">About</h2>
                                 {editing ? (
@@ -322,7 +322,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         onChange={(e) => setEditBio(e.target.value)}
                                     />
                                 ) : (
-                                    <p className="text-muted">{host.bio}</p>
+                                    <p className="text-muted">{h.bio}</p>
                                 )}
                             </section>
                         )}
@@ -479,7 +479,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 {similarHosts.map((h) => (
                                     <a key={h.id} href={`/hosts/${h.id}`} className="block hover-bg-accent-soft p-3 rounded border border-default hover:border-accent transition">
                                         <p className="font-medium text-text">{h.name}</p>
-                                        <p className="text-sm text-muted">{h.tags?.join(', ')}</p>
+                                        <p className="text-sm text-muted">{Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : '')}</p>
                                     </a>
                                 ))}
                             </div>

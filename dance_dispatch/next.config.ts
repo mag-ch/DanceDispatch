@@ -51,7 +51,7 @@ const hostnames = [
   's3.eu-west-2.amazonaws.com',
   'www.hnt.fm',
   'gkiwxeqrcmqotegowgil.supabase.co',
-  'imgur.com'
+  'i.imgur.com'
 
 ];
 

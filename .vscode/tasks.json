@@ -6,11 +6,12 @@
 			"type": "shell",
 			"command": "npm",
 			"args": [
-				"--prefix",
-				"dance_dispatch",
 				"run",
 				"build"
 			],
+			"options": {
+				"cwd": "${workspaceFolder}/dance_dispatch"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"

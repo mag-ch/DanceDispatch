@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PartyCalendarClient from "./PartyCalendarClient";
 import { getCachedEvents } from "@/lib/utils_supabase_server";
+import { getCurrentUserId } from "@/lib/auth-helpers";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Party Calendar | DanceDispatch",
@@ -8,7 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function PartyCalendarPage() {
-  const events = await getCachedEvents(false);
+  const [events, userId] = await Promise.all([getCachedEvents(false), getCurrentUserId()]);
+
+  let savedEventIds: string[] = [];
+  if (userId) {
+    const supabase = await createClient();
+    const { data } = await supabase.from("SavedEvents").select("event_id").eq("user_id", userId);
+    savedEventIds = (data ?? []).map((row) => String(row.event_id));
+  }
 
   return (
     <main className="min-h-screen bg-bg text-text">
@@ -20,7 +29,7 @@ export default async function PartyCalendarPage() {
           </p>
         </div>
 
-        <PartyCalendarClient events={events} />
+        <PartyCalendarClient events={events} savedEventIds={savedEventIds} />
       </section>
     </main>
   );

@@ -8,6 +8,7 @@ type ViewMode = "month" | "week" | "day";
 
 type PartyCalendarClientProps = {
   events: Event[];
+  savedEventIds: string[];
 };
 
 type CalendarEvent = Event & {
@@ -91,11 +92,16 @@ function titleForRange(mode: ViewMode, date: Date): string {
   return `${startLabel} - ${endLabel}`;
 }
 
-export default function PartyCalendarClient({ events }: PartyCalendarClientProps) {
+export default function PartyCalendarClient({ events, savedEventIds }: PartyCalendarClientProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [startFilter, setStartFilter] = useState<string>("");
   const [endFilter, setEndFilter] = useState<string>("");
+  const [showRsvpOnly, setShowRsvpOnly] = useState<boolean>(false);
+
+  const savedEventIdSet = useMemo(() => {
+    return new Set(savedEventIds.map((id) => String(id)));
+  }, [savedEventIds]);
 
   const normalizedEvents = useMemo<CalendarEvent[]>(() => {
     return events
@@ -108,6 +114,10 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
 
   const rangeFilteredEvents = useMemo(() => {
     return normalizedEvents.filter((event) => {
+      if (showRsvpOnly && !savedEventIdSet.has(String(event.id))) {
+        return false;
+      }
+
       if (startFilter) {
         const startDate = new Date(`${startFilter}T00:00:00`);
         if (event.startAt < startDate) {
@@ -124,7 +134,7 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
 
       return true;
     });
-  }, [normalizedEvents, startFilter, endFilter]);
+  }, [normalizedEvents, startFilter, endFilter, showRsvpOnly, savedEventIdSet]);
 
   const visibleRange = useMemo(() => {
     if (viewMode === "day") {
@@ -190,7 +200,9 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
 
   const emptyMessage = rangeFilteredEvents.length
     ? "No parties in this visible range."
-    : "No parties match the selected date filters.";
+    : showRsvpOnly
+      ? "No RSVP-ed parties match the selected filters."
+      : "No parties match the selected date filters.";
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -282,6 +294,16 @@ export default function PartyCalendarClient({ events }: PartyCalendarClientProps
               className="rounded-md border border-default px-3 py-2 text-sm font-medium hover-bg-accent-soft sm:col-span-2 md:col-span-1"
             >
               Clear Filters
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRsvpOnly((prev) => !prev)}
+              className={`rounded-md border px-3 py-2 text-sm font-medium transition sm:col-span-2 md:col-span-1 ${
+                showRsvpOnly ? "border-accent bg-accent text-white" : "border-default hover-bg-accent-soft"
+              }`}
+              aria-pressed={showRsvpOnly}
+            >
+              RSVP Only
             </button>
           </div>
         </div>

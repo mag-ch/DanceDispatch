@@ -21,27 +21,45 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (    
     <main className="min-h-screen bg-bg text-text">
-      <section className="py-24 text-center bg-surface shadow-sm">
-        <h1 className="text-4xl font-bold mb-4">
-          Are you ready to dance?
-        </h1>
-        <p className="text-lg text-muted mb-8">
-          For the house community, by the house community.
-        </p>
-        <div className="max-w-2xl mx-auto">
-          <SearchBar />
-          <div className="mt-4 flex justify-center gap-3">
-            <Link
-              href="/party-calendar"
-              className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
-            >
-              Party Calendar
-            </Link>
-            <SubmitEventButton />
+      <section
+        className="relative py-24 text-center shadow-sm"
+        style={{
+          backgroundImage: "url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold mb-4 text-white">
+            Are you ready to dance?
+          </h1>
+          <p className="text-lg text-white/70 mb-8">
+            For the house community, by the house community.
+          </p>
+          <div className="max-w-2xl mx-auto">
+            <SearchBar />
+            <div className="mt-4 flex justify-center gap-3">
+              <Link
+                href="/party-calendar"
+                className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
+              >
+                Party Calendar
+              </Link>
+              <SubmitEventButton />
+            </div>
           </div>
         </div>
       </section>
-  <section className="container mx-auto mt-10 px-6 ">
+  
+      <section className="container mx-auto px-6 py-16">
+        <h2 className="text-2xl font-semibold mb-6">Trending Events</h2>
+        <Suspense fallback={<p>Loading events...</p>}>
+          <TrendingEvents userId={userId} />
+        </Suspense>
+      </section>
+
+      <section className="container mx-auto mb-10 px-6 ">
         <div className="rounded-2xl border border-yellow-400/30 bg-gradient-to-r from-yellow-50 via-surface to-surface p-6 shadow-sm dark:from-yellow-400/10">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -61,12 +79,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </div>
         </div>
       </section>
-      <section className="container mx-auto px-6 py-16">
-        <h2 className="text-2xl font-semibold mb-6">Trending Events</h2>
-        <Suspense fallback={<p>Loading events...</p>}>
-          <TrendingEvents userId={userId} />
-        </Suspense>
-      </section>
 
       <section className="bg-surface py-20 shadow-inner">
         <div className="container mx-auto px-6 grid md:grid-cols-3 gap-8 text-center">
@@ -84,6 +96,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           />
         </div>
       </section>
+      
 {/* 
       <section className="container mx-auto px-6 py-20">
         <h2 className="text-2xl font-semibold mb-8 text-center">Explore More</h2>

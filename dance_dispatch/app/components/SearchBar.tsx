@@ -28,7 +28,7 @@ export default function SearchBar() {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search events, organizers, or hosts..."
-        className="flex-grow p-3 rounded-md border border-default focus:outline-none focus:ring-2 focus:ring-accent transition"
+        className="flex-grow p-3 rounded-md border border-default bg-surface/80 backdrop-blur-sm placeholder:text-white/60 text-white focus:outline-none focus:ring-2 focus:ring-accent transition"
       />
       <button type="submit" className="btn-highlighted px-4 py-3 bg-accent rounded-md">
         Search

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { getUsernameFromId } from '@/lib/utils_supabase';
 import { ThemeToggle } from './ThemeProvider';
-import { Bell, MessageSquarePlus, X } from 'lucide-react';
+import { Bell, Menu, MessageSquarePlus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
 type NotificationItem = {
@@ -53,10 +53,15 @@ export function Header() {
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
     const [isHydrated, setIsHydrated] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         setIsHydrated(true);
     }, []);
+
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
     const resolveNotificationHref = useCallback((href: string) => {
         if (!href.startsWith('?')) {
@@ -256,11 +261,8 @@ export function Header() {
                         <Link href="/" className="text-2xl text-text font-bold">DanceDispatch</Link>
                         <nav className="flex items-center text-muted gap-2">
                             <ThemeToggle />
-                            <Link href="/search" className="hover:underline">Search</Link>
-                            <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
-                            {session ? (
+                            {session && (
                                 <>
-                                    <Link href="/profile" className="hover:underline">{username}</Link>
                                     <button
                                         type="button"
                                         onClick={handleNotificationClick}
@@ -268,44 +270,114 @@ export function Header() {
                                         aria-label="Open notifications"
                                     >
                                         <Bell className="h-5 w-5" />
-                                        {/* {notifications.length > 0 && (
-                                            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
-                                        )} */}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleFeedbackClick}
-                                        className="inline-flex items-center gap-2  px-1 py-2 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                        className="inline-flex items-center gap-2 px-1 py-2 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 transition"
                                     >
                                         <MessageSquarePlus className="h-4 w-4" />
-                                        
                                     </button>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="px-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                                    >
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link
-                                        href="/auth/login"
-                                        className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        Login
-                                    </Link>
-                                    <Link
-                                        href="/auth/signup"
-                                        className="btn-highlighted px-4 py-2 rounded-lg transition"
-                                    >
-                                        Sign Up
-                                    </Link>
                                 </>
                             )}
+                            <div className="hidden md:flex items-center gap-2">
+                                <Link href="/search" className="hover:underline">Search</Link>
+                                <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
+                                {session ? (
+                                    <>
+                                        <Link href="/profile" className="hover:underline">{username}</Link>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="px-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                                        >
+                                            Logout
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link
+                                            href="/auth/login"
+                                            className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
+                                        >
+                                            Login
+                                        </Link>
+                                        <Link
+                                            href="/auth/signup"
+                                            className="btn-highlighted px-4 py-2 rounded-lg transition"
+                                        >
+                                            Sign Up
+                                        </Link>
+                                    </>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                                className="md:hidden rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                aria-label="Open menu"
+                                aria-expanded={isMobileMenuOpen}
+                            >
+                                <Menu className="h-5 w-5" />
+                            </button>
                         </nav>
                     </div>
                 </div>
+
+            {isMobileMenuOpen && (
+                <div className="md:hidden border-b border-border bg-surface shadow-md">
+                    <nav className="flex flex-col items-end px-4 py-2 gap-1">
+                        <Link
+                            href="/search"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                        >
+                            Search
+                        </Link>
+                        <Link
+                            href="/leaderboard"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                        >
+                            Leaderboard
+                        </Link>
+                        {session ? (
+                            <>
+                                <Link
+                                    href="/profile"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                >
+                                    {username ?? 'Profile'}
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                >
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    href="/auth/login"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                >
+                                    Login
+                                </Link>
+                                <Link
+                                    href="/auth/signup"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="btn-highlighted rounded-md px-3 py-2.5 text-sm font-semibold whitespace-nowrap"
+                                >
+                                    Sign Up
+                                </Link>
+                            </>
+                        )}
+                    </nav>
+                </div>
+            )}
             </header>
 
             {isNotificationModalOpen && (

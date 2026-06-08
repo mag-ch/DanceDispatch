@@ -237,6 +237,23 @@ export type UserPointsSummary = {
     breakdown: Record<string, number>;
 };
 
+export type CompactUserBadge = {
+    id: string;
+    code: string;
+    name: string;
+    icon: string | null;
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    sortOrder: number;
+    unlockedAt: string;
+};
+
+const BADGE_TIER_RANK: Record<CompactUserBadge['tier'], number> = {
+    bronze: 1,
+    silver: 2,
+    gold: 3,
+    platinum: 4,
+};
+
 export async function getUserPointsSummary(userId: string): Promise<UserPointsSummary> {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -261,4 +278,90 @@ export async function getUserPointsSummary(userId: string): Promise<UserPointsSu
         },
         { totalPoints: 0, breakdown: {} }
     );
+}
+
+/**
+ * Fetches top badges for multiple users in a single query.
+ * Useful for compact username displays in lists/leaderboards.
+ */
+export async function getTopBadgesForUsers(
+    userIds: string[],
+    maxBadgesPerUser = 1,
+): Promise<Record<string, CompactUserBadge[]>> {
+    const uniqueUserIds = [...new Set(userIds.map((id) => String(id).trim()).filter(Boolean))];
+    const safeLimit = Math.max(1, Math.min(5, maxBadgesPerUser));
+
+    if (uniqueUserIds.length === 0) {
+        return {};
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('user_badges')
+        .select('user_id, unlocked_at, badges!inner(id, code, name, icon, tier, sort_order, is_active)')
+        .in('user_id', uniqueUserIds)
+        .order('unlocked_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching top badges for users from Supabase:', error);
+        return uniqueUserIds.reduce<Record<string, CompactUserBadge[]>>((acc, userId) => {
+            acc[userId] = [];
+            return acc;
+        }, {});
+    }
+
+    const grouped = uniqueUserIds.reduce<Record<string, CompactUserBadge[]>>((acc, userId) => {
+        acc[userId] = [];
+        return acc;
+    }, {});
+
+    for (const row of data ?? []) {
+        const userId = String((row as any).user_id ?? '').trim();
+        const badge = (row as any).badges as
+            | {
+                  id?: unknown;
+                  code?: unknown;
+                  name?: unknown;
+                  icon?: unknown;
+                  tier?: unknown;
+                  sort_order?: unknown;
+                  is_active?: unknown;
+              }
+            | null;
+
+        if (!userId || !badge || badge.is_active === false) {
+            continue;
+        }
+
+        const tierRaw = String(badge.tier ?? 'bronze').toLowerCase();
+        const tier: CompactUserBadge['tier'] =
+            tierRaw === 'silver' || tierRaw === 'gold' || tierRaw === 'platinum' ? tierRaw : 'bronze';
+
+        grouped[userId].push({
+            id: String(badge.id ?? ''),
+            code: String(badge.code ?? ''),
+            name: String(badge.name ?? ''),
+            icon: typeof badge.icon === 'string' ? badge.icon : null,
+            tier,
+            sortOrder: Number(badge.sort_order ?? 0),
+            unlockedAt: String((row as any).unlocked_at ?? ''),
+        });
+    }
+
+    for (const userId of Object.keys(grouped)) {
+        grouped[userId] = grouped[userId]
+            .filter((badge) => badge.id && badge.code && badge.name)
+            .sort((a, b) => {
+                const tierDiff = BADGE_TIER_RANK[b.tier] - BADGE_TIER_RANK[a.tier];
+                if (tierDiff !== 0) return tierDiff;
+
+                const sortOrderDiff = a.sortOrder - b.sortOrder;
+                if (sortOrderDiff !== 0) return sortOrderDiff;
+
+                return Date.parse(b.unlockedAt) - Date.parse(a.unlockedAt);
+            })
+            .slice(0, safeLimit);
+    }
+
+    return grouped;
 }

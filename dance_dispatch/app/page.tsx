@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEventButton";
+import UserBadgesInline from "./components/UserBadgesInline";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
@@ -193,7 +194,10 @@ async function LeaderboardPreview() {
         return (
           <div key={userId} className="rounded-xl border border-border bg-bg/80 px-4 py-3 text-left shadow-sm">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Top {index + 1}</p>
-            <p className="mt-1 text-base font-semibold text-text">{name}</p>
+            <p className="mt-1 text-base font-semibold text-text inline-flex items-center gap-2">
+              <span>{name}</span>
+              <UserBadgesInline userId={userId} maxBadges={1} />
+            </p>
             <p className="text-sm text-muted">{points.toLocaleString()} points</p>
           </div>
         );

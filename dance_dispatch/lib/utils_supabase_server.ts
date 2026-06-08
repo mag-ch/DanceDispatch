@@ -391,6 +391,8 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
           eventName: eventName,
           eventId: String(row.event_id),
           username: userMap.get(row.user_id) ?? row.user_id,
+          userId: String(row.user_id),
+          user_id: String(row.user_id),
           dateSubmitted: row.created_at,
           mainComment: '',
           venueReview: undefined,

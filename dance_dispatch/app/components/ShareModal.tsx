@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Copy, Loader2, Search, Send, Share2, UserPlus, X } from 'lucide-react';
+import UserBadgesInline from '@/app/components/UserBadgesInline';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -375,7 +376,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                                                     className="flex w-full items-center justify-between rounded-lg border border-default bg-surface px-3 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800"
                                                 >
                                                     <div>
-                                                        <p className="text-sm font-medium text-text">@{recipient.username}</p>
+                                                        <p className="flex items-center gap-2 text-sm font-medium text-text">
+                                                            <span>@{recipient.username}</span>
+                                                            <UserBadgesInline userId={recipient.id} maxBadges={1} />
+                                                        </p>
                                                         {recipient.full_name ? <p className="text-xs text-muted">{recipient.full_name}</p> : null}
                                                     </div>
                                                     <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Add</span>
@@ -395,6 +399,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                                                 className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-200"
                                             >
                                                 @{recipient.username}
+                                                <UserBadgesInline userId={recipient.id} maxBadges={1} />
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveRecipient(recipient.id)}

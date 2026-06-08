@@ -5,11 +5,22 @@ import { formatDateOnly } from '@/lib/date-utils';
 import { SaveEventButton } from './SaveEventButton';
 import CustomLink from './CustomLink';
 import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
+import UserBadgesInline, { BadgeChipsInline } from './UserBadgesInline';
 
 
 interface EventCardProps {
     event: Event;
 }
+
+type CompactBadge = {
+    id: string;
+    code: string;
+    name: string;
+    icon: string | null;
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    sortOrder: number;
+    unlockedAt: string;
+};
 
 interface SearchResultProps {
     header: string;
@@ -20,6 +31,8 @@ interface SearchResultProps {
     img?: string;
     entityId?: string;
     entity?: string;
+    badgeUserId?: string;
+    topBadges?: CompactBadge[];
 }
 
 
@@ -32,6 +45,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     img,
     entityId,
     entity,
+    badgeUserId,
+    topBadges,
 }) => {
     const formatDate = (date: string) => {
         return new Intl.DateTimeFormat('en-US', {
@@ -44,6 +59,11 @@ export const SearchResult: React.FC<SearchResultProps> = ({
         }).format(new Date(date));
     };
     const route = entity && entityId ? `/${entity}/${entityId}` : undefined;
+    const hasPreloadedBadges = Array.isArray(topBadges) && topBadges.length > 0;
+
+    const renderTopBadges = () => hasPreloadedBadges
+        ? <BadgeChipsInline badges={topBadges} maxBadges={2} className="ml-1" showNames />
+        : null;
 
     return (
         <div className={styles.searchRow}>
@@ -56,7 +76,10 @@ export const SearchResult: React.FC<SearchResultProps> = ({
                     />
                 </div>
                 <div className={styles.searchText}>
-                    <h4 className={styles.searchTitle}>{header}</h4>
+                    <h4 className={styles.searchTitle}>
+                        {header}
+                        {entity === 'users' && (hasPreloadedBadges ? renderTopBadges() : <UserBadgesInline userId={badgeUserId ?? entityId} maxBadges={1} />)}
+                    </h4>
                     <p className={styles.searchSub}>
                         {subheader ? (subheader.length > 50 ? subheader.substring(0, 50) + '...' : subheader) : ''}
                     </p>

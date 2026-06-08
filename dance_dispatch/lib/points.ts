@@ -9,6 +9,46 @@ export const POINTS = {
 
 export type PointsAction = keyof typeof POINTS;
 
+async function recordBadgeActivitySafe(params: {
+  userId: string;
+  action: PointsAction;
+  pointsDelta: number;
+  entityId?: string;
+  reason: string;
+  dedupeKeyPrefix: 'points' | 'attempt';
+}) {
+  const supabase = await createClient();
+  const dedupeKey = [
+    params.dedupeKeyPrefix,
+    params.userId,
+    params.action,
+    params.entityId ?? 'none',
+    String(params.pointsDelta),
+  ].join(':');
+
+  const { error } = await supabase.rpc('record_badge_activity', {
+    p_user_id: params.userId,
+    p_action_key: params.action,
+    p_points_delta: params.pointsDelta,
+    p_source_table: 'UserPoints',
+    p_source_id: params.entityId ?? null,
+    p_metadata: {
+      reason: params.reason,
+      action: params.action,
+      entityId: params.entityId ?? null,
+      points: params.pointsDelta,
+    },
+    p_dedupe_key: dedupeKey,
+  });
+
+  if (error && error.code !== '23505') {
+    console.error(
+      `[awardPoints] Failed to record badge activity for ${params.userId} (${params.action}):`,
+      error.message,
+    );
+  }
+}
+
 /**
  * Awards points to a user for a given action.
  * Silently no-ops on unique-constraint violations (idempotent).
@@ -35,5 +75,27 @@ export async function awardPoints(
   // Unique constraint violation means the user already earned these points — that's fine.
   if (error && error.code !== '23505') {
     console.error(`[awardPoints] Failed to award ${points} points (${action}) to ${userId}:`, error.message);
+    return;
   }
+
+  if (error?.code === '23505') {
+    await recordBadgeActivitySafe({
+      userId,
+      action,
+      pointsDelta: 0,
+      entityId,
+      reason: 'awardPointsDuplicate',
+      dedupeKeyPrefix: 'attempt',
+    });
+    return;
+  }
+
+  await recordBadgeActivitySafe({
+    userId,
+    action,
+    pointsDelta: points,
+    entityId,
+    reason: 'awardPoints',
+    dedupeKeyPrefix: 'points',
+  });
 }

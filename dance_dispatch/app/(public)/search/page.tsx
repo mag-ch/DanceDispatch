@@ -1,4 +1,5 @@
 import { getEvents, getVenues, getHosts, getUniqueBoroughs, getUsers } from '@/lib/utils_supabase_server';
+import { getTopBadgesForUsers } from '@/lib/server_utils';
 import SearchClient, { SearchCategory } from './SearchClient';
 
 type SearchPageProps = {
@@ -41,6 +42,14 @@ export default async function SearchPage({ searchParams, searchBar, categories }
     const venues = await getVenues();
     const hosts = await getHosts();
     const users = await getUsers();
+    const userBadgeMap = await getTopBadgesForUsers(
+        users.map((user: any) => String(user.id)).filter(Boolean),
+        1,
+    );
+    const usersWithBadges = users.map((user: any) => ({
+        ...user,
+        topBadges: userBadgeMap[String(user.id)] ?? [],
+    }));
     const boroughs = await getUniqueBoroughs();
 
     const queryString = firstParam(resolvedSearchParams?.query) ?? searchBar ?? '';
@@ -57,7 +66,7 @@ export default async function SearchPage({ searchParams, searchBar, categories }
             initialEvents={events}
             initialVenues={venues}
             initialHosts={hosts}
-            initialUsers={users}
+            initialUsers={usersWithBadges}
             initialBoroughs={boroughs}
             searchBar={queryString}
             categories={parsedCategories}

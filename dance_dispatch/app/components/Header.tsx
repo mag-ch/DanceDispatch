@@ -7,6 +7,7 @@ import { getUsernameFromId } from '@/lib/utils_supabase';
 import { ThemeToggle } from './ThemeProvider';
 import { Bell, Menu, MessageSquarePlus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import UserBadgesInline from './UserBadgesInline';
 
 type NotificationItem = {
     id: string;
@@ -285,7 +286,10 @@ export function Header() {
                                 <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
                                 {session ? (
                                     <>
-                                        <Link href="/profile" className="hover:underline">{username}</Link>
+                                        <Link href="/profile" className="hover:underline inline-flex items-center gap-2">
+                                            <span>{username}</span>
+                                            <UserBadgesInline userId={session.user.id} maxBadges={1} />
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="px-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
@@ -345,9 +349,10 @@ export function Header() {
                                 <Link
                                     href="/profile"
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap inline-flex items-center gap-2"
                                 >
-                                    {username ?? 'Profile'}
+                                    <span>{username ?? 'Profile'}</span>
+                                    <UserBadgesInline userId={session.user.id} maxBadges={1} />
                                 </Link>
                                 <button
                                     type="button"

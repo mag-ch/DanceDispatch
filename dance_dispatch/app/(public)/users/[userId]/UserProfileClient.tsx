@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SearchResult } from "@/app/components/EventCard";
+import UserBadgesInline from "@/app/components/UserBadgesInline";
 import { Event, Host, Venue } from "@/lib/utils";
 import CustomLink from "@/app/components/CustomLink";
 import { FollowEntityButton } from "@/app/components/SaveEventButton";
@@ -89,6 +90,7 @@ export default function UserProfileClient({
             img={followed.profile_picture}
             entityId={followed.id}
             entity="users"
+            badgeUserId={followed.id}
           />
         )),
       };
@@ -109,7 +111,10 @@ export default function UserProfileClient({
                 className="h-20 w-20 rounded-full object-cover"
               />
               <div>
-                <h1 className="text-3xl font-bold">{displayName}</h1>
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                  <span>{displayName}</span>
+                  <UserBadgesInline userId={user.id} maxBadges={3} showNames />
+                </h1>
                 {user.full_name && <p className="text-sm text-text/80">{user.full_name }</p>}
                 <p className="text-sm text-text/80">Joined {new Date(user.created_at).toLocaleDateString()}</p>
               </div>

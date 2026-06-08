@@ -468,6 +468,8 @@ export default function SearchClient({
                                             img={user.profile_picture}
                                             entityId={user.id}
                                             entity="users"
+                                            badgeUserId={user.id}
+                                            topBadges={Array.isArray(user.topBadges) ? user.topBadges : []}
                                         />
                                     );
                                 })}                                

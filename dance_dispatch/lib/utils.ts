@@ -128,6 +128,8 @@ export interface EventReview {
     eventName: string;
     eventId: string;
     username:string;
+    userId?: string;
+    user_id?: string;
     dateSubmitted: string;
     mainComment?: string;
     venueReview?: {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Event, EventReview } from '@/lib/utils';
 import { Rat, Star, X } from "lucide-react";
 import React from "react";
+import UserBadgesInline from "./UserBadgesInline";
 
 interface ReviewModalProps {
     isOpen: boolean;
@@ -288,12 +289,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }) => {
 
     const username = review.privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
+    const reviewUserId =
+        typeof review.userId === 'string'
+            ? review.userId
+            : typeof review.user_id === 'string'
+                ? review.user_id
+                : undefined;
     return (
     <div className="bg-surface rounded-lg shadow p-4 mb-4">
         {/* Header: username, date, privacy */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b">
             <div className="flex items-center gap-2">
                 <span className="font-semibold text-text">{username}</span>
+                {review.privacyLevel !== 'anonymous' && <UserBadgesInline userId={reviewUserId} maxBadges={2} />}
                 <span className="text-sm text-text">•</span>
                 <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
             </div>

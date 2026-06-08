@@ -4,6 +4,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Trophy, Star, Share2, CalendarCheck, MessageSquare, Users, Radio } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
+import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
+
+type CompactBadge = {
+  id: string;
+  code: string;
+  name: string;
+  icon: string | null;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+  sortOrder: number;
+  unlockedAt: string;
+};
 
 type LeaderboardEntry = {
   rank: number;
@@ -12,6 +23,7 @@ type LeaderboardEntry = {
   avatarUrl: string | null;
   totalPoints: number;
   breakdown: Record<string, number>;
+  topBadges?: CompactBadge[];
 };
 
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -151,8 +163,9 @@ export default function LeaderboardPage() {
 
                 {/* Username */}
                 <div className="flex-1 min-w-0">
-                  <Link href={`/users/${entry.userId}`} className="font-semibold text-text hover:underline truncate block">
-                    {entry.username}
+                  <Link href={`/users/${entry.userId}`} className="font-semibold text-text hover:underline truncate inline-flex items-center gap-2">
+                    <span>{entry.username}</span>
+                    {Array.isArray(entry.topBadges) && entry.topBadges.length > 0 ? <BadgeChipsInline badges={entry.topBadges} maxBadges={2} showNames /> : null}
                   </Link>
                   {/* Breakdown chips */}
                   <div className="flex flex-wrap gap-1 mt-0.5">

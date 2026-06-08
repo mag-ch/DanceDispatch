@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getTopBadgesForUsers } from '@/lib/server_utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
     }
 
     const userIds = sorted.map(([id]) => id);
+    const userBadgeMap = await getTopBadgesForUsers(userIds, 2);
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -70,6 +72,7 @@ export async function GET(request: Request) {
       avatarUrl: profileMap[userId]?.profile_picture ?? null,
       totalPoints: total,
       breakdown,
+      topBadges: userBadgeMap[userId] ?? [],
     }));
 
     return NextResponse.json(

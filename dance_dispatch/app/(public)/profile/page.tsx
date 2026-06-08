@@ -1,8 +1,9 @@
 import { Event } from '@/lib/utils';
 import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
-import { getSavedEventsForUserServer, getUserPointsSummary, getUserReviews } from '@/lib/server_utils';
+import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary, getUserReviews } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
+import UserBadgesInline from '@/app/components/UserBadgesInline';
 import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
 import ExplorerBadgeModal from './ExplorerBadgeModal';
@@ -26,6 +27,11 @@ export default async function ProfilePage() {
         checkNewUserMissions(user.id),
         getUserPointsSummary(user.id),
     ]);
+
+    const followedUserBadgeMap = await getTopBadgesForUsers(
+        followedUsers.map((follow: any) => String(follow.id)).filter(Boolean),
+        1,
+    );
 
     const partiesAttendedTotal = pastEvents.length;
     const memberSince = new Date(user.created_at);
@@ -83,7 +89,10 @@ export default async function ProfilePage() {
                     </div>}
                     {userdata?.username && <div className="space-y-2 mt-4">
                         <p className="text-sm text-text">Username</p>
-                        <p className="text-xl font-semibold text-text">{userdata.username || 'Not provided'}</p>
+                        <p className="text-xl font-semibold text-text flex items-center gap-2">
+                            <span>{userdata.username || 'Not provided'}</span>
+                            <UserBadgesInline userId={user.id} maxBadges={3} />
+                        </p>
                     </div>}
                     <div className="space-y-2 mt-4">
                         <p className="text-sm text-text">Email</p>
@@ -168,7 +177,7 @@ export default async function ProfilePage() {
                 <h2 className="text-2xl font-semibold mb-4 text-text">Following ({followedUsers.length})</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {followedUsers.map((follow) => (
-                        <SearchResult key={follow.id} header={follow.username} img={follow.profile_picture} subheader={follow.full_name} entityId={follow.id} entity="users"/>
+                        <SearchResult key={follow.id} header={follow.username} img={follow.profile_picture} subheader={follow.full_name} entityId={follow.id} entity="users" badgeUserId={follow.id} topBadges={followedUserBadgeMap[String(follow.id)] ?? []} />
                     ))}
                     {followedUsers.length === 0 && (
                         <div>

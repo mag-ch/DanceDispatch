@@ -48,7 +48,11 @@ export default function LoginPage() {
         return;
     }
 
-    router.back();
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+        router.back();
+    } else {
+        router.push('/');
+    }
     window.location.reload();
     };
 

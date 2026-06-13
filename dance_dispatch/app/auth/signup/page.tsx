@@ -16,19 +16,6 @@ export default function SignUp() {
     const [referrerId, setReferrerId] = useState<string | null>(null);
     const router = useRouter();
 
-    const waitForSession = async (attempts = 10, delayMs = 120) => {
-        for (let i = 0; i < attempts; i += 1) {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-                return data.session;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-
-        return null;
-    };
-
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
@@ -112,11 +99,6 @@ export default function SignUp() {
                 }
             }
 
-            const activeSession = await waitForSession();
-            if (!activeSession) {
-                throw new Error('Could not establish a login session after sign up.');
-            }
-
             if (referrerId) {
                 await fetch('/api/referral', {
                     method: 'POST',
@@ -125,10 +107,15 @@ export default function SignUp() {
                 }).catch(() => { /* non-critical — don't block sign-up */ });
             }
 
-            router.replace(returnPath || '/');
-            window.location.assign(returnPath || '/');
+            const target = returnPath && returnPath.startsWith('/auth/') ? '/' : (returnPath || '/');
+            router.replace(target);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Sign up failed');
+            const authErr = err as { status?: number; code?: string; message?: string };
+            if (authErr?.status === 429 || authErr?.code === 'over_request_rate_limit') {
+                setError('Too many auth requests. Please wait a moment and try again.');
+            } else {
+                setError(err instanceof Error ? err.message : 'Sign up failed');
+            }
         } finally {
             setLoading(false);
         }

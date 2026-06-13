@@ -12,19 +12,6 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const waitForSession = async (attempts = 10, delayMs = 120) => {
-        for (let i = 0; i < attempts; i += 1) {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-                return data.session;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-
-        return null;
-    };
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -36,24 +23,24 @@ export default function LoginPage() {
     });
 
     if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-    }
-    
-    const activeSession = await waitForSession();
-    if (!activeSession) {
-        setError('Could not establish a login session. Please try again.');
+        if ((error as { status?: number; code?: string }).status === 429 || (error as { code?: string }).code === 'over_request_rate_limit') {
+            setError('Too many login attempts. Please wait a moment and try again.');
+        } else {
+            setError(error.message);
+        }
         setLoading(false);
         return;
     }
 
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-        router.back();
-    } else {
-        router.push('/');
-    }
-    window.location.reload();
+    const nextParam = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('next')
+        : null;
+    const nextPath =
+        nextParam && nextParam.startsWith('/') && !nextParam.startsWith('/auth/')
+            ? nextParam
+            : '/';
+
+    router.replace(nextPath);
     };
 
     return (

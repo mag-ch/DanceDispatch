@@ -17,9 +17,20 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const checkSession = async () => {
-            const { data } = await supabase.auth.getSession();
-            setSession(data.session);
-            setLoading(false);
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) {
+                    console.warn('Failed to get auth session:', error.message);
+                    setSession(null);
+                } else {
+                    setSession(data.session);
+                }
+            } catch (error) {
+                console.warn('Auth session bootstrap failed:', error);
+                setSession(null);
+            } finally {
+                setLoading(false);
+            }
         };
 
         checkSession();

@@ -25,5 +25,21 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
+    screenshots: [
+      {
+        src: "/icons/icon-192.svg",
+        sizes: "192x192",
+        type: "image/svg+xml",
+        form_factor: "narrow",
+      },
+      {
+        src: "/icons/icon-512.svg",
+        sizes: "512x512",
+        type: "image/svg+xml",
+        form_factor: "wide",
+      },
+    ],
+    categories: ["entertainment", "lifestyle"],
+    prefer_related_applications: false,
   };
 }

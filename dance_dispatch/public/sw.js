@@ -19,6 +19,92 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Handle push notifications
+self.addEventListener("push", (event) => {
+  let notificationData = {
+    title: "DanceDispatch",
+    body: "You have a new notification",
+    icon: "/icons/icon-192.svg",
+    badge: "/icons/icon-192.svg",
+    tag: "notification",
+    requireInteraction: false,
+  };
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...data,
+        tag: data.tag || "notification",
+      };
+    } catch {
+      // If JSON parsing fails, use the text as the body
+      notificationData.body = event.data.text();
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      tag: notificationData.tag,
+      requireInteraction: notificationData.requireInteraction,
+      data: notificationData.data || {},
+      actions: notificationData.actions || [
+        {
+          action: "open",
+          title: "Open",
+          icon: "/icons/icon-192.svg",
+        },
+        {
+          action: "close",
+          title: "Close",
+          icon: "/icons/icon-192.svg",
+        },
+      ],
+    })
+  );
+});
+
+// Handle notification clicks
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const notificationData = event.notification.data;
+  const urlToOpen = new URL(notificationData.url || "/", self.location.origin).href;
+
+  event.waitUntil(
+    clients
+      .matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      })
+      .then((clientList) => {
+        // Check if there's already a window/tab open with the target URL
+        for (const client of clientList) {
+          if (client.url === urlToOpen && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // If not, open a new window/tab with the target URL
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Handle notification close
+self.addEventListener("notificationclose", (event) => {
+  // Handle notification dismissal if needed
+  const notificationData = event.notification.data;
+  if (notificationData.onClose) {
+    // Can be extended to track dismissed notifications
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -28,6 +114,11 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(request.url);
   const isSameOrigin = requestUrl.origin === self.location.origin;
+
+  // Never cache Next.js internals or dev/HMR assets.
+  if (requestUrl.pathname.startsWith("/_next/")) {
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(

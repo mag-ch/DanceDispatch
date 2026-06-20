@@ -129,6 +129,8 @@ export interface EventReview {
     eventId: string;
     username:string;
     dateSubmitted: string;
+     userId?: string;
+    user_id?: string;
     mainComment?: string;
     venueReview?: {
         venueName: string;

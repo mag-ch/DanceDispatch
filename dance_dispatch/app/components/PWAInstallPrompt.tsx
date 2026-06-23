@@ -2,174 +2,225 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-// Chrome/Edge expose a non-standard event object for installation.
-// TypeScript does not include this shape by default, so we define it here.
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+// Chrome / Edge / Samsung Internet expose a non-standard event for installation.
+// TypeScript omits this shape, so we augment it here.
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
-// localStorage key used to avoid re-showing the banner immediately after dismissal.
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const DISMISS_UNTIL_KEY = "dd_install_prompt_dismiss_until";
-const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
-// Current cooldown for "Not now" before the prompt can reappear.
-//const DISMISS_MS = 3 * 60 * 1000;
+const DISMISS_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// Reads dismissal state from localStorage and checks whether the cooldown is active.
-function isDismissedInStorage() {
+// ─── Browser / platform detection helpers ─────────────────────────────────────
+
+function getInstallContext(): {
+  isIOS: boolean;
+  isAndroid: boolean;
+  isSamsungBrowser: boolean;
+  isFirefoxMobile: boolean;
+  supportsBeforeInstallPrompt: boolean; // known to fire (Chrome/Edge/Samsung)
+} {
   if (typeof window === "undefined") {
-    return false;
+    return {
+      isIOS: false,
+      isAndroid: false,
+      isSamsungBrowser: false,
+      isFirefoxMobile: false,
+      supportsBeforeInstallPrompt: false,
+    };
   }
 
-  const storedUntil = window.localStorage.getItem(DISMISS_UNTIL_KEY);
-  const untilTs = Number(storedUntil);
+  const ua = window.navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isSamsungBrowser = /SamsungBrowser/i.test(ua);
+  const isFirefoxMobile = /firefox/i.test(ua) && isAndroid;
 
-  if (!storedUntil || Number.isNaN(untilTs)) {
-    return false;
-  }
+  // beforeinstallprompt fires reliably in Chromium-based browsers.
+  // Samsung Internet also fires it since v12.
+  const supportsBeforeInstallPrompt =
+    !isIOS && !isFirefoxMobile && (isAndroid || isSamsungBrowser);
 
-  return Date.now() < untilTs;
+  return {
+    isIOS,
+    isAndroid,
+    isSamsungBrowser,
+    isFirefoxMobile,
+    supportsBeforeInstallPrompt,
+  };
 }
 
-export function PWAInstallPrompt() {
-  // Stores the browser-provided install event captured from "beforeinstallprompt".
-  // If this is null, browser-driven install prompt is not currently available.
-  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+function isRunningStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+      true
+  );
+}
 
-  // Controls whether the UI banner is rendered.
+function isDismissedInStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = window.localStorage.getItem(DISMISS_UNTIL_KEY);
+  const ts = Number(raw);
+  return !!raw && !Number.isNaN(ts) && Date.now() < ts;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function PWAInstallPrompt() {
+  // The deferred browser install event (Chromium / Samsung only).
+  const [installEvent, setInstallEvent] =
+    useState<BeforeInstallPromptEvent | null>(null);
+
+  // Whether the banner is visible.
   const [hidden, setHidden] = useState(true);
 
-  // Prevents duplicate install attempts while prompt/user choice is in progress.
+  // Prevent double-tapping the install button.
   const [installing, setInstalling] = useState(false);
 
-  // Detect if app is already running as an installed PWA.
-  // If true, this component stays hidden permanently in that session.
-  const isStandalone = useMemo(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  }, []);
-
-  // iOS Safari does not support beforeinstallprompt, so we show manual instructions.
-  const isIOS = useMemo(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  }, []);
+  const isStandalone = useMemo(() => isRunningStandalone(), []);
+  const ctx = useMemo(() => getInstallContext(), []);
 
   useEffect(() => {
-    // Browser-only guard.
-    if (typeof window === "undefined") {
-      return;
-    }
+    // Never show the install prompt when already running as installed PWA.
+    if (isStandalone) return;
 
-    // If already installed/running standalone, never show install UI.
-    if (isStandalone) {
-      setHidden(true);
-      return;
-    }
+    // Respect a prior "Not now" dismissal.
+    if (!isDismissedInStorage()) setHidden(false);
 
-    // Respect prior dismissal cooldown persisted in localStorage.
-    const isDismissed = isDismissedInStorage();
-    setHidden(isDismissed);
-
-    // Fires when browser decides the app is installable.
-    // We prevent default mini-infobar and store the event for our custom button.
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallEvent(event as BeforeInstallPromptEvent);
-
-      // Show prompt UI only if user is not within dismissal cooldown.
-      if (!isDismissedInStorage()) {
-        setHidden(false);
-      }
+    // ── Chromium / Samsung: capture the deferred prompt ──────────────────────
+    const onBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault(); // suppress the browser mini-infobar
+      setInstallEvent(e as BeforeInstallPromptEvent);
+      if (!isDismissedInStorage()) setHidden(false);
     };
 
-    // Fires after successful installation from any flow.
-    const onInstalled = () => {
+    // ── Any browser: hide banner after successful install ────────────────────
+    const onAppInstalled = () => {
       setHidden(true);
       setInstallEvent(null);
       window.localStorage.removeItem(DISMISS_UNTIL_KEY);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("appinstalled", onInstalled);
+    window.addEventListener("appinstalled", onAppInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("appinstalled", onAppInstalled);
     };
   }, [isStandalone]);
 
-  // Programmatic install entry point:
-  // This function is called by the Install button click.
-  // The actual browser install dialog is triggered at installEvent.prompt().
+  // ── Install handler ──────────────────────────────────────────────────────────
+  //
+  // Strategy per browser:
+  //   1. Chromium / Samsung (Android) — installEvent.prompt() triggers the
+  //      native "Add to Home Screen" sheet programmatically. ✅ automatic
+  //   2. iOS Safari — no programmatic API exists; we surface step-by-step
+  //      instructions so the user can do it manually via the Share sheet.
+  //   3. Firefox for Android — no beforeinstallprompt support; we guide the
+  //      user to the browser menu (⋮ → Install / Add to Home Screen).
+  //   4. Any other browser — show a generic manual fallback message.
+  //
   const handleInstall = async () => {
-    if (installing) {
-      return;
-    }
-
+    if (installing) return;
     setInstalling(true);
 
     if (installEvent) {
+      // ── Path 1: Chromium / Samsung — fully automatic ──────────────────────
       try {
-        // This is the exact line that programmatically invokes PWA installation UX.
-        // Browser may show a native dialog/sheet based on platform support.
         await installEvent.prompt();
-        const choice = await installEvent.userChoice;
-
-        if (choice.outcome === "accepted") {
+        const { outcome } = await installEvent.userChoice;
+        if (outcome === "accepted") {
           setHidden(true);
           window.localStorage.removeItem(DISMISS_UNTIL_KEY);
         }
-      } catch (error) {
-        console.error("PWA install failed:", error);
+      } catch (err) {
+        console.error("PWA install prompt failed:", err);
       }
+      setInstalling(false);
+      return;
     }
 
+    // ── Paths 2-4: manual guidance (banner already shows the right copy) ──
+    // The banner copy (below) already contains the right instructions for each
+    // browser, so pressing "Install" when there is no installEvent just keeps
+    // the banner open long enough for the user to read them.
+    // We do nothing further here — the user follows the on-screen steps.
     setInstalling(false);
   };
 
-  // User chose to postpone install. We hide prompt and store cooldown.
   const handleDismiss = () => {
     setHidden(true);
-    window.localStorage.setItem(DISMISS_UNTIL_KEY, String(Date.now() + DISMISS_MS));
+    window.localStorage.setItem(
+      DISMISS_UNTIL_KEY,
+      String(Date.now() + DISMISS_MS),
+    );
   };
 
-  // Nothing to render if hidden or already standalone-installed.
-  if (hidden || isStandalone) {
-    return null;
+  // ── Derive instructional copy for each browser scenario ───────────────────
+  const { isIOS, isFirefoxMobile } = ctx;
+
+  const title = "Install DanceDispatch";
+
+  let body: string;
+  let showInstallButton = true; // set false when there is truly nothing to tap
+
+  if (installEvent) {
+    // Chromium / Samsung — one-tap install available.
+    body =
+      "Add DanceDispatch to your home screen for faster launch and an app-like experience.";
+  } else if (isIOS) {
+    // iOS Safari — Share sheet method.
+    body =
+      'Tap the Share button (□↑) in Safari, then choose "Add to Home Screen" to install.';
+    showInstallButton = false; // nothing for the Install button to do; hide it
+  } else if (isFirefoxMobile) {
+    // Firefox for Android — browser menu method.
+    body =
+      'Tap the menu (⋮) in Firefox, then select "Install" or "Add to Home Screen".';
+    showInstallButton = false;
+  } else {
+    // Generic Android browser (Opera, Brave, Arc, etc.)
+    body =
+      'Open your browser menu and look for "Add to Home Screen" or "Install App".';
+    showInstallButton = false;
   }
 
-  // IMPORTANT ARCHITECTURE NOTE:
-  // This component does not register the service worker.
-  // Service worker registration is handled in app/components/PWARegister.tsx via:
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ARCHITECTURE NOTE
+  // This component only owns install-prompt UX.
+  // Service-worker registration lives in app/components/PWARegister.tsx:
   //   navigator.serviceWorker.register("/sw.js", { scope: "/" })
-  // That registration is a prerequisite for full PWA capabilities (offline/caching),
-  // while THIS component focuses on the install prompt UX and install button behavior.
+  // That registration is a prerequisite for full PWA capabilities (offline /
+  // caching) but is intentionally separate from this component.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  if (hidden || isStandalone) return null;
+
   return (
     <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/95 backdrop-blur-md p-4 shadow-2xl">
-      <p className="text-sm font-semibold text-text">Install DanceDispatch</p>
-      <p className="mt-1 text-sm text-muted">
-        {installEvent
-          ? "Add DanceDispatch to your home screen for faster launch and app-like browsing."
-          : isIOS
-            ? "Open Safari Share and tap Add to Home Screen to install this app."
-            : "Install this app for faster access and offline support."}
-      </p>
+      <p className="text-sm font-semibold text-text">{title}</p>
+      <p className="mt-1 text-sm text-muted">{body}</p>
+
       <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleInstall}
-          disabled={installing}
-          className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
-        >
-          {installing ? "Installing..." : "Install"}
-        </button>
+        {showInstallButton && (
+          <button
+            type="button"
+            onClick={handleInstall}
+            disabled={installing}
+            className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
+          >
+            {installing ? "Installing…" : "Install"}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={handleDismiss}

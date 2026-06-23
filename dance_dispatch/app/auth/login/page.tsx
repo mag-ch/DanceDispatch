@@ -36,20 +36,23 @@ export default function LoginPage() {
     });
 
     if (error) {
-        setError(error.message);
+       if ((error as { status?: number; code?: string }).status === 429 || (error as { code?: string }).code === 'over_request_rate_limit') {
+            setError('Too many login attempts. Please wait a moment and try again.');
+        } else {
+            setError(error.message);
+        }
         setLoading(false);
         return;
     }
-    
-    const activeSession = await waitForSession();
-    if (!activeSession) {
-        setError('Could not establish a login session. Please try again.');
-        setLoading(false);
-        return;
-    }
+    const nextParam = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('next')
+        : null;
+    const nextPath =
+        nextParam && nextParam.startsWith('/') && !nextParam.startsWith('/auth/')
+            ? nextParam
+            : '/';
 
-    router.back();
-    window.location.reload();
+    router.replace(nextPath);
     };
 
     return (

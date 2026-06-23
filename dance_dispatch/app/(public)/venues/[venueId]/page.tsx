@@ -4,9 +4,10 @@ import { SearchResult } from '@/app/components/EventCard';
 import { getCachedVenues, getCachedEvents } from '@/lib/utils_supabase_server';
 import { notFound } from 'next/navigation';
 import VenueImageGallery from './VenueImageGallery';
-import { openInMaps, prettifyCase } from '@/lib/utils';
+import { prettifyCase } from '@/lib/utils';
 import VenueRefreshButton from '@/app/components/VenueRefreshButton';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
+import { openInMaps } from '@/lib/utils_supabase';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {

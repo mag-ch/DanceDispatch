@@ -197,7 +197,7 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onCl
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text mb-1">
-                                    Date <span className="text-red-500">*</span>
+                                    Start Date <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="date"
@@ -222,32 +222,33 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onCl
                                 />
                             </div>
                         </div>
-
-                        <div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-text mb-1">
-                                    Date <span className="text-red-500">*</span>
+                                    End Date <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="date"
-                                    name="startdate"
-                                    value={form.startdate}
+                                    name="enddate"
+                                    value={form.enddate}
                                     onChange={handleChange}
                                     required
                                     className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
-                            <label className="block text-sm font-medium text-text mb-1">
-                                End Time <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="time"
-                                name="endtime"
-                                value={form.endtime}
-                                onChange={handleChange}
-                                required
-                                className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div>
+                                <label className="block text-sm font-medium text-text mb-1">
+                                    End Time <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="time"
+                                    name="endtime"
+                                    value={form.endtime}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
                         </div>
 
                         <div>

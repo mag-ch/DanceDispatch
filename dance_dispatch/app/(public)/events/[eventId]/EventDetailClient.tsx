@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
-import { Event, EventReview, Host, openInMaps } from '@/lib/utils';
+import { Event, EventReview, Host } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
 import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
+import { openInMaps } from '@/lib/utils_supabase';
 
 interface EventDetailClientProps {
     event: Event;

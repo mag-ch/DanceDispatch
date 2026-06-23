@@ -158,3 +158,16 @@ export async function prettifyCase(str: string): Promise<string> {
     return str.slice(0,1).toUpperCase() + str.replace("_", " ").slice(1);
 }
 
+export function openInMaps(address: string) {
+    const encoded = encodeURIComponent(address);
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+
+    if (/iPhone|iPad|iPod|Mac/i.test(ua)) {
+        window.open(`maps://maps.apple.com/?q=${encoded}`, '_blank');
+    } else if (/Android/i.test(ua)) {
+        window.open(`geo:0,0?q=${encoded}`, '_blank');
+    } else {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+    }
+}
+

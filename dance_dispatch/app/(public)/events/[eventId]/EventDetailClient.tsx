@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
-import { Event, EventReview, Host } from '@/lib/utils';
+import { Event, EventReview, Host, openInMaps } from '@/lib/utils';
 import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
@@ -368,13 +368,17 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     <p className="font-semibold text-text">{new Date(`2000-01-01 ${event.starttime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} to {new Date(`2000-01-01 ${event.endtime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <MapPin className="text-blue-600" />
+                            <button
+                                type="button"
+                                onClick={() => openInMaps(event.location)}
+                                className="flex items-center gap-3 hover:text-blue-500 transition-colors text-left"
+                            >
+                                <MapPin className="text-blue-600 shrink-0" />
                                 <div>
                                     <p className="text-sm text-muted">Location</p>
-                                    <p className="font-semibold text-text">{event.location}</p>
+                                    <p className="font-semibold text-text hover:underline">{event.location}</p>
                                 </div>
-                            </div>
+                            </button>
                         </div>
 
                         {/* Description */}

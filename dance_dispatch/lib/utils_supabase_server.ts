@@ -1220,6 +1220,7 @@ export interface SubmitEventInput {
   title: string;
   startdate: string;   // YYYY-MM-DD
   starttime: string;   // HH:MM:SS
+  enddate: string;   // YYYY-MM-DD
   endtime: string;     // HH:MM:SS
   locationid?: string;
   newVenueName?: string;
@@ -1244,17 +1245,6 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
     return (hours * 3600) + (minutes * 60) + (seconds || 0);
   };
 
-  let endDate = input.startdate;
-  if (toSeconds(endTime) < toSeconds(startTime)) {
-    const [year, month, day] = input.startdate.split('-').map((part) => Number(part));
-    const nextDateUtc = new Date(Date.UTC(year, month - 1, day));
-    nextDateUtc.setUTCDate(nextDateUtc.getUTCDate() + 1);
-
-    const nextYear = nextDateUtc.getUTCFullYear();
-    const nextMonth = String(nextDateUtc.getUTCMonth() + 1).padStart(2, '0');
-    const nextDay = String(nextDateUtc.getUTCDate()).padStart(2, '0');
-    endDate = `${nextYear}-${nextMonth}-${nextDay}`;
-  }
 
   const trimmedVenueName = input.newVenueName?.trim();
   const trimmedVenueAddress = input.newVenueAddress?.trim();
@@ -1323,7 +1313,7 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
   const row: Record<string, unknown> = {
     title: input.title.trim(),
     start: input.startdate + 'T' + startTime,
-    end: endDate + 'T' + endTime,
+    end: input.enddate + 'T' + endTime,
   };
   if (resolvedLocationId !== undefined) row.location = Number(resolvedLocationId);
   if (input.description !== undefined) row.description = input.description;

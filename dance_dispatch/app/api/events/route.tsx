@@ -33,6 +33,7 @@ export async function POST(request: Request) {
             title,
             startdate,
             starttime,
+            enddate,
             endtime,
             locationid,
             newVenueName,
@@ -43,8 +44,8 @@ export async function POST(request: Request) {
             externallink,
         } = body;
 
-        if (!title || !startdate || !starttime || !endtime) {
-            return new Response(JSON.stringify({ error: 'title, startdate, starttime and endtime are required' }), {
+        if (!title || !startdate || !starttime || !enddate || !endtime) {
+            return new Response(JSON.stringify({ error: 'title, startdate, starttime, enddate, and endtime are required' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
             title,
             startdate,
             starttime,
+            enddate,
             endtime,
             locationid,
             newVenueName,

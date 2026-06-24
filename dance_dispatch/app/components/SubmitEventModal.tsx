@@ -15,6 +15,7 @@ interface FormState {
     title: string;
     startdate: string;
     starttime: string;
+    enddate: string;
     endtime: string;
     locationid: string;
     newVenueName: string;
@@ -29,6 +30,7 @@ const empty: FormState = {
     title: '',
     startdate: '',
     starttime: '',
+    enddate: '',
     endtime: '',
     locationid: '',
     newVenueName: '',
@@ -83,6 +85,7 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onCl
             title: form.title,
             startdate: form.startdate,
             starttime: form.starttime || '00:00:00',
+            enddate: form.enddate,
             endtime: form.endtime || '00:00:00',
         };
         if (form.locationid && form.locationid !== '__new__') body.locationid = form.locationid;

@@ -8,6 +8,7 @@ import { prettifyCase } from '@/lib/utils';
 import VenueRefreshButton from '@/app/components/VenueRefreshButton';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { openInMaps } from '@/lib/utils_supabase';
+import OpenInMapsButton from '@/app/components/OpenInMapsButton';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -79,17 +80,20 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
 
                         {/* Address & Map */}
                         <section className="mb-4 bg-surface p-6 rounded-lg">
-                            <button
-                                type="button"
-                                onClick={() => openInMaps(venue.address)}
-                                className="flex items-start gap-4 mb-2 hover:text-blue-500 transition-colors text-left w-full"
-                            >
-                                <MapPin className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
-                                <div>
-                                    <h2 className="font-semibold text-text text-lg">Address</h2>
-                                    <p className="text-text hover:underline">{venue.address}</p>
-                                </div>
-                            </button>
+                            <section className="mb-4 bg-surface p-6 rounded-lg">
+                                <OpenInMapsButton address={venue.address} />
+                                {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                                    <iframe
+                                    width="100%"
+                                    height="300"
+                                    src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(venue.address)}`}
+                                    className="rounded"
+                                    loading="lazy"
+                                    />
+                                ) : (
+                                    <p className="text-sm text-text">Map not available</p>
+                                )}
+                                </section>
                             {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
                                 <iframe
                                     width="100%"

@@ -143,6 +143,7 @@ export interface EventReview {
         comments: string;
     }[];
     privacyLevel: 'public' | 'private' | 'anonymous';
+    mediaPaths?: string[];
 
 }
 

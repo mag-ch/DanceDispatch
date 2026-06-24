@@ -1,7 +1,11 @@
-import { useState } from "react";
+'use client';
+import { useEffect, useState } from "react";
 import { Event, EventReview } from '@/lib/utils';
-import { Rat, Star, X } from "lucide-react";
+import { Rat, Star, X, Trash2, Globe, Lock, UserX  } from "lucide-react";
 import React from "react";
+import EventMediaUpload, { MediaFile } from "./EventMediaUpload";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "../providers/AuthContext";
 
 interface ReviewModalProps {
     isOpen: boolean;
@@ -15,7 +19,8 @@ interface ReviewData {
     entityId: string;
     rating: number;
     comment: string;
-    privacyLevel: 'public' | 'private' | 'anonymous';
+    privacyLevel: 'public' | 'private' | 'anonymous'
+    mediaPaths?: string[];
 }
 
 interface RatingCommentComboProps {
@@ -74,29 +79,22 @@ export const RatingCommentCombo: React.FC<RatingCommentComboProps> = ({
     )
 }
 
-
+// Updated ReviewModal with media upload inline
 export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose, onSubmit }) => {
     const [generalComment, setGeneralComment] = useState('');
-    
-    // Venue review state
     const [venueRating, setVenueRating] = useState(0);
     const [venueComment, setVenueComment] = useState('');
-    
-    // DJ reviews state - map of dj name to {rating, comment}
     const [djReviews, setDjReviews] = useState<Record<string, { rating: number; comment: string }>>({});
-
     const [showVenueSection, setShowVenueSection] = useState(false);
     const [showDJSection, setShowDJSection] = useState(false);
     const [privacyLevel, setPrivacyLevel] = useState<'public' | 'private' | 'anonymous'>('public');
+    const [userMedia, setUserMedia] = useState<MediaFile[]>([]);
 
-    // Initialize djReviews when event.hostNames changes
     React.useEffect(() => {
         if (event.hostNames) {
             const initialDjReviews: Record<string, { rating: number; comment: string }> = {};
             event.hostNames.forEach(dj => {
-                if (!djReviews[dj]) {
-                    initialDjReviews[dj] = { rating: 0, comment: '' };
-                }
+                if (!djReviews[dj]) initialDjReviews[dj] = { rating: 0, comment: '' };
             });
             if (Object.keys(initialDjReviews).length > 0) {
                 setDjReviews(prev => ({ ...prev, ...initialDjReviews }));
@@ -105,70 +103,58 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
     }, [event.hostNames]);
 
     const handleDjRatingChange = (dj: string, rating: number) => {
-        setDjReviews(prev => ({
-            ...prev,
-            [dj]: { ...prev[dj], rating }
-        }));
+        setDjReviews(prev => ({ ...prev, [dj]: { ...prev[dj], rating } }));
     };
-
     const handleDjCommentChange = (dj: string, comment: string) => {
-        setDjReviews(prev => ({
-            ...prev,
-            [dj]: { ...prev[dj], comment }
-        }));
+        setDjReviews(prev => ({ ...prev, [dj]: { ...prev[dj], comment } }));
     };
 
     const handleSubmit = () => {
         const reviewsToSubmit: ReviewData[] = [];
 
-        // Add general comment if provided
         if (generalComment.trim()) {
             reviewsToSubmit.push({
                 entityType: 'event',
                 entityId: event.id || '',
                 rating: 0,
                 comment: generalComment,
-                privacyLevel: privacyLevel
+                privacyLevel,
+                // Pass media paths so your backend can store the association
+                mediaPaths: userMedia.map(m => m.path),
             });
         }
-
-        // Add venue review if it has a rating
-        if (venueRating > 0) {
+        if (venueRating > 0 || venueComment.length>0) {
             reviewsToSubmit.push({
                 entityType: 'venue',
                 entityId: event.locationid || '',
                 rating: venueRating,
                 comment: venueComment,
-                privacyLevel: privacyLevel
+                privacyLevel,
             });
         }
-
-        // Add DJ reviews if they have a rating
         Object.entries(djReviews).forEach(([dj, review]) => {
-            if (review.rating > 0) {
+            if (review.rating > 0|| review.comment.length>0) {
                 reviewsToSubmit.push({
                     entityType: 'host',
                     entityId: dj,
                     rating: review.rating,
                     comment: review.comment,
-                    privacyLevel: privacyLevel
+                    privacyLevel,
                 });
             }
         });
 
         onSubmit(reviewsToSubmit);
-        
-        // Reset state
         setGeneralComment('');
         setVenueRating(0);
         setVenueComment('');
         setDjReviews({});
         setPrivacyLevel('public');
         onClose();
+        setUserMedia([]);
     };
 
     if (!isOpen) return null;
-
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -176,180 +162,320 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-text">Leave a Review</h2>
-                    <button onClick={onClose} className="text-text hover:text-text">
-                    <X size={24} />
-                    </button>
+                    <button onClick={onClose} className="text-text hover:text-text"><X size={24} /></button>
                 </div>
-                {/* Sub header */}
                 <div className="mb-4 flex-shrink-0">
                     <p className="text-xs font-medium text-text">{event.title}</p>
                 </div>
-                {/* Privacy Level Selection */}
-                <div className="mb-2 pb-4 border-b">
+
+                {/* Privacy */}
+                <div className="mb-2 pb-4 border-b flex-shrink-0">
                     <label className="block text-sm font-semibold text-text mb-3">Privacy Level</label>
                     <div className="flex gap-4">
-                    {(['public', 'private', 'anonymous'] as const).map((level) => (
-                        <label key={level} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                            type="radio"
-                            name="privacy"
-                            value={level}
-                            checked={privacyLevel === level}
-                            onChange={() => setPrivacyLevel(level)}
-                            className="w-4 h-4"
-                        />
-                        <span className="text-text capitalize">{level}</span>
-                        </label>
-                    ))}
+                        {(['public', 'private', 'anonymous'] as const).map((level) => (
+                            <label key={level} className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="privacy" value={level} checked={privacyLevel === level} onChange={() => setPrivacyLevel(level)} className="w-4 h-4" />
+                                <span className="text-text capitalize">{level}</span>
+                            </label>
+                        ))}
                     </div>
                 </div>
-                {/* Scrollable portion */}
+
+                {/* Scrollable content */}
                 <div className="overflow-y-auto flex-1 pr-2">
 
-                    {/* Section 1: Comment */}
-                    <div className="mb-6">
-                    <label className="block text-sm font-semibold text-text mb-2">Comments</label>
-                    <textarea
-                        value={generalComment}
-                        onChange={(e) => setGeneralComment(e.target.value)}
-                        placeholder="Share your thoughts..."
-                        className="w-full border border-gray-300 rounded-lg p-3 text-text focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                        rows={3}
-                    />
+                    {/* General comment */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-semibold text-text mb-2">Comments</label>
+                        <textarea
+                            value={generalComment}
+                            onChange={(e) => setGeneralComment(e.target.value)}
+                            placeholder="Share your thoughts..."
+                            className="w-full border border-gray-300 rounded-lg p-3 text-text focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            rows={3}
+                        />
                     </div>
-                    
-                    {/* Section 2: Venue Toggle */}
+
+                    {/* ── Media upload ── */}
+                    <div className="mb-5">
+                        <label className="block text-sm font-semibold text-text mb-2">
+                            Photos & Videos
+                            <span className="text-muted font-normal ml-1">(optional · up to 3)</span>
+                        </label>
+                        <EventMediaUpload
+                            eventId={event.id || ''}
+                            mode="inline"
+                            onMediaChange={setUserMedia}
+                        />
+                    </div>
+
+                    {/* Venue toggle */}
                     <div className="mb-3 sticky top-0 bg-surface z-10 py-2">
-                        <button
-                            onClick={() => setShowVenueSection(!showVenueSection)}
-                            className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
-                        >
+                        <button onClick={() => setShowVenueSection(!showVenueSection)} className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none">
                             <span className={`transition-transform ${showVenueSection ? 'rotate-90' : ''}`}>▶</span>
                             Venue: {event.location}
                         </button>
                     </div>
-                    
-                    {/* Section 3: Venue Review */}
                     {showVenueSection && (
-                        <RatingCommentCombo 
-                            rating={venueRating}
-                            comment={venueComment}
-                            onRatingChange={setVenueRating}
-                            onCommentChange={setVenueComment}
-                        />
+                        <RatingCommentCombo rating={venueRating} comment={venueComment} onRatingChange={setVenueRating} onCommentChange={setVenueComment} />
                     )}
 
-                     {/* Section 4: DJ Toggle */}
+                    {/* DJ toggle */}
                     <div className="mb-3 sticky top-0 bg-surface z-10 py-2">
-                        <button
-                            onClick={() => setShowDJSection(!showDJSection)}
-                            className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none"
-                        >
+                        <button onClick={() => setShowDJSection(!showDJSection)} className="flex items-center gap-2 text-sm font-semibold text-text hover:text-blue-600 focus:outline-none">
                             <span className={`transition-transform ${showDJSection ? 'rotate-90' : ''}`}>▶</span>
-                            DJs: {event.hostNames?.join(", ")}
+                            DJs: {event.hostNames?.join(', ')}
                         </button>
                     </div>
-                    {/* Section 5: DJ Reviews */}
-                    {showDJSection && (
-                        event.hostIDs?.map((dj, index) => (
-                            <div key={dj} className="mb-6">
-                                <h3 className="text-md font-semibold text-text mb-2">{event.hostNames?.[index] ?? dj}</h3>
-                                <RatingCommentCombo 
-                                    rating={djReviews[dj]?.rating || 0}
-                                    comment={djReviews[dj]?.comment || ''}
-                                    onRatingChange={(rating) => handleDjRatingChange(dj, rating)}
-                                    onCommentChange={(comment) => handleDjCommentChange(dj, comment)}
-                                />
-                            </div>
-                        ))
-                    )}
-
+                    {showDJSection && event.hostIDs?.map((dj, index) => (
+                        <div key={dj} className="mb-6">
+                            <h3 className="text-md font-semibold text-text mb-2">{event.hostNames?.[index] ?? dj}</h3>
+                            <RatingCommentCombo
+                                rating={djReviews[dj]?.rating || 0}
+                                comment={djReviews[dj]?.comment || ''}
+                                onRatingChange={(rating) => handleDjRatingChange(dj, rating)}
+                                onCommentChange={(comment) => handleDjCommentChange(dj, comment)}
+                            />
+                        </div>
+                    ))}
                 </div>
-                    {/* Submit Button */}
-                    <div className="mt-6 flex gap-3 flex-shrink-0 border-t pt-4">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 px-4 py-2 text-text border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            className="btn-highlighted flex-1 px-4 py-2  rounded-lg font-medium"
-                        >
-                            Submit Review
-                        </button>
-                    </div>
+
+                {/* Footer */}
+                <div className="mt-6 flex gap-3 flex-shrink-0 border-t pt-4">
+                    <button onClick={onClose} className="flex-1 px-4 py-2 text-text border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+                        Cancel
+                    </button>
+                    <button onClick={handleSubmit} className="btn-highlighted flex-1 px-4 py-2 rounded-lg font-medium">
+                        Submit Review
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
 
-export const DisplayEventReview: React.FC<{ review: EventReview }> = ({ review }) => {
+type PrivacyLevel = 'public' | 'private' | 'anonymous';
 
-    const username = review.privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
+const PRIVACY_CONFIG: Record<PrivacyLevel, { label: string; icon: React.ReactNode; next: PrivacyLevel }> = {
+    public:    { label: 'Public',    icon: <Globe size={12} />,   next: 'anonymous' },
+    anonymous: { label: 'Anonymous', icon: <UserX size={12} />,   next: 'private'   },
+    private:   { label: 'Private',   icon: <Lock size={12} />,    next: 'public'    },
+};
+
+const PRIVACY_COLORS: Record<PrivacyLevel, string> = {
+    public:    'bg-green-100 text-green-700 hover:bg-green-200',
+    anonymous: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+    private:   'bg-gray-200 text-gray-600 hover:bg-gray-300',
+};
+
+export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void }> = ({ review, onDeleted }) => {
+
+    const { session, loading: authLoading } = useAuth();
+
+    // Don't render owner controls until auth is resolved
+
+    const [privacyLevel, setPrivacyLevel] = useState<PrivacyLevel>(review.privacyLevel as PrivacyLevel);
+    const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isOwner, setIsOwner] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleted, setDeleted] = useState(false);
+
+
+     useEffect(() => {
+        console.log(authLoading);
+        if (authLoading ) return;
+        if (session) {
+            setIsOwner(!session?.user?.id && !!session?.user?.id && session?.user?.id === review.userId);
+            console.log(isOwner);
+        } else {
+            setIsOwner(false);
+        }
+    }, [authLoading, session]);
+
+
+    const displayUsername = privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
+
+    const supabase = createClient();
+
+    const handlePrivacyCycle = async () => {
+        const next = PRIVACY_CONFIG[privacyLevel].next;
+        setIsUpdatingPrivacy(true);
+        try {
+            const { error } = await supabase
+                .from('Reviews')
+                .update({ privacy_level: next })
+                .eq('event_id', Number(review.eventId))
+                .eq('user_id', session?.user?.id);
+            if (error) throw error;
+            setPrivacyLevel(next);
+        } catch (err) {
+            console.error('Failed to update privacy:', err);
+        } finally {
+            setIsUpdatingPrivacy(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirmDelete) {
+            setConfirmDelete(true);
+            return;
+        }
+        setIsDeleting(true);
+        try {
+            const { error } = await supabase
+                .from('Reviews')
+                .delete()
+                .eq('event_id', Number(review.eventId))
+                .eq('user_id', session?.user?.id);
+            if (error) throw error;
+            setDeleted(true);
+            onDeleted?.();
+        } catch (err) {
+            console.error('Failed to delete review:', err);
+            setIsDeleting(false);
+            setConfirmDelete(false);
+        }
+    };
+
+    if (deleted) return null;
+
+    // Hide entirely if private and not the owner
+    if (privacyLevel === 'private' && !isOwner) return null;
+
+    const config = PRIVACY_CONFIG[privacyLevel];
+
     return (
-    <div className="bg-surface rounded-lg shadow p-4 mb-4">
-        {/* Header: username, date, privacy */}
-        <div className="flex items-center justify-between mb-4 pb-3 border-b">
-            <div className="flex items-center gap-2">
-                <span className="font-semibold text-text">{username}</span>
-                <span className="text-sm text-text">•</span>
-                <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
+        <div className={`bg-surface rounded-lg shadow p-4 mb-4 transition-opacity ${isDeleting ? 'opacity-50' : ''}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                <div className="flex items-center gap-2">
+                    <span className="font-semibold text-text">{displayUsername}</span>
+                    <span className="text-sm text-text">•</span>
+                    <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Privacy badge — clickable for owner */}
+                    {isOwner ? (
+                        <button
+                            type="button"
+                            onClick={handlePrivacyCycle}
+                            disabled={isUpdatingPrivacy}
+                            title="Click to change privacy"
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full capitalize font-medium transition-colors ${PRIVACY_COLORS[privacyLevel]} ${isUpdatingPrivacy ? 'opacity-50 pointer-events-none' : ''}`}
+                        >
+                            {config.icon}
+                            {config.label}
+                        </button>
+                    ) : (
+                        <span className="flex items-center gap-1 text-xs px-2 py-1 bg-accent text-text rounded-full capitalize">
+                            {config.icon}
+                            {config.label}
+                        </span>
+                    )}
+
+                    {/* Delete button — owner only */}
+                    {isOwner && (
+                        confirmDelete ? (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    className="text-xs px-2 py-1 bg-red-500 text-white rounded-full hover:bg-red-600 font-medium"
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Confirm'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="text-xs px-2 py-1 bg-gray-200 text-text rounded-full hover:bg-gray-300 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                title="Delete review"
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                        )
+                    )}
+                </div>
             </div>
-            <span className="text-xs px-2 py-1 bg-accent text-text rounded-full capitalize">
-                {review.privacyLevel}
-            </span>
-        </div>
 
-        {/* Content sections in horizontal row */}
-        <div className="flex gap-6 overflow-x-auto pb-4">
-            {/* Main Comment Section */}
-            {review.mainComment && (
-                <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">{review.eventName}</h4>
-                    <p className="text-sm text-text">{review.mainComment}</p>
+            {/* Review content — horizontal scroll */}
+            <div className="flex gap-6 overflow-x-auto pb-4">
+                {review.mainComment && (
+                    <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
+                        <h4 className="text-sm font-semibold text-text mb-2">{review.eventName}</h4>
+                        <p className="text-sm text-text">{review.mainComment}</p>
+                    </div>
+                )}
+                {review.venueReview && (
+                    <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
+                        <h4 className="text-sm font-semibold text-text mb-2">{review.venueReview.venueName}</h4>
+                        {review.venueReview.rating > 0 && (
+                        <div className="flex gap-1 mb-2">
+                            {[1,2,3,4,5].map((star) => (
+                                <Star key={star} size={16} className={star <= (review.venueReview?.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                            ))}
+                        </div>
+                        )}
+                        {review.venueReview.comments && <p className="text-sm text-text">{review.venueReview.comments}</p>}
+                    </div>
+                )}
+                {review.djReviews?.map((djReview) => (
+                    <div key={djReview.djName} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
+                        <h4 className="text-sm font-semibold text-text mb-2">{djReview.djName}</h4>
+                        {djReview.rating > 0 && (
+                            <div className="flex gap-1 mb-2">
+                            {[1,2,3,4,5].map((star) => (
+                                <Star key={star} size={16} className={star <= djReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                            ))}
+                        </div>
+                        )}
+                        
+                        {djReview.comments && <p className="text-sm text-text">{djReview.comments}</p>}
+                    </div>
+                ))}
+            </div>
+
+            {/* Media */}
+            {review.mediaPaths && review.mediaPaths.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                    <div className="grid grid-cols-3 gap-2">
+                        {review.mediaPaths.map((path) => {
+                            const { data } = supabase.storage.from('event-media').getPublicUrl(path);
+                            const isVideo = /\.(mp4|mov|webm)$/i.test(path);
+                            return (
+                                <div key={path} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                                    {isVideo ? (
+                                        <video src={data.publicUrl} className="w-full h-full object-cover" controls muted playsInline />
+                                    ) : (
+                                        <img src={data.publicUrl} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
-
-            {/* Venue Review Section */}
-            {review.venueReview && (
-                <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">{review.venueReview.venueName}</h4>
-                    <div className="flex gap-1 mb-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                                key={star}
-                                size={16}
-                                className={star <= (review.venueReview?.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                            />
-                        ))}
-                    </div>
-                    {review.venueReview.comments && (
-                        <p className="text-sm text-text">{review.venueReview.comments}</p>
-                    )}
-                </div>
-            )}
-
-            {/* DJ Reviews Section */}
-            {review.djReviews && review.djReviews.map((djReview) => (
-                <div key={djReview.djName} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                    <h4 className="text-sm font-semibold text-text mb-2">{djReview.djName}</h4>
-                    <div className="flex gap-1 mb-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                                key={star}
-                                size={16}
-                                className={star <= djReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                            />
-                        ))}
-                    </div>
-                    {djReview.comments && (
-                        <p className="text-sm text-text">{djReview.comments}</p>
-                    )}
-                </div>
-            ))}
         </div>
-    </div>
     );
-}
+};
+
+// ── Standalone full-event gallery (use this on the event page below the reviews) ──
+export const EventMediaGallery: React.FC<{ eventId: string; userId: string }> = ({ eventId, userId }) => {
+    return (
+        <EventMediaUpload
+            eventId={eventId}
+            mode="standalone"
+        />
+    );
+};

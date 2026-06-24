@@ -354,58 +354,75 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
     const supabase = await createServerClient();
     const { data, error } = await supabase
       .from('Reviews')
-      .select('id,event_id,user_id,privacy_level,created_at,entity_type,entity_id,rating,comment')
+      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
       .eq('event_id', Number(eventId))
       .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
-    //map venue name to venue id for easier consumption on client
     const venues = await getCachedVenues();
     const venueMap = new Map(venues.map((venue) => [String(venue.id), venue.name]));
 
     const hosts = await getCachedHosts();
     const hostMap = new Map(hosts.map((host) => [String(host.id), host.name]));
 
-    //map event name to event reviews for easier consumption on client
     const event = await getEventById(eventId);
     const eventName = event ? event.title : 'Unknown Event';
 
-    // map user id to username for easier consumption on client
     const userIds = Array.from(new Set((data ?? []).map((row: any) => row.user_id)));
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
     const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
-    const venueReviews = (data ?? []).filter((row: any) => row.entity_type === 'venue');
-    const hostReviews = (data ?? []).filter((row: any) => row.entity_type === 'host');
-    const eventComments = (data ?? []).filter((row: any) => row.entity_type === 'event');
+    // Group rows by user + 1-minute bucket
+    // Floor created_at to the nearest minute so rows submitted within
+    // the same 60-second window share the same key.
+    const getGroupKey = (row: any): string => {
+      const ms = new Date(row.created_at).getTime();
+      const minuteBucket = Math.floor(ms / 60_000); // unix minute
+      return `${row.user_id}-${minuteBucket}`;
+    };
 
-    const reviewsByUserAndTime = new Map<string, EventReview>();
-    for (const row of [...venueReviews, ...hostReviews, ...eventComments]) {
-      const dateNoTime = String(row.created_at).split('T')[0] ?? '';
-      const key = `${row.user_id}-${dateNoTime}`;
-      if (!reviewsByUserAndTime.has(key)) {
-        reviewsByUserAndTime.set(key, {
-          eventName: eventName,
+    const reviewsByKey = new Map<string, EventReview>();
+
+    const rows = data ?? [];
+    // Process event comments first so mainComment + mediaPaths are set
+    // before venue/host rows potentially create the group entry
+    const ordered = [
+      ...rows.filter((r: any) => r.entity_type === 'event'),
+      ...rows.filter((r: any) => r.entity_type === 'venue'),
+      ...rows.filter((r: any) => r.entity_type === 'host'),
+    ];
+
+    for (const row of ordered) {
+      const key = getGroupKey(row);
+      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
+
+      if (!reviewsByKey.has(key)) {
+        reviewsByKey.set(key, {
+          eventName,
           eventId: String(row.event_id),
-          username: userMap.get(row.user_id) ?? row.user_id,
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
           dateSubmitted: row.created_at,
+          privacyLevel: row.privacy_level,
           mainComment: '',
+          mediaPaths: [],
           venueReview: undefined,
           djReviews: [],
-          privacyLevel: row.privacy_level,
         });
       }
 
-      const review = reviewsByUserAndTime.get(key);
-      if (!review) continue;
+      const review = reviewsByKey.get(key)!;
 
       if (row.entity_type === 'event') {
         review.mainComment = row.comment;
+        // Media is attached to the event-level review row
+        review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
-        review.venueReview = { venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue', rating: row.rating, comments: row.comment };
+        review.venueReview = {
+          venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
+          rating: row.rating,
+          comments: row.comment,
+        };
       } else if (row.entity_type === 'host') {
         review.djReviews?.push({
           djName: hostMap.get(String(row.entity_id)) ?? 'Unknown Host',
@@ -415,13 +432,12 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
       }
     }
 
-    return Array.from(reviewsByUserAndTime.values());
+    return Array.from(reviewsByKey.values());
   } catch (error) {
     console.error('Error fetching event reviews from Supabase:', error);
     return [];
   }
 }
-
 
 export async function createHost(data: {
   name: string;
@@ -1086,10 +1102,24 @@ export async function userSubmitReview(reviewData: any, userId: string, eventId:
 
   if (parentErr) throw parentErr;
 
+  // Insert media paths if provided
+  const mediaPaths: string[] = reviewData.mediaPaths ?? [];
+  if (mediaPaths.length > 0) {
+    const { error: mediaErr } = await supabase
+      .from('ReviewMedia')
+      .insert(
+    
+        mediaPaths.map((path) => ({
+          review_id: parent.id,
+          storage_path: path,
+        }))
+      );
+
+    if (mediaErr) throw mediaErr;
+  }
 
   return 'success';
 }
-
 export async function updateEvent(eventId: string, updatedFields: Partial<Event>): Promise<string | null> {
   const patch: any = {};
   if (updatedFields.title !== undefined) patch.title = updatedFields.title;

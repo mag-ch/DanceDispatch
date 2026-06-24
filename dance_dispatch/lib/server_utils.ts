@@ -68,23 +68,24 @@ export async function getUserReviews(userId: string): Promise<any[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('Reviews')
-        .select('id, event_id, rating, comment, created_at')
+        .select('id, event_id, rating, comment, created_at, ReviewMedia(storage_path)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-    // add event title to each review
+    if (error) {
+        console.error('Error fetching user reviews from Supabase:', error);
+        return [];
+    }
+
     if (data) {
         const allEvents = await getCachedEvents(false);
         const eventById = new Map(allEvents.map((event) => [event.id, event]));
         data.forEach((review: any) => {
             const event = eventById.get(String(review.event_id));
             review.event_title = event ? event.title : 'Unknown Event';
+            review.mediaPaths = (review.ReviewMedia ?? []).map((m: any) => m.storage_path);
+            delete review.ReviewMedia;
         });
-    }
-        
-    if (error) {
-        console.error('Error fetching user reviews from Supabase:', error);
-        return [];
     }
 
     return data;
@@ -154,15 +155,15 @@ export async function getUniqueVenueAttributes(venueId: string) {
     return data;
 }
 
-export async function getVenueComments(venueId:string) {
+export async function getVenueComments(venueId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('Reviews')
-        .select('event_id, user_id, rating, comment, created_at, privacy_level')
+        .select('id, event_id, user_id, rating, comment, created_at, privacy_level, ReviewMedia(storage_path)')
         .eq('entity_id', venueId)
         .eq('entity_type', 'venue')
         .neq('privacy_level', 'private');
-        
+
     if (error) {
         console.error('Error fetching venue comments from Supabase:', error);
         return null;
@@ -172,7 +173,12 @@ export async function getVenueComments(venueId:string) {
     const usernameById = new Map(users.map((user) => [String(user.id), user.username]));
 
     data.forEach((comment: any) => {
-        comment.user_id = usernameById.get(String(comment.user_id)) || 'Anon';
+        comment.username = comment.privacy_level === 'anonymous'
+            ? 'Anonymous'
+            : usernameById.get(String(comment.user_id)) ?? 'Anon';
+        comment.mediaPaths = (comment.ReviewMedia ?? []).map((m: any) => m.storage_path);
+        delete comment.user_id;
+        delete comment.ReviewMedia;
     });
 
     return data;

@@ -254,21 +254,22 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
     );
 };
 
-type PrivacyLevel = 'public' | 'private' | 'anonymous';
-
-const PRIVACY_CONFIG: Record<PrivacyLevel, { label: string; icon: React.ReactNode; next: PrivacyLevel }> = {
-    public:    { label: 'Public',    icon: <Globe size={12} />,   next: 'anonymous' },
-    anonymous: { label: 'Anonymous', icon: <UserX size={12} />,   next: 'private'   },
-    private:   { label: 'Private',   icon: <Lock size={12} />,    next: 'public'    },
-};
-
-const PRIVACY_COLORS: Record<PrivacyLevel, string> = {
-    public:    'bg-green-100 text-green-700 hover:bg-green-200',
-    anonymous: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
-    private:   'bg-gray-200 text-gray-600 hover:bg-gray-300',
-};
 
 export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void }> = ({ review, onDeleted }) => {
+        
+    type PrivacyLevel = 'public' | 'private' | 'anonymous';
+
+    const PRIVACY_CONFIG: Record<PrivacyLevel, { label: string; icon: React.ReactNode; next: PrivacyLevel }> = {
+        public:    { label: 'Public',    icon: <Globe size={12} />,   next: 'anonymous' },
+        anonymous: { label: 'Anonymous', icon: <UserX size={12} />,   next: 'private'   },
+        private:   { label: 'Private',   icon: <Lock size={12} />,    next: 'public'    },
+    };
+
+    const PRIVACY_COLORS: Record<PrivacyLevel, string> = {
+        public:    'bg-green-100 text-green-700 hover:bg-green-200',
+        anonymous: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+        private:   'bg-gray-200 text-gray-600 hover:bg-gray-300',
+    };
 
     const { session, loading: authLoading } = useAuth();
 
@@ -343,7 +344,9 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     // Hide entirely if private and not the owner
     if (privacyLevel === 'private' && !isOwner) return null;
 
+    console.log("NOTE: " + privacyLevel);
     const config = PRIVACY_CONFIG[privacyLevel];
+    console.log("CONFIG: " + config);
 
     return (
         <div className={`bg-surface rounded-lg shadow p-4 mb-4 transition-opacity ${isDeleting ? 'opacity-50' : ''}`}>

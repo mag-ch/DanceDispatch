@@ -1,12 +1,13 @@
 import { Event } from '@/lib/utils';
-import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions } from '@/lib/utils_supabase_server';
+import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions, getUserReviews } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
-import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary, getUserReviews } from '@/lib/server_utils';
+import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
 import UserBadgesInline from '@/app/components/UserBadgesInline';
 import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
 import ExplorerBadgeModal from './ExplorerBadgeModal';
+import { DisplayEventReview } from '@/app/components/EventReview';
 
 
 
@@ -89,7 +90,6 @@ export default async function ProfilePage() {
                     </div>}
                     {userdata?.username && <div className="space-y-2 mt-4">
                         <p className="text-sm text-text">Username</p>
-                        <p className="text-xl font-semibold text-text">{userdata.username || 'Not provided'}</p>
                         <p className="text-xl font-semibold text-text flex items-center gap-2">
                             <span>{userdata.username || 'Not provided'}</span>
                             <UserBadgesInline userId={user.id} maxBadges={3} />
@@ -274,14 +274,9 @@ export default async function ProfilePage() {
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Reviews ({userReviews.length})</h2>
                 <div className="space-y-4">
-                    {userReviews.map((review) => (
-                        <div key={review.id} className="border rounded-lg p-4">
-                            <p className="font-medium text-text">{review.event_title}</p>
-                                <p className="text-sm text-text">{review.comment}</p>
-                            <p className="text-sm text-text">
-                                {new Date(review.created_at).toLocaleDateString()}
-                            </p>
-                        </div>
+                    {
+                    userReviews.map((review, index) => (
+                        <DisplayEventReview key={index} review={review} />
                     ))}
                     {userReviews.length === 0 && (
                         <p className="text-text">No past comments</p>

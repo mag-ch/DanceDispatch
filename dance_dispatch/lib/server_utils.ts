@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
-import { Event } from '@/lib/utils';
+import { Event, EventReview } from '@/lib/utils';
 import { getCachedEvents, getUsers } from '@/lib/utils_supabase_server';
 import { combineChunks } from '@supabase/ssr';
 
@@ -64,32 +64,6 @@ export async function getSavedEventsBucketsForUserServer(userId: string): Promis
     );
 }
 
-export async function getUserReviews(userId: string): Promise<any[]> {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('Reviews')
-        .select('id, event_id, rating, comment, created_at, ReviewMedia(storage_path)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('Error fetching user reviews from Supabase:', error);
-        return [];
-    }
-
-    if (data) {
-        const allEvents = await getCachedEvents(false);
-        const eventById = new Map(allEvents.map((event) => [event.id, event]));
-        data.forEach((review: any) => {
-            const event = eventById.get(String(review.event_id));
-            review.event_title = event ? event.title : 'Unknown Event';
-            review.mediaPaths = (review.ReviewMedia ?? []).map((m: any) => m.storage_path);
-            delete review.ReviewMedia;
-        });
-    }
-
-    return data;
-}
 
 export async function getVenueById(venueId: string) {
     const supabase = await createClient();

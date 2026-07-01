@@ -270,13 +270,17 @@ export default async function ProfilePage() {
                 </div>
             </section>
 
-            {/* Past Comments */}
+           {/* Past Comments */}
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Reviews ({userReviews.length})</h2>
                 <div className="space-y-4">
-                    {
-                    userReviews.map((review, index) => (
-                        <DisplayEventReview key={index} review={review} />
+                    {userReviews.map((review, index) => (
+                        <div
+                        key={index}
+                        className="[&_img]:!max-w-[160px] [&_img]:!max-h-[160px] [&_img]:!object-cover [&_video]:!max-w-[160px] [&_video]:!max-h-[160px] [&_video]:!object-cover"
+                        >
+                        <DisplayEventReview review={review} />
+                        </div>
                     ))}
                     {userReviews.length === 0 && (
                         <p className="text-text">No past comments</p>

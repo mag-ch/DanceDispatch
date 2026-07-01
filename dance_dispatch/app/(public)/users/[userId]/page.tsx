@@ -1,6 +1,6 @@
-import { getUserById } from "@/lib/utils_supabase_server";
+import { getUserById, getUserReviews } from "@/lib/utils_supabase_server";
 import { getAllFollowedHosts, getAllFollowedUsers, getAllFollowedVenues } from "@/lib/utils_supabase_server";
-import { getSavedEventsForUserServer, getUserReviews } from "@/lib/server_utils";
+import { getSavedEventsForUserServer } from "@/lib/server_utils";
 import UserProfileClient from "./UserProfileClient";
 
 export default async function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {

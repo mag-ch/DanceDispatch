@@ -5,3 +5,9 @@
 - search text doesn't go thru
 - add host and venue reviews
 - suggestion box in the corner
+
+
+- fix image preview on user profile
+- fix lightbox margins
+- make reviews click-thgroughable to event page
+- make "Leave a Review" disabled if not rsvp-ed, ask for confirmation to add to RSVPs

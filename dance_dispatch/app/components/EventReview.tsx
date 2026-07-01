@@ -6,12 +6,14 @@ import React from "react";
 import EventMediaUpload, { MediaFile } from "./EventMediaUpload";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers/AuthContext";
+import Link from 'next/link';
 
 interface ReviewModalProps {
     isOpen: boolean;
     event: Event;
     onClose: () => void;
     onSubmit: (reviews: ReviewData[]) => void;
+    
 }
 
 interface ReviewData {
@@ -206,6 +208,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                             eventId={event.id || ''}
                             mode="inline"
                             onMediaChange={setUserMedia}
+                            hosts = {event.hostNames}
                         />
                     </div>
 
@@ -256,7 +259,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
 
 export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void }> = ({ review, onDeleted }) => {
-        
+
     type PrivacyLevel = 'public' | 'private' | 'anonymous';
 
     const PRIVACY_CONFIG: Record<PrivacyLevel, { label: string; icon: React.ReactNode; next: PrivacyLevel }> = {
@@ -283,31 +286,31 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     const [deleted, setDeleted] = useState(false);
 
 
-     useEffect(() => {
-        console.log(authLoading);
+    useEffect(() => {
         if (authLoading ) return;
         if (session) {
-            setIsOwner(!session?.user?.id && !!session?.user?.id && session?.user?.id === review.userId);
-            console.log(isOwner);
+            setIsOwner(!!session?.user?.id && session.user.id === review.userId);
+            console.log(session.user.id);
+            console.log(review);
         } else {
             setIsOwner(false);
         }
-    }, [authLoading, session]);
-
-
+    }, [authLoading, session, review.userId]);
+    
+    
     const displayUsername = privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
-
+    
     const supabase = createClient();
-
+    
     const handlePrivacyCycle = async () => {
         const next = PRIVACY_CONFIG[privacyLevel].next;
         setIsUpdatingPrivacy(true);
         try {
             const { error } = await supabase
-                .from('Reviews')
-                .update({ privacy_level: next })
-                .eq('event_id', Number(review.eventId))
-                .eq('user_id', session?.user?.id);
+            .from('Reviews')
+            .update({ privacy_level: next })
+            .eq('event_id', Number(review.eventId))
+            .eq('user_id', session?.user?.id);
             if (error) throw error;
             setPrivacyLevel(next);
         } catch (err) {
@@ -316,7 +319,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
             setIsUpdatingPrivacy(false);
         }
     };
-
+    
     const handleDelete = async () => {
         if (!confirmDelete) {
             setConfirmDelete(true);
@@ -325,10 +328,10 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
         setIsDeleting(true);
         try {
             const { error } = await supabase
-                .from('Reviews')
-                .delete()
-                .eq('event_id', Number(review.eventId))
-                .eq('user_id', session?.user?.id);
+            .from('Reviews')
+            .delete()
+            .eq('event_id', Number(review.eventId))
+            .eq('user_id', session?.user?.id);
             if (error) throw error;
             setDeleted(true);
             onDeleted?.();
@@ -338,18 +341,37 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
             setConfirmDelete(false);
         }
     };
-
+    
     if (deleted) return null;
-
+    
     // Hide entirely if private and not the owner
     if (privacyLevel === 'private' && !isOwner) return null;
-
-    console.log("NOTE: " + privacyLevel);
+    
     const config = PRIVACY_CONFIG[privacyLevel];
-    console.log("CONFIG: " + config);
-
+    
+    // --- Dynamic module layout ---
+    // Count how many review "modules" we're rendering (main comment, venue, each DJ).
+    const moduleCount =
+    (review.mainComment ? 1 : 0) +
+    (review.venueReview ? 1 : 0) +
+    (review.djReviews?.length ?? 0);
+    
+    // With a small number of modules, let them split the available width evenly.
+    // Once there are enough that an even split would feel cramped, fall back to the
+    // fixed-width, horizontally-scrolling layout.
+    const DYNAMIC_WIDTH_THRESHOLD = 3;
+    const useDynamicWidth = moduleCount > 0 && moduleCount <= DYNAMIC_WIDTH_THRESHOLD;
+    
+    const containerClassName = useDynamicWidth
+    ? 'flex gap-6 pb-4'
+    : 'flex gap-6 overflow-x-auto pb-4';
+    
+    const moduleClassName = useDynamicWidth
+    ? 'flex-1 min-w-0'
+    : 'flex-shrink-0 min-w-[200px] max-w-[250px]';
+    
     return (
-        <div className={`bg-surface rounded-lg shadow p-4 mb-4 transition-opacity ${isDeleting ? 'opacity-50' : ''}`}>
+        <div className={`bg-surface rounded-lg shadow p-4 transition-opacity ${isDeleting ? 'opacity-50' : ''}`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b">
                 <div className="flex items-center gap-2">
@@ -412,17 +434,23 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                 </div>
             </div>
 
-            {/* Review content — horizontal scroll */}
-            <div className="flex gap-6 overflow-x-auto pb-4">
+            {/* Review content */}
+            <div className={containerClassName}>
                 {review.mainComment && (
-                    <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                        <h4 className="text-sm font-semibold text-text mb-2">{review.eventName}</h4>
+                    <div className={moduleClassName}>
+                        <Link
+                            href={`/events/${review.eventId}`}
+                            className="block truncate text-sm font-semibold text-text mb-2 hover:underline"
+                            title={review.eventName}
+                        >
+                            {review.eventName}
+                        </Link>
                         <p className="text-sm text-text">{review.mainComment}</p>
                     </div>
                 )}
                 {review.venueReview && (
-                    <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                        <h4 className="text-sm font-semibold text-text mb-2">{review.venueReview.venueName}</h4>
+                    <div className={moduleClassName}>
+                        <h4 className="text-sm font-semibold text-text mb-2 truncate">{review.venueReview.venueName}</h4>
                         {review.venueReview.rating > 0 && (
                         <div className="flex gap-1 mb-2">
                             {[1,2,3,4,5].map((star) => (
@@ -434,8 +462,8 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                     </div>
                 )}
                 {review.djReviews?.map((djReview) => (
-                    <div key={djReview.djName} className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                        <h4 className="text-sm font-semibold text-text mb-2">{djReview.djName}</h4>
+                    <div key={djReview.djName} className={moduleClassName}>
+                        <h4 className="text-sm font-semibold text-text mb-2 truncate">{djReview.djName}</h4>
                         {djReview.rating > 0 && (
                             <div className="flex gap-1 mb-2">
                             {[1,2,3,4,5].map((star) => (
@@ -443,29 +471,35 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                             ))}
                         </div>
                         )}
-                        
+
                         {djReview.comments && <p className="text-sm text-text">{djReview.comments}</p>}
                     </div>
                 ))}
             </div>
 
-            {/* Media */}
             {review.mediaPaths && review.mediaPaths.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                    <div className="grid grid-cols-3 gap-2">
-                        {review.mediaPaths.map((path) => {
-                            const { data } = supabase.storage.from('event-media').getPublicUrl(path);
-                            const isVideo = /\.(mp4|mov|webm)$/i.test(path);
-                            return (
-                                <div key={path} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                                    {isVideo ? (
-                                        <video src={data.publicUrl} className="w-full h-full object-cover" controls muted playsInline />
-                                    ) : (
-                                        <img src={data.publicUrl} alt="" className="w-full h-full object-cover" />
-                                    )}
-                                </div>
-                            );
-                        })}
+                <div className="mt border-t">
+                    {/*
+                        EventMediaUpload's own preview sizing is correct on other pages, so rather than
+                        change the shared component, we cap it locally here. Note: the <img>/<video> tags
+                        inside are always w-full/h-full — their visible size is actually driven by the
+                        grid tile (the ".aspect-square" wrapper div), so that's what we need to cap.
+                    */}
+                    <div className="[&_.aspect-square]:!max-w-[80px] [&_.aspect-square]:!max-h-[80px]">
+                        <EventMediaUpload
+                            eventId={review.eventId}
+                            mode="inline"
+                            mediaFiles={review.mediaPaths.map((path) => {
+                                const { data } = supabase.storage.from('event-media').getPublicUrl(path);
+                                const isVideo = /\.(mp4|mov|webm)$/i.test(path);
+                                return {
+                                    url: data.publicUrl,
+                                    type: isVideo ? 'video' : 'image',
+                                    name: path.split('/').pop() ?? path,
+                                    path,
+                                } satisfies MediaFile;
+                            })}
+                        />
                     </div>
                 </div>
             )}
@@ -473,8 +507,9 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     );
 };
 
+
 // ── Standalone full-event gallery (use this on the event page below the reviews) ──
-export const EventMediaGallery: React.FC<{ eventId: string; userId: string }> = ({ eventId, userId }) => {
+export const EventMediaGallery: React.FC<{ eventId: string }> = ({ eventId}) => {
     return (
         <EventMediaUpload
             eventId={eventId}

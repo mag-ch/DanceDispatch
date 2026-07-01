@@ -3,9 +3,10 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import imageCompression from 'browser-image-compression';
-import { Upload, X, ImageIcon, Film, Loader2 } from 'lucide-react';
+import { Upload, X, ImageIcon, Film, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../providers/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+
 
 const MAX_FILES_PER_USER = 3;
 const MAX_VIDEO_SECONDS = 10;
@@ -24,9 +25,11 @@ interface EventMediaUploadProps {
     mode?: 'inline' | 'standalone';
     // in inline mode, notify parent of current files so they can be saved with the review
     onMediaChange?: (files: MediaFile[]) => void;
+    hosts?: string [];
+    mediaFiles?: MediaFile[];
 }
 
-export default function EventMediaUpload({ eventId, mode = 'standalone', onMediaChange }: EventMediaUploadProps) {
+export default function EventMediaUpload({ eventId, mode = 'standalone', onMediaChange, hosts, mediaFiles}: EventMediaUploadProps) {
     const supabase = createClient();
     const inputRef = useRef<HTMLInputElement>(null);
     const { session, loading: authLoading } = useAuth();
@@ -35,6 +38,12 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
     const [userMedia, setUserMedia] = useState<MediaFile[]>([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [selectedHostTag, setSelectedHostTag] = useState<string>('');
+
+    const [lightboxItem, setLightboxItem] = useState<MediaFile | null>(null);
+const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
     
     const folderPath = `events/${eventId}/${userId}`;
 
@@ -118,6 +127,15 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
             }
         }
 
+        if (hosts && hosts.length > 0) {
+            setSelectedHostTag('');
+            setPendingFile(file);
+        } else {
+            await uploadFile(file, '');
+        }
+    };
+
+    const uploadFile = async (file: File, hostId: string) => {
         setUploading(true);
         try {
             let fileToUpload: File = file;
@@ -129,7 +147,8 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
                 });
             }
             const ext = file.name.split('.').pop();
-            const path = `${folderPath}/${Date.now()}.${ext}`;
+            const suffix = hostId ? `_${hostId}` : '';
+            const path = `${folderPath}/${Date.now()}${suffix}.${ext}`;
             const { error: uploadError } = await supabase.storage.from('event-media').upload(path, fileToUpload);
             if (uploadError) throw uploadError;
             await loadMedia();
@@ -137,10 +156,11 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
             setError(err.message ?? 'Upload failed.');
         } finally {
             setUploading(false);
+            setPendingFile(null);
+            setSelectedHostTag('');
             if (inputRef.current) inputRef.current.value = '';
         }
     };
-
     const handleDelete = async (path: string) => {
         const { error } = await supabase.storage.from('event-media').remove([path]);
         if (!error) await loadMedia();
@@ -148,10 +168,12 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
 
     const slotsRemaining = MAX_FILES_PER_USER - userMedia.length;
     // In inline mode we only show the user's own files + upload button
-    const displayMedia = mode === 'inline' ? userMedia : allMedia;
+    const displayMedia = mediaFiles
+        ? mediaFiles
+        : mode === 'inline' ? userMedia : allMedia;
 
     return (
-        <div className={mode === 'inline' ? '' : 'bg-surface rounded-lg p-6 mb-6'}>
+        <div className='bg-surface rounded-lg p-3'>
             {mode === 'standalone' && (
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-text">Community Media</h2>
@@ -161,40 +183,143 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
 
             {/* Gallery */}
             {displayMedia.length > 0 && (
-                <div className={`grid gap-2 mb-3 ${mode === 'inline' ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                <div className={`grid gap-2 ${mode === 'inline' ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`}>
                     {displayMedia.map((item) => (
-                        <div key={item.path} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
+                        <div
+                            key={item.path}
+                            className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100"
+                        >
+
                             {item.type === 'video' ? (
-                                <video src={item.url} className="w-full h-full object-cover" controls muted playsInline />
+                                <div className="relative w-full h-full">
+                                    <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                                    <div className="absolute inset-0" /> {/* blocks video click */}
+                                </div>
                             ) : (
-                                <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                                <img src={item.url} alt={item.name} className="w-full h-full object-cover " />
                             )}
-                            <div className="absolute top-1.5 left-1.5 bg-black/50 rounded-full p-0.5">
+
+                            <div className="absolute top-1.5 left-1.5 bg-black/50 rounded-full p-0.5 z-10 ">
                                 {item.type === 'video'
                                     ? <Film size={10} className="text-white" />
                                     : <ImageIcon size={10} className="text-white" />
                                 }
                             </div>
-                            {item.path.includes(`/${userId}/`) && (
+
+                                {/* Clickable overlay — sits behind everything else */}
                                 <button
                                     type="button"
-                                    onClick={() => handleDelete(item.path)}
-                                    className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-red-600 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => setLightboxItem(item)}
+                                    className="absolute inset-0 w-full h-full z-[1] cursor-pointer"
+                                    aria-label="View media"
+                                />
+                           {item.path.includes(`/${userId}/`) && (
+                            confirmingDelete === item.path ? (
+                                <div
+                                    className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg"
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <p className="text-white text-xs font-semibold">Delete?</p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(item.path); setConfirmingDelete(null); }}
+                                            className="px-2 py-1 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition"
+                                        >
+                                            Delete
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setConfirmingDelete(null); }}
+                                            className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setConfirmingDelete(item.path); }}
+                                    style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                    className="absolute top-1.5 right-1.5 z-10 hover:bg-red-600 rounded-full w-4 h-4 flex items-center justify-center transition-colors shadow-sm"
                                 >
                                     <X size={10} className="text-white" />
                                 </button>
-                            )}
+                            )
+                        )}
                         </div>
                     ))}
                 </div>
             )}
 
-            {mode === 'standalone' && allMedia.length === 0 && (
+            {!mediaFiles && mode === 'standalone' && allMedia.length === 0 && (
                 <p className="text-sm text-muted mb-4">No media yet. Be the first to share!</p>
             )}
 
             {/* Upload button */}
-            {slotsRemaining > 0 && (
+            {!mediaFiles && pendingFile && hosts && hosts.length > 0 && (
+                <div className="mb-3 rounded-lg border border-default bg-surface p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-text">
+                            Tag a host <span className="font-normal text-muted">(optional)</span>
+                        </p>
+                        <span className="text-xs text-muted truncate max-w-[140px]">{pendingFile.name}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedHostTag('')}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition
+                                ${selectedHostTag === ''
+                                    ? 'bg-blue-500 border-blue-500 text-white'
+                                    : 'border-default text-muted hover:border-blue-400'}`}
+                        >
+                            No tag
+                        </button>
+                        {hosts.map((host, id) => (
+                            <button
+                                key={id}
+                                type="button"
+                                onClick={() => setSelectedHostTag(host)}
+                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition
+                                    ${selectedHostTag === host
+                                        ? 'bg-blue-500 border-blue-500 text-white'
+                                        : 'border-default text-muted hover:border-blue-400'}`}
+                            >
+                                {host}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => uploadFile(pendingFile, selectedHostTag)}
+                            disabled={uploading}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold transition disabled:opacity-50"
+                        >
+                            {uploading
+                                ? <><Loader2 size={14} className="animate-spin" /> Uploading...</>
+                                : <><Upload size={14} /> Upload</>}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPendingFile(null);
+                                setSelectedHostTag('');
+                                if (inputRef.current) inputRef.current.value = '';
+                            }}
+                            disabled={uploading}
+                            className="px-4 py-2 rounded-lg border border-default text-sm text-text hover:bg-accent transition disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {!mediaFiles && !(mode === 'standalone') && slotsRemaining > 0 && !pendingFile && (
                 <div>
                     <input
                         ref={inputRef}
@@ -214,14 +339,9 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
                             : <><Upload size={16} className="text-blue-500" /><span className="text-sm text-text">
                                 {mode === 'inline' ? 'Add photo or video' : 'Upload photo or video'}
                                 <span className="text-muted ml-1">({slotsRemaining} slot{slotsRemaining !== 1 ? 's' : ''} left)</span>
-                              </span></>
+                            </span></>
                         }
                     </label>
-                    {mode === 'standalone' && (
-                        <p className="text-xs text-muted mt-1.5 text-center">
-                            Images (JPEG, PNG, WebP) · Videos up to {MAX_VIDEO_SECONDS}s (MP4, MOV, WebM)
-                        </p>
-                    )}
                 </div>
             )}
 
@@ -231,7 +351,79 @@ export default function EventMediaUpload({ eventId, mode = 'standalone', onMedia
                 </p>
             )}
 
-            {error && <p className="mt-2 text-xs text-red-500 text-center">{error}</p>}
+            {!mediaFiles && error && <p className="mt-2 text-xs text-red-500 text-center">{error}</p>}
+
+            {lightboxItem && (
+                <div
+                className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+                    onClick={() => setLightboxItem(null)}
+                >
+                    <div
+                        className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            type="button"
+                            onClick={() => setLightboxItem(null)}
+                            className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors flex items-center gap-1.5 text-sm"
+                        >
+                            <X size={18} /> Close
+                        </button>
+
+                        {/* Media */}
+                        {lightboxItem.type === 'video' ? (
+                            <video
+                                src={lightboxItem.url}
+                                className="max-w-full max-h-[80vh] rounded-xl shadow-2xl"
+                                controls
+                                autoPlay
+                                playsInline
+                            />
+                        ) : (
+                            <img
+                                src={lightboxItem.url}
+                                alt={lightboxItem.name}
+                                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+                            />
+                        )}
+
+                        {/* Prev / Next navigation */}
+                        {displayMedia.length > 1 && (() => {
+                            const currentIndex = displayMedia.findIndex(m => m.path === lightboxItem.path);
+                            const prev = displayMedia[currentIndex - 1];
+                            const next = displayMedia[currentIndex + 1];
+                            return (
+                                <>
+                                    {prev && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setLightboxItem(prev)}
+                                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 text-white/70 hover:text-white transition-colors p-2"
+                                            aria-label="Previous"
+                                        >
+                                            <ChevronLeft size={32} />
+                                        </button>
+                                    )}
+                                    {next && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setLightboxItem(next)}
+                                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 text-white/70 hover:text-white transition-colors p-2"
+                                            aria-label="Next"
+                                        >
+                                            <ChevronRight size={32} />
+                                        </button>
+                                    )}
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-xs">
+                                        {currentIndex + 1} / {displayMedia.length}
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

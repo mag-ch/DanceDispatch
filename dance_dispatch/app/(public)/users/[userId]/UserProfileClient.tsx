@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { SearchResult } from "@/app/components/EventCard";
 import UserBadgesInline from "@/app/components/UserBadgesInline";
-import { Event, Host, Venue } from "@/lib/utils";
+import { Event, EventReview, Host, Venue } from "@/lib/utils";
 import CustomLink from "@/app/components/CustomLink";
 import { FollowEntityButton } from "@/app/components/SaveEventButton";
+import { DisplayEventReview } from "@/app/components/EventReview";
 
 type UserProfileClientProps = {
   user: any;
@@ -14,14 +15,7 @@ type UserProfileClientProps = {
   followedUsers: any[];
   upcomingEvents: Event[];
   pastEvents: Event[];
-  userReviews: Array<{
-    id: string | number;
-    event_id: string | number;
-    event_title: string;
-    rating?: number | null;
-    comment?: string | null;
-    created_at: string;
-  }>;
+  userReviews: EventReview[];
 };
 
 export default function UserProfileClient({
@@ -198,15 +192,18 @@ export default function UserProfileClient({
         <section>
           <h2 className="text-2xl font-semibold mb-4">Recent Reviews and Comments ({userReviews.length})</h2>
           <div className="space-y-3">
-            {userReviews.slice(0, 10).map((review) => (
-              <div key={review.id} className="bg-surface rounded-lg p-4 border border-text/10">
-                <p className="text-sm text-text/80">Event #{review.event_title}</p>
-                {review.rating !== null && review.rating !== undefined && (
-                  <p className="font-medium">Rating: {review.rating}/5</p>
-                )}
-                {review.comment && <p>{review.comment}</p>}
-                <p className="text-xs text-text/70 mt-2">{new Date(review.created_at).toLocaleDateString()}</p>
+            {userReviews.slice(0, 10).map((review,id) => (
+              <div key={id} className="[&_video]:max-h-40 [&_img]:max-h-40 [&_video]:object-cover [&_img]:object-cover">
+                  <DisplayEventReview review={review} />
               </div>
+              // <div key={id} className="bg-surface rounded-lg p-4 border border-text/10">
+              //   <p className="text-sm text-text/80">Event #{review.eventName}</p>
+              //   {review.rating !== null && review.rating !== undefined && (
+              //     <p className="font-medium">Rating: {review.rating}/5</p>
+              //   )}
+              //   {review.comment && <p>{review.comment}</p>}
+              //   <p className="text-xs text-text/70 mt-2">{new Date(review.created_at).toLocaleDateString()}</p>
+              // </div>
             ))}
             {userReviews.length === 0 && <p className="text-sm text-text/80">No recent reviews or comments.</p>}
           </div>

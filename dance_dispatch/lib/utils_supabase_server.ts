@@ -488,6 +488,7 @@ export async function getUserReviews(userId: string): Promise<EventReview[]> {
         reviewsByKey.set(key, {
           eventName: eventMap.get(String(row.event_id))??"Unknown Event",
           eventId: String(row.event_id),
+          userId: row.user_id,
           username: username.username,
           dateSubmitted: row.created_at,
           privacyLevel: row.privacy_level,

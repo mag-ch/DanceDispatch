@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Event, EventReview, Host } from '@/lib/utils';
-import { DisplayEventReview, ReviewModal } from '@/app/components/EventReview';
+import { DisplayEventReview, EventMediaGallery, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
 import { ShareModal } from '@/app/components/ShareModal';
@@ -389,6 +389,11 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <p className="text-text">{event.description}</p>
                             </div>
                         )}
+                        <div>
+                            <EventMediaGallery
+                            eventId={event.id}
+                            />
+                        </div>
 
                         {/* Hosts */}
                         {(eventHosts.length > 0 || canEditHosts) &&
@@ -528,7 +533,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         {/* Reviews Section */}
                         <div className="bg-surface rounded-lg p-6">
                             <h2 className="text-2xl font-bold mb-4 text-text">Reviews</h2>
-                            <div className="space-y-4">
+                            <div >
                                 {
                                     eventReviews.length === 0 ? <p className="text-muted">No reviews yet. Be the first to review!</p> :
                                         eventReviews.map((review, index) => (

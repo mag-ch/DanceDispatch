@@ -1208,20 +1208,64 @@ export async function userSubmitReview(reviewData: any, userId: string, eventId:
 
   return 'success';
 }
-export async function updateEvent(eventId: string, updatedFields: Partial<Event>): Promise<string | null> {
+export async function updateEvent(eventId: string, updatedFields: Partial<Event> & { location?: string; newVenueName?: string; newVenueAddress?: string }): Promise<string | null> {
   const patch: any = {};
+  const supabase = await createServerClient();
+
   if (updatedFields.title !== undefined) patch.title = updatedFields.title;
   if (updatedFields.startdate !== undefined) patch.start_date = updatedFields.startdate;
   if (updatedFields.starttime !== undefined) patch.start_time = updatedFields.starttime;
   if (updatedFields.enddate !== undefined) patch.end_date = updatedFields.enddate;
   if (updatedFields.endtime !== undefined) patch.end_time = updatedFields.endtime;
   if (updatedFields.locationid !== undefined) patch.location = Number(updatedFields.locationid);
+  else if (updatedFields.location !== undefined) {
+    const trimmedLocation = updatedFields.location.trim();
+    if (trimmedLocation) {
+      const numericLocation = Number(trimmedLocation);
+      if (!Number.isNaN(numericLocation)) {
+        patch.location = numericLocation;
+      } else {
+        const { data: existingVenue, error: venueLookupError } = await supabase
+          .from('Venues')
+          .select('id')
+          .ilike('name', trimmedLocation)
+          .limit(1)
+          .maybeSingle();
+
+        if (venueLookupError) {
+          throw venueLookupError;
+        }
+
+        if (existingVenue) {
+          patch.location = Number(existingVenue.id);
+        } else {
+          const { data: createdVenue, error: createVenueError } = await supabase
+            .from('Venues')
+            .insert({
+              name: trimmedLocation,
+              address: updatedFields.newVenueAddress?.trim() ?? '',
+              type: 'Venue',
+              bio: '',
+              image_url: '',
+              external_url: '',
+            })
+            .select('id')
+            .single();
+
+          if (createVenueError) {
+            throw createVenueError;
+          }
+
+          patch.location = Number(createdVenue.id);
+        }
+      }
+    }
+  }
   if (updatedFields.description !== undefined) patch.description = updatedFields.description;
   if (updatedFields.price !== undefined) patch.price = updatedFields.price;
   if (updatedFields.imageurl !== undefined) patch.flyer_url = updatedFields.imageurl;
   if (updatedFields.externallink !== undefined) patch.external_url = updatedFields.externallink;
 
-  const supabase = await createServerClient();
   const { error } = await supabase.from('Events').update(patch).eq('id', Number(eventId));
   if (error) {
     console.error('Error updating event:', error);

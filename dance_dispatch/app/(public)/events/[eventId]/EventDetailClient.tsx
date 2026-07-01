@@ -19,6 +19,13 @@ interface EventDetailClientProps {
     showReviewModal?: boolean;
 }
 
+const APPROVED_USER_IDS = [
+    'ba398812-06a0-4c48-9f15-0660d3af0047',
+    'f2694e1c-5457-45b0-b299-c3a03a77d8c5'
+];
+
+const canEditEventDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
+
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -38,6 +45,20 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [isEditingEventDetails, setIsEditingEventDetails] = useState(false);
+    const [isSavingEventDetails, setIsSavingEventDetails] = useState(false);
+    const [eventDetailEditError, setEventDetailEditError] = useState<string | null>(null);
+    const [eventDetailEditForm, setEventDetailEditForm] = useState({
+        title: event.title ?? '',
+        startdate: event.startdate ?? '',
+        starttime: event.starttime ? event.starttime.slice(0, 5) : '',
+        enddate: event.enddate ?? '',
+        endtime: event.endtime ? event.endtime.slice(0, 5) : '',
+        description: event.description ?? '',
+        location: event.location ?? '',
+        externallink: event.externallink ?? '',
+        price: event.price?.toString() ?? '',
+    });
     const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
     useEffect(() => {
@@ -79,7 +100,21 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     }, [event.hostIDs, event.hostNames]);
 
     useEffect(() => {
-        if (!isEditingHosts || !session || allHosts.length > 0) {
+        setEventDetailEditForm({
+            title: event.title ?? '',
+            startdate: event.startdate ?? '',
+            starttime: event.starttime ? event.starttime.slice(0, 5) : '',
+            enddate: event.enddate ?? '',
+            endtime: event.endtime ? event.endtime.slice(0, 5) : '',
+            description: event.description ?? '',
+            location: event.location ?? '',
+            externallink: event.externallink ?? '',
+            price: event.price?.toString() ?? '',
+        });
+    }, [event.description, event.enddate, event.endtime, event.externallink, event.id, event.location, event.price, event.startdate, event.starttime, event.title]);
+
+    useEffect(() => {
+        if ((!isEditingHosts && !isEditingEventDetails) || !session || allHosts.length > 0) {
             return;
         }
 
@@ -103,7 +138,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         };
 
         loadHosts();
-    }, [allHosts.length, isEditingHosts, session]);
+    }, [allHosts.length, isEditingEventDetails, isEditingHosts, session]);
 
     const formatEventDate = (dateStr?: string) => {
         if (!dateStr) return 'Date TBD';
@@ -125,6 +160,85 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const eventStartAt = event.startdate && event.starttime
         ? `${event.startdate}T${event.starttime}`
         : event.startdate ?? null;
+
+    const normalizeTimeInput = (value: string) => {
+        if (!value) return '';
+        return value.length === 5 ? `${value}:00` : value;
+    };
+
+    const openEventDetailsEditor = () => {
+        setEventDetailEditError(null);
+        setEventDetailEditForm({
+            title: event.title ?? '',
+            startdate: event.startdate ?? '',
+            starttime: event.starttime ? event.starttime.slice(0, 5) : '',
+            enddate: event.enddate ?? '',
+            endtime: event.endtime ? event.endtime.slice(0, 5) : '',
+            description: event.description ?? '',
+            location: event.location ?? '',
+            externallink: event.externallink ?? '',
+            price: event.price?.toString() ?? '',
+        });
+        setSelectedHostIds(eventHosts.map((host) => host.id));
+        setHostSearchQuery('');
+        setIsEditingEventDetails(true);
+    };
+
+    const handleSaveEventDetails = async () => {
+        try {
+            setIsSavingEventDetails(true);
+            setEventDetailEditError(null);
+
+            const payload: Record<string, string | number> = {
+                title: eventDetailEditForm.title.trim(),
+                startdate: eventDetailEditForm.startdate,
+                starttime: normalizeTimeInput(eventDetailEditForm.starttime),
+                enddate: eventDetailEditForm.enddate,
+                endtime: normalizeTimeInput(eventDetailEditForm.endtime),
+                description: eventDetailEditForm.description,
+                location: eventDetailEditForm.location.trim(),
+                externallink: eventDetailEditForm.externallink.trim(),
+            };
+
+            if (eventDetailEditForm.price !== '') {
+                payload.price = Number(eventDetailEditForm.price);
+            }
+
+            const response = await fetch(`/api/events/${event.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.error ?? 'Failed to update event');
+            }
+
+            const hostIdsChanged =
+                selectedHostIds.length !== eventHosts.length ||
+                selectedHostIds.some((hostId) => !eventHosts.some((host) => host.id === hostId));
+
+            if (hostIdsChanged) {
+                const hostResponse = await fetch(`/api/events/${event.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hostIds: selectedHostIds }),
+                });
+                const hostData = await hostResponse.json().catch(() => null);
+
+                if (!hostResponse.ok) {
+                    throw new Error(hostData?.error ?? 'Failed to update hosts');
+                }
+            }
+
+            window.location.reload();
+        } catch (error) {
+            setEventDetailEditError(error instanceof Error ? error.message : 'Failed to update event');
+        } finally {
+            setIsSavingEventDetails(false);
+        }
+    };
 
     const toggleSelectedHost = (hostId: string) => {
         setSelectedHostIds((current) => (
@@ -307,6 +421,187 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             )}
 
             {/* Main Content */}
+            {isEditingEventDetails && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-6">
+                    <div className="w-full max-w-2xl rounded-2xl bg-surface p-6 shadow-2xl">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-text">Edit Event Details</h2>
+                            <button
+                                type="button"
+                                className="rounded-full p-2 text-muted transition hover:bg-accent"
+                                onClick={() => setIsEditingEventDetails(false)}
+                                aria-label="Close editor"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
+                            <div>
+                                <label className="mb-1 block text-sm font-semibold text-text">Event name</label>
+                                <input
+                                    type="text"
+                                    value={eventDetailEditForm.title}
+                                    onChange={(event) => setEventDetailEditForm((current) => ({ ...current, title: event.target.value }))}
+                                    className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                />
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">Start date</label>
+                                    <input
+                                        type="date"
+                                        value={eventDetailEditForm.startdate}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, startdate: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">Start time</label>
+                                    <input
+                                        type="time"
+                                        value={eventDetailEditForm.starttime}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, starttime: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">End date</label>
+                                    <input
+                                        type="date"
+                                        value={eventDetailEditForm.enddate}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, enddate: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">End time</label>
+                                    <input
+                                        type="time"
+                                        value={eventDetailEditForm.endtime}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, endtime: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-semibold text-text">Description</label>
+                                <textarea
+                                    value={eventDetailEditForm.description}
+                                    onChange={(event) => setEventDetailEditForm((current) => ({ ...current, description: event.target.value }))}
+                                    rows={5}
+                                    className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-semibold text-text">Location</label>
+                                <input
+                                    type="text"
+                                    value={eventDetailEditForm.location}
+                                    onChange={(event) => setEventDetailEditForm((current) => ({ ...current, location: event.target.value }))}
+                                    className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                />
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">External link</label>
+                                    <input
+                                        type="url"
+                                        value={eventDetailEditForm.externallink}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, externallink: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-sm font-semibold text-text">Price</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={eventDetailEditForm.price}
+                                        onChange={(event) => setEventDetailEditForm((current) => ({ ...current, price: event.target.value }))}
+                                        className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-default p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <h3 className="text-lg font-semibold text-text">Hosts</h3>
+                                    <span className="text-sm text-muted">Select the hosts attached to this event</span>
+                                </div>
+                                <div className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2">
+                                    <div className="mb-2 flex flex-wrap gap-2">
+                                        {selectedHostTokens.map((host) => (
+                                            <button
+                                                key={host.id}
+                                                type="button"
+                                                onClick={() => toggleSelectedHost(host.id)}
+                                                className="rounded bg-accent px-2 py-1 text-xs font-semibold text-text transition hover:bg-accent-soft"
+                                            >
+                                                {host.name} x
+                                            </button>
+                                        ))}
+                                        {selectedHostTokens.length === 0 && (
+                                            <span className="text-xs text-muted">No hosts selected yet.</span>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={hostSearchQuery}
+                                        onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
+                                        placeholder="Search hosts by name"
+                                        className="w-full bg-transparent text-sm text-text outline-none"
+                                    />
+                                </div>
+                                {isLoadingHostOptions && <p className="text-sm text-muted">Loading hosts...</p>}
+                                {filteredHosts.length > 0 && (
+                                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
+                                        {filteredHosts.map((host) => {
+                                            const hostId = String(host.id);
+                                            const isSelected = selectedHostIds.includes(hostId);
+
+                                            return (
+                                                <label key={hostId} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-accent-soft">
+                                                    <span className="text-sm font-medium text-text">{host.name}</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleSelectedHost(hostId)}
+                                                        className="h-4 w-4"
+                                                    />
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {normalizedHostSearchQuery && filteredHosts.length === 0 && (
+                                    <p className="mt-3 text-sm text-muted">No hosts match your search.</p>
+                                )}
+                            </div>
+                            {eventDetailEditError && <p className="text-sm text-red-500">{eventDetailEditError}</p>}
+                        </div>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                className="rounded-lg border border-default px-4 py-2 font-semibold text-text transition hover:bg-accent"
+                                onClick={() => setIsEditingEventDetails(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-lg bg-accent px-4 py-2 font-semibold text-text transition hover:bg-accent-soft disabled:opacity-60"
+                                onClick={handleSaveEventDetails}
+                                disabled={isSavingEventDetails}
+                            >
+                                {isSavingEventDetails ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-6xl mx-auto px-4 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column */}
@@ -327,29 +622,13 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 >
                                     {event.price != undefined ? (event.price == 0 ? 'Free RSVP' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
-                                {session?.user?.id === 'ba398812-06a0-4c48-9f15-0660d3af0047' && (
+                                {canEditEventDetails(session?.user?.id) && (
                                     <button
                                         type="button"
                                         className="px-4 py-2 rounded-lg font-semibold text-text border border-default hover:bg-accent transition"
-                                        onClick={() => {
-                                            const newLink = prompt('Enter external link:', event.externallink || '');
-                                            if (newLink === null) return;
-                                            const newPrice = prompt('Enter price (or 0 for free):', String(event.price || ''));
-                                            if (newPrice === null) return;
-                                            
-                                            fetch(`/api/events/${event.id}`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ 
-                                                    externallink: newLink,
-                                                    price: newPrice ? parseFloat(newPrice) : 0
-                                                })
-                                            }).then(res => {
-                                                if (res.ok) window.location.reload();
-                                            });
-                                        }}
+                                        onClick={openEventDetailsEditor}
                                     >
-                                        ✎ Edit Link & Price
+                                        ✎ Edit Event Details
                                     </button>
                                 )}
                                 {(!event.externallink || event.externallink.length <= 3) && event.price != undefined && <span className="px-2 py-2 rounded-lg font-semibold text-muted">

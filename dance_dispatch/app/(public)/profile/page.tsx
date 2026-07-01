@@ -8,6 +8,8 @@ import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
 import ExplorerBadgeModal from './ExplorerBadgeModal';
 import { DisplayEventReview } from '@/app/components/EventReview';
+import ExpandableList from '@/app/components/ExpandableList';
+import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
 
 
 
@@ -70,6 +72,74 @@ export default async function ProfilePage() {
         currency: 'USD',
         maximumFractionDigits: 2,
     });
+
+    // Most recent past events first, so "see more" reveals older history
+    const sortedPastEvents = [...pastEvents].sort((a: Event, b: Event) => {
+        const aTime = new Date(`${a.startdate ?? ''} ${a.starttime ?? ''}`).getTime();
+        const bTime = new Date(`${b.startdate ?? ''} ${b.starttime ?? ''}`).getTime();
+        return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+    });
+
+    // Pre-render item lists so they can be handed to client components as children
+    const followedUserItems = followedUsers.map((follow: any) => (
+        <SearchResult
+            key={follow.id}
+            header={follow.username}
+            img={follow.profile_picture}
+            subheader={follow.full_name}
+            entityId={follow.id}
+            entity="users"
+            badgeUserId={follow.id}
+            topBadges={followedUserBadgeMap[String(follow.id)] ?? []}
+        />
+    ));
+
+    const followedVenueItems = followedVenues.map((venue: any, index: number) => (
+        <SearchResult
+            key={`${venue.id}-${index}`}
+            header={venue.name}
+            subheader={venue.description}
+            location={venue.address}
+            img={venue.photourls}
+            entityId={venue.id}
+            entity="venues"
+        />
+    ));
+
+    const favoriteDJItems = favoriteDJs.map((host: any, index: number) => (
+        <SearchResult
+            key={`${host.id}-${index}`}
+            header={host.name}
+            subheader={host.tags?.join(', ')}
+            location={host.address}
+            img={host.photoUrl}
+            entityId={host.id}
+            entity="hosts"
+        />
+    ));
+
+    const pastEventItems = sortedPastEvents.map((event: Event, index: number) => (
+        <SearchResult
+            key={`${event.id}-${index}`}
+            header={event.title}
+            subheader={event.description}
+            date={event.startdate + " " + event.starttime}
+            price={event.price}
+            location={event.location}
+            img={event.imageurl}
+            entityId={event.id}
+            entity="events"
+        />
+    ));
+
+    const reviewItems = userReviews.map((review, index) => (
+        <div
+            key={index}
+            className="[&_img]:!max-w-[160px] [&_img]:!max-h-[160px] [&_img]:!object-cover [&_video]:!max-w-[160px] [&_video]:!max-h-[160px] [&_video]:!object-cover"
+        >
+            <DisplayEventReview review={review} />
+        </div>
+    ));
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -174,72 +244,42 @@ export default async function ProfilePage() {
             </section>
 
             {/* Followed Users */}
-            <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Following ({followedUsers.length})</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {followedUsers.map((follow) => (
-                        <SearchResult key={follow.id} header={follow.username} img={follow.profile_picture} subheader={follow.full_name} entityId={follow.id} entity="users" badgeUserId={follow.id} topBadges={followedUserBadgeMap[String(follow.id)] ?? []} />                    ))}
-                    {followedUsers.length === 0 && (
-                        <div>
-                        <p className="text-gray-500">Not following anyone yet</p>
-                        <Link
-                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
-                        href="/search?categories=users"
-                    >
-                        Discover Users
-                    </Link>
-                        </div>
-                    )}
-                </div>
-            </section>
+            <CollapsedSectionModal
+                title="Following"
+                count={followedUsers.length}
+                emptyMessage="Not following anyone yet"
+                discoverHref="/search?categories=users"
+                discoverLabel="Discover Users"
+            >
+                {followedUserItems}
+            </CollapsedSectionModal>
 
             {/* Favorite Venues */}
-            <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Favorite Venues ({followedVenues.length})</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     {followedVenues.map((venue: any, index: number) => (
-                                        <SearchResult key={`${venue.id}-${index}`} header={venue.name} subheader={venue.description} location={venue.address} img={venue.photourls} entityId={venue.id} entity="venues"/>
-                                      ))}  
-                    {followedVenues.length === 0 && (
-                        <div>
-                        <p className="text-text">No favorite venues yet</p>
-                        <Link
-                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
-                        href="/search?categories=venues"
-                    >
-                        Discover Venues
-                    </Link>
-                        </div>
-                    )}
-                </div>
-            </section>
+            <CollapsedSectionModal
+                title="Favorite Venues"
+                count={followedVenues.length}
+                emptyMessage="No favorite venues yet"
+                discoverHref="/search?categories=venues"
+                discoverLabel="Discover Venues"
+            >
+                {followedVenueItems}
+            </CollapsedSectionModal>
 
             {/* Favorite DJs */}
-            <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Favorite DJs ({favoriteDJs.length})</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {favoriteDJs.map((host: any, index: number) => (
-                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={host.tags?.join(', ')} location={host.address} img={host.photoUrl} entityId={host.id} entity="hosts"/>
-                                      ))}  
-                    {favoriteDJs.length === 0 && (
-                        <div>
-                        <p className="text-gray-500">No favorite DJs yet</p>
-                        <Link
-                        className="btn-highlight bg-opacity-40 hover:bg-opacity-80 text-white font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 z-10 w-fit"
-                        href="/search?categories=hosts"
-                    >
-                        Discover DJs
-                    </Link>
-                    </div>
-                    )}
-                </div>
-            </section>
+            <CollapsedSectionModal
+                title="Favorite DJs"
+                count={favoriteDJs.length}
+                emptyMessage="No favorite DJs yet"
+                discoverHref="/search?categories=hosts"
+                discoverLabel="Discover DJs"
+            >
+                {favoriteDJItems}
+            </CollapsedSectionModal>
 
-            {/* Upcoming Events */}
+            {/* Upcoming Events - kept fully displayed */}
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Upcoming Events ({upcomingEvents.length})</h2>
                 <div className="space-y-4">
-
                     {upcomingEvents.map((event: Event, index: number) => (
                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
                         ))}
@@ -257,35 +297,24 @@ export default async function ProfilePage() {
                 </div>
             </section>
 
-            {/* Past Events */}
+            {/* Past Events - only 5 most recent shown, rest behind "See more" */}
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Past Events ({pastEvents.length})</h2>
-                <div className="space-y-4">
-                    {pastEvents.map((event: Event, index: number) => (
-                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
-                        ))}
-                    {pastEvents.length === 0 && (
-                        <p className="text-text">No past events</p>
-                    )}
-                </div>
+                <ExpandableList
+                    items={pastEventItems}
+                    initialCount={5}
+                    emptyMessage="No past events"
+                />
             </section>
 
-           {/* Past Comments */}
+           {/* Past Comments - only 5 most recent shown, rest behind "See more" */}
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Reviews ({userReviews.length})</h2>
-                <div className="space-y-4">
-                    {userReviews.map((review, index) => (
-                        <div
-                        key={index}
-                        className="[&_img]:!max-w-[160px] [&_img]:!max-h-[160px] [&_img]:!object-cover [&_video]:!max-w-[160px] [&_video]:!max-h-[160px] [&_video]:!object-cover"
-                        >
-                        <DisplayEventReview review={review} />
-                        </div>
-                    ))}
-                    {userReviews.length === 0 && (
-                        <p className="text-text">No past comments</p>
-                    )}
-                </div>
+                <ExpandableList
+                    items={reviewItems}
+                    initialCount={5}
+                    emptyMessage="No past comments"
+                />
             </section>
         </div>
     );

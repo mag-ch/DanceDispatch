@@ -307,16 +307,27 @@ function parseHostNamesFromTitle(title: string): string[] {
     .filter(Boolean);
 }
 
-function toIsoDateTime(input?: string): string | null {
+export function normalizeGoogleCalendarDateTime(input?: string): string | null {
   if (!input) {
     return null;
   }
 
-  if (input.includes('T')) {
-    return input.replace('Z', '-04:00');
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
   }
 
-  return `${input}T00:00:00+00:00`;
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  const fallback = new Date(`${trimmed}T00:00:00Z`);
+  if (!Number.isNaN(fallback.getTime())) {
+    return fallback.toISOString();
+  }
+
+  return null;
 }
 
 function splitLocation(rawLocation?: string): { venueName: string | null; venueAddress: string | null } {
@@ -499,7 +510,7 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
       .map((item) => ({
         googleCalId: String(item.id || '').trim(),
         title: (item.summary || 'Untitled event').trim(),
-        start: toIsoDateTime(item.start?.dateTime || item.start?.date),
+        start: normalizeGoogleCalendarDateTime(item.start?.dateTime || item.start?.date),
         status: item.status || 'confirmed',
       })),
   };
@@ -507,8 +518,8 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
   for (const item of events) {
     const googleCalId = String(item.id || '').trim();
     const title = (item.summary || 'Untitled event').trim();
-    const start = toIsoDateTime(item.start?.dateTime || item.start?.date);
-    const end = toIsoDateTime(item.end?.dateTime || item.end?.date);
+    const start = normalizeGoogleCalendarDateTime(item.start?.dateTime || item.start?.date);
+    const end = normalizeGoogleCalendarDateTime(item.end?.dateTime || item.end?.date);
 
     if (isRecurringEvent(item)) {
       summary.skippedRecurring += 1;

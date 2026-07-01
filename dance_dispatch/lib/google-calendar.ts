@@ -313,7 +313,7 @@ function toIsoDateTime(input?: string): string | null {
   }
 
   if (input.includes('T')) {
-    return input.replace('Z', '+00:00');
+    return input.replace('Z', '-04:00');
   }
 
   return `${input}T00:00:00+00:00`;

@@ -268,27 +268,32 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 </button>
             </div>
 
-            {showImageModal && (
+           {showImageModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4 py-6"
-                    onClick={() => setShowImageModal(false)}
-                    role="dialog"
+                    onClick={() => {
+                        console.log('backdrop clicked');
+                        setShowImageModal(false);
+                    }}                    role="dialog"
                     aria-modal="true"
                     aria-label={`${event.title} image preview`}
                 >
-                    <div
-                        className="relative flex h-full max-h-[90vh] w-full max-w-6xl items-center justify-center"
-                        onClick={(modalEvent) => modalEvent.stopPropagation()}
-                    >
+                    <div className="relative flex h-full max-h-[90vh] w-full max-w-6xl items-center justify-center">
                         <button
                             type="button"
                             className="absolute right-0 top-0 z-10 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80"
-                            onClick={() => setShowImageModal(false)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowImageModal(false);
+                            }}
                             aria-label="Close image preview"
                         >
                             <X size={20} />
                         </button>
-                        <div className="relative h-full max-h-[85vh] w-full overflow-hidden rounded-2xl">
+                        <div
+                            className="relative h-full max-h-[85vh] w-full overflow-hidden rounded-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <Image
                                 src={eventImageSrc}
                                 alt={event.title}

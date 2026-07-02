@@ -35,7 +35,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             Are you ready to dance?
           </h1>
           <p className="text-lg text-white/70 mb-8">
-            For the house community, by the house community.
+            Dispatching dancers to the club, one party at a time.
           </p>
           <div className="max-w-2xl mx-auto">
             <SearchBar />
@@ -46,7 +46,16 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               >
                 Party Calendar
               </Link>
+        
               <SubmitEventButton />
+            </div>
+            <div className="mt-6 text-sm text-white/70">
+                  <Link
+                href="/mission"
+                className="rounded-md border border-default bg-surface/90 px-5 py-2.5 text-sm font-semibold text-text hover-bg-accent-soft"
+              >
+                What is our mission?
+              </Link>
             </div>
           </div>
         </div>

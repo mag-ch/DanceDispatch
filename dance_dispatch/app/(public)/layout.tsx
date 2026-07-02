@@ -15,7 +15,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
 
       <footer className="bg-bg shadow-inner mt-12 py-6">
         <div className="container mx-auto text-center text-sm text-text">
-          © 2025 Eventify. All rights reserved.
+          © 2026 DanceDispatch
         </div>
       </footer>
     </>

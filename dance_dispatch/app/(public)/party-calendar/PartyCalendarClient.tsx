@@ -319,7 +319,15 @@ export default function PartyCalendarClient({ events, savedEventIds }: PartyCale
         </div>
       )}
 
-      <div className={viewMode === "month" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7"}>
+      <div
+        className={
+          viewMode === "day"
+            ? "grid grid-cols-1 gap-3 w-full"
+            : viewMode === "month"
+              ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7"
+              : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7"
+        }
+      >
         {dayCells.map((day) => {
           const key = formatYmd(day);
           const dayEvents = eventsByDate.get(key) ?? [];

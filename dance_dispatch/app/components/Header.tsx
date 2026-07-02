@@ -281,7 +281,7 @@ export function Header() {
                             )}
                             <div className="hidden md:flex items-center gap-2">
                                 <Link href="/search" className="hover:underline">Search</Link>
-                                <Link href="/leaderboard" className="hover:underline">Leaderboard</Link>
+                                <Link href="/party-calendar" className="hover:underline">Calendar</Link>
                                 {session ? (
                                     <>
                                         <Link href="/profile" className="hover:underline inline-flex items-center gap-2">

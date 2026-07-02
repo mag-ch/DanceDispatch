@@ -230,10 +230,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
             const payload: Record<string, string | number> = {
                 title: eventDetailEditForm.title.trim(),
-                startdate: eventDetailEditForm.startdate,
-                starttime: normalizeTimeInput(eventDetailEditForm.starttime),
-                enddate: eventDetailEditForm.enddate,
-                endtime: normalizeTimeInput(eventDetailEditForm.endtime),
+                start: eventDetailEditForm.startdate + 'T' + normalizeTimeInput(eventDetailEditForm.starttime),
+                end: eventDetailEditForm.enddate + 'T' + normalizeTimeInput(eventDetailEditForm.endtime),
                 description: eventDetailEditForm.description,
                 location: eventDetailEditForm.location.trim(),
                 externallink: eventDetailEditForm.externallink.trim(),

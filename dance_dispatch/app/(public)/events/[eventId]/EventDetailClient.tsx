@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MapPin, Calendar, Share2, X } from 'lucide-react';
+import { Star, MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Event, EventReview, Host } from '@/lib/utils';
 import { DisplayEventReview, EventMediaGallery, ReviewModal } from '@/app/components/EventReview';
@@ -18,8 +18,8 @@ interface EventDetailClientProps {
     relatedEvents: Event[];
     venueAddress: string;
     showReviewModal?: boolean;
-    hostPreviousReviewsMap?: Map<string, EventReview[]>;
-    venuePreviousReviewsMap?: Map<string, EventReview[]>;
+    hostPreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
+    venuePreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
 }
 
 const APPROVED_USER_IDS = [
@@ -43,36 +43,62 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     );
 
     const previousReviewGroups = (() => {
-        const groups = new Map<string, { eventId: string; eventName: string; sources: Set<string>; reviews: EventReview[] }>();
+        const groups = new Map<string, { eventId: string; eventName: string; sourceReviews: Map<string, Array<{username: string; rating: number; comment: string }>> }>();
 
-        const addReviews = (sourceLabel: string, reviews: EventReview[]) => {
+
+        // Process host reviews
+        hostPreviousReviewsMap.forEach((reviews, hostId) => {
+            const hostName = eventHosts.find((host) => host.id === hostId)?.name || 'Host';
+            const sourceLabel = `Host: ${hostName}`;
             for (const review of reviews) {
-                const key = review.eventId || 'unknown';
-                const existing = groups.get(key);
-                if (existing) {
-                    existing.sources.add(sourceLabel);
-                    existing.reviews.push(review);
-                } else {
-                    groups.set(key, {
-                        eventId: key,
-                        eventName: review.eventName || 'Event',
-                        sources: new Set([sourceLabel]),
-                        reviews: [review],
+                if (!groups.has(review.eventName)) {
+                    groups.set(review.eventName, {
+                        eventId: review.eventId,
+                        eventName: review.eventName,
+                        sourceReviews: new Map(),
+                    });
+                }
+                const group = groups.get(review.eventName);
+                if (group) {
+                    if (!group.sourceReviews.has(sourceLabel)) {
+                        group.sourceReviews.set(sourceLabel, []);
+                    }
+                    group.sourceReviews.get(sourceLabel)?.push({
+                        username: review.username,
+                        rating: review.rating,
+                        comment: review.comment,
                     });
                 }
             }
-        };
-
-        hostPreviousReviewsMap.forEach((hostReviews, hostId) => {
-            if (hostReviews.length === 0) return;
-            const hostName = eventHosts.find((host) => host.id === hostId)?.name || 'Host';
-            addReviews(`Host: ${hostName}`, hostReviews);
+            // Note: We've lost individual eventId mapping with the simplified data
+            // For now, aggregate all reviews under a generic "previous events" group
+            // A better solution would be to preserve eventId in the server response
         });
 
-        venuePreviousReviewsMap.forEach((venueReviews) => {
-            if (venueReviews.length === 0) return;
-            const venueLabel = event.location || 'Venue';
-            addReviews(`Venue: ${venueLabel}`, venueReviews);
+        // Process venue reviews  
+        venuePreviousReviewsMap.forEach((reviews) => {
+            for (const review of reviews) {
+                if (!groups.has(review.eventName)) {
+                    groups.set(review.eventName, {
+                        eventId: review.eventId,
+                        eventName: review.eventName,
+                        sourceReviews: new Map(),
+                    });
+                }
+                const group = groups.get(review.eventName);
+                if (group) {
+                    const sourceLabel = `Venue: ${venueAddress}`;
+                    if (!group.sourceReviews.has(sourceLabel)) {
+                        group.sourceReviews.set(sourceLabel, []);
+                    }
+                    group.sourceReviews.get(sourceLabel)?.push({
+                        username: review.username,
+                        rating: review.rating,
+                        comment: review.comment,
+                    });
+                }
+            }
+            // Similarly, we've lost eventId mapping for venue reviews
         });
 
         return Array.from(groups.values());
@@ -912,39 +938,62 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
                         {/* Previous Event Review Groups */}
                         {previousReviewGroups.length > 0 && (
-                            <div className="space-y-6">
+                            <div className="space-y mt-6">
                                 <div className="bg-surface rounded-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-2 text-text">Previous Reviews for Hosts and Venue</h2>
-                                    <p className="text-sm text-muted">Grouped by event so shared past events appear once instead of per host.</p>
+                                    <h2 className="text-2xl font-bold text-text">Previous Reviews for Hosts and Venue</h2>
                                 </div>
-                                {previousReviewGroups.map((group) => (
-                                    <div key={group.eventId} className="bg-surface rounded-lg p-6">
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                                            <Link href={`/events/${group.eventId}`} className="text-lg font-semibold text-accent hover:underline">
+                                {previousReviewGroups.map((group) => {
+                                    // Group reviews by source (venue/host)
+                                    // const reviewsBySource = new Map<string,  { eventId: string; eventName: string; sourceReviews: Map<string, { username: string; rating: number; comment: string; }[]>; }>();
+                                    // group.sourceReviews.forEach((review) => {
+                                    //     Array.from(group.sourceReviews.keys()).forEach((source) => {
+                                    //         if (!reviewsBySource.has(source)) {
+                                    //             reviewsBySource.set(source, []);
+                                    //         }
+                                    //         reviewsBySource.get(source)!.push({
+                                    //             username: review.username,
+                                    //             rating: review.rating,
+                                    //             comment: review.comment,
+                                    //         });
+                                    //     });
+                                    // });
+
+                                    return (
+                                        <div key={group.eventId} className="bg-surface rounded-lg p-6">
+                                            <Link href={`/events/${group.eventId}`} className="text-lg font-semibold text-accent hover:underline block mb-4">
                                                 {group.eventName}
                                             </Link>
-                                            <div className="flex flex-wrap gap-2">
-                                                {Array.from(group.sources).map((source) => (
-                                                    <span key={source} className="rounded-full bg-muted px-3 py-1 text-xs text-text/80">
-                                                        {source}
-                                                    </span>
+                                            <div className="space-y-4">
+                                                {Array.from(group.sourceReviews.entries()).map(([source, sourceReviews]) => (
+                                                    <div key={source}>
+                                                        <h4 className="font-semibold text-text mb-3">{source}</h4>
+                                                        <div className="space-y-2 pl-4">
+                                                            {sourceReviews.map((review, idx) => (
+                                                                <div key={idx} className="text-sm">
+                                                                    <div className="font-medium text-text mb-1">{review.username}</div>
+                                                                    {review.comment && (
+                                                                        <p className="text-text mb-2">{review.comment}</p>
+                                                                    )}
+                                                                    {review.rating && review.rating > 0 && (
+                                                                        <div className="flex gap-1 mb-2">
+                                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                                <Star
+                                                                                    key={star}
+                                                                                    size={14}
+                                                                                    className={star <= review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="grid gap-4 lg:grid-cols-3">
-                                            {group.reviews.slice(0, 3).map((review, index) => (
-                                                <DisplayEventReview key={index} review={review} compact />
-                                            ))}
-                                        </div>
-                                        {group.reviews.length > 3 && (
-                                            <div className="mt-4 text-sm">
-                                                <Link href={`/events/${group.eventId}`} className="text-accent hover:underline font-semibold">
-                                                    See {group.reviews.length - 3} more reviews for this event
-                                                </Link>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

@@ -525,10 +525,9 @@ export async function getUserReviews(userId: string): Promise<EventReview[]> {
   }
 }
 
-export async function getHostPreviousEventReviews(hostId: string): Promise<Map<string, EventReview[]>> {
+export async function getHostPreviousEventReviews(hostId: string, eventId: string | number): Promise<Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>> {
   try {
     const supabase = await createServerClient();
-    console.log(`Fetching previous event reviews for host ID: ${hostId}`);
     // Get all events hosted by this host
     const events = await getCachedEvents(false);
     const hostEventIds = events
@@ -542,10 +541,11 @@ export async function getHostPreviousEventReviews(hostId: string): Promise<Map<s
     // Fetch reviews for these events where entity_type='host' and entity_id=hostId
     const { data, error } = await supabase
       .from('Reviews')
-      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+      .select('event_id, user_id, privacy_level, rating, comment')
       .in('event_id', hostEventIds)
       .eq('entity_type', 'host')
       .eq('entity_id', Number(hostId))
+      .neq('event_id', Number(eventId))
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -557,46 +557,24 @@ export async function getHostPreviousEventReviews(hostId: string): Promise<Map<s
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
     const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
-    // Group rows by user + 1-minute bucket
-    const getGroupKey = (row: any): string => {
-      const ms = new Date(row.created_at).getTime();
-      const minuteBucket = Math.floor(ms / 60_000);
-      return `${row.user_id}-${minuteBucket}`;
-    };
-
-    const reviewsByKey = new Map<string, EventReview>();
-
+    const reviewsByEventId = new Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>();
     const rows = data ?? [];
+    
     for (const row of rows) {
-      const key = getGroupKey(row);
-      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
-
-      if (!reviewsByKey.has(key)) {
-        reviewsByKey.set(key, {
-          eventName: eventMap.get(String(row.event_id)) ?? 'Unknown Event',
-          eventId: String(row.event_id),
-          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
-          userId: row.privacy_level === 'anonymous' ? undefined : String(row.user_id),
-          dateSubmitted: row.created_at,
-          privacyLevel: row.privacy_level,
-          mainComment: row.comment || '',
-          mediaPaths: mediaPaths,
-          venueReview: undefined,
-          djReviews: [],
-        });
-      }
-    }
-
-    // Group reviews by event_id, keeping max 3 per event
-    const reviewsByEventId = new Map<string, EventReview[]>();
-    for (const review of reviewsByKey.values()) {
-      const eventId = review.eventId;
+      const eventId = String(row.event_id);
       if (!reviewsByEventId.has(eventId)) {
         reviewsByEventId.set(eventId, []);
       }
+      
       const eventReviews = reviewsByEventId.get(eventId)!;
       if (eventReviews.length < 3) {
-        eventReviews.push(review);
+        eventReviews.push({
+          eventId,
+          eventName: eventMap.get(eventId) ?? 'Unknown Event',
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
+          rating: row.rating || 0,
+          comment: row.comment || '',
+        });
       }
     }
 
@@ -607,7 +585,7 @@ export async function getHostPreviousEventReviews(hostId: string): Promise<Map<s
   }
 }
 
-export async function getVenuePreviousEventReviews(venueId: string | number): Promise<Map<string, EventReview[]>> {
+export async function getVenuePreviousEventReviews(venueId: string | number, eventId: string | number): Promise<Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>> {
   try {
     const supabase = await createServerClient();
     const normalizedVenueId = Number(venueId);
@@ -627,65 +605,40 @@ export async function getVenuePreviousEventReviews(venueId: string | number): Pr
 
     const { data, error } = await supabase
       .from('Reviews')
-      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+      .select('event_id, user_id, privacy_level, rating, comment')
       .in('event_id', venueEventIds)
       .eq('entity_type', 'venue')
       .eq('entity_id', normalizedVenueId)
+      .neq('event_id', Number(eventId))
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-
-    const venues = await getCachedVenues();
-    const venueMap = new Map(venues.map((venue) => [String(venue.id), venue.name]));
-
-    const allEvents = await getCachedEvents(false);
-    const eventMap = new Map(allEvents.map((event) => [String(event.id), event.title]));
 
     const userIds = Array.from(new Set((data ?? []).map((row: any) => row.user_id)));
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
     const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
-    const getGroupKey = (row: any): string => {
-      const ms = new Date(row.created_at).getTime();
-      const minuteBucket = Math.floor(ms / 60_000);
-      return `${row.user_id}-${minuteBucket}`;
-    };
+    const reviewsByEventId = new Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>();
+    const rows = data ?? [];
 
-    const reviewsByKey = new Map<string, EventReview>();
-
-    for (const row of data ?? []) {
-      const key = getGroupKey(row);
-      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
-
-      if (!reviewsByKey.has(key)) {
-        reviewsByKey.set(key, {
-          eventName: eventMap.get(String(row.event_id)) ?? 'Unknown Event',
-          eventId: String(row.event_id),
-          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
-          userId: row.privacy_level === 'anonymous' ? undefined : String(row.user_id),
-          dateSubmitted: row.created_at,
-          privacyLevel: row.privacy_level,
-          mainComment: row.comment || '',
-          mediaPaths,
-          venueReview: {
-            venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
-            rating: row.rating,
-            comments: row.comment || '',
-          },
-          djReviews: [],
-        });
-      }
-    }
-
-    const reviewsByEventId = new Map<string, EventReview[]>();
-    for (const review of reviewsByKey.values()) {
-      const eventId = review.eventId;
+    const allEvents = await getCachedEvents(false);
+    const eventMap = new Map(allEvents.map((event) => [String(event.id), event.title]));
+    
+    for (const row of rows) {
+      const eventId = String(row.event_id);
       if (!reviewsByEventId.has(eventId)) {
         reviewsByEventId.set(eventId, []);
       }
+      
       const eventReviews = reviewsByEventId.get(eventId)!;
       if (eventReviews.length < 3) {
-        eventReviews.push(review);
+        eventReviews.push({
+          eventId,
+          eventName: eventMap.get(eventId) ?? 'Unknown Event',
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
+          rating: row.rating || 0,
+          comment: row.comment || '',
+        });
       }
     }
 

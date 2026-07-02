@@ -41,17 +41,17 @@ export default async function EventDetailPage({ params, searchParams, showReview
     const venue = await getVenueById(event.locationid);
     
     // Fetch host reviews from previous events
-    const hostPreviousReviewsMap = new Map<string, EventReview[]>();
+    const hostPreviousReviewsMap = new Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>();
     if (event.hostIDs && event.hostIDs.length > 0) {
         for (const hostId of event.hostIDs) {
-            const reviews = await getHostPreviousEventReviews(hostId);
+            const reviews = await getHostPreviousEventReviews(hostId, eventId);
             hostPreviousReviewsMap.set(hostId, Array.from(reviews.values()).flat());
         }
     }
 
-    const venuePreviousReviewsMap = new Map<string, EventReview[]>();
+    const venuePreviousReviewsMap = new Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>();
     if (venue?.id) {
-        const reviews = await getVenuePreviousEventReviews(venue.id);
+        const reviews = await getVenuePreviousEventReviews(venue.id, eventId);
         venuePreviousReviewsMap.set(String(venue.id), Array.from(reviews.values()).flat());
     }
 

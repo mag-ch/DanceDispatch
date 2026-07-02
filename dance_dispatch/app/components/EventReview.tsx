@@ -258,7 +258,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 };
 
 
-export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void }> = ({ review, onDeleted }) => {
+export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void; compact?: boolean }> = ({ review, onDeleted, compact = false }) => {
 
     type PrivacyLevel = 'public' | 'private' | 'anonymous';
 
@@ -299,7 +299,14 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     
     
     const displayUsername = privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
-    
+    const usernameComponent = review.userId && privacyLevel !== 'anonymous'
+        ? (
+            <Link href={`/users/${review.userId}`} className="font-semibold text-text hover:underline">
+                {displayUsername}
+            </Link>
+          )
+        : <span className="font-semibold text-text">{displayUsername}</span>;
+
     const supabase = createClient();
     
     const handlePrivacyCycle = async () => {
@@ -362,22 +369,25 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     const DYNAMIC_WIDTH_THRESHOLD = 3;
     const useDynamicWidth = moduleCount > 0 && moduleCount <= DYNAMIC_WIDTH_THRESHOLD;
     
-    const containerClassName = useDynamicWidth
-    ? 'flex gap-6 pb-4'
-    : 'flex gap-6 overflow-x-auto pb-4';
+    const containerClassName = 'flex gap-3 overflow-x-auto pb-3';
+
     
     const moduleClassName = useDynamicWidth
-    ? 'flex-1 min-w-0'
-    : 'flex-shrink-0 min-w-[200px] max-w-[250px]';
+    ? compact
+        ? 'flex-1 min-w-[140px]'
+        : 'flex-1 min-w-[180px]'
+    : compact
+        ? 'flex-shrink-0 min-w-[160px] max-w-[210px]'
+        : 'flex-shrink-0 min-w-[200px] max-w-[250px]';
     
     return (
-        <div className={`bg-surface rounded-lg shadow p-4 transition-opacity ${isDeleting ? 'opacity-50' : ''}`}>
+        <div className={`bg-surface rounded-lg shadow transition-opacity ${compact ? 'p-3' : 'p-4'} ${isDeleting ? 'opacity-50' : ''}`}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b">
+            <div className={`flex items-center justify-between ${compact ? 'mb-3 pb-2' : 'mb-4 pb-3'} border-b`}>
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-text">{displayUsername}</span>
-                    <span className="text-sm text-text">•</span>
-                    <span className="text-sm text-text">{new Date(review.dateSubmitted).toLocaleDateString()}</span>
+                    {usernameComponent}
+                    <span className={`text-sm text-text ${compact ? 'opacity-80' : ''}`}>•</span>
+                    <span className={`text-sm text-text ${compact ? 'opacity-80' : ''}`}>{new Date(review.dateSubmitted).toLocaleDateString()}</span>
                 </div>
 
                 <div className="flex items-center gap-2">

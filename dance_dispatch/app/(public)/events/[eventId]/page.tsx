@@ -1,7 +1,8 @@
-import { getEventById, getEventReviews, getRelatedEvents } from '@/lib/utils_supabase_server';
+import { getEventById, getEventReviews, getRelatedEvents, getHostPreviousEventReviews, getVenuePreviousEventReviews } from '@/lib/utils_supabase_server';
 import { getVenueById } from '@/lib/server_utils';
 import { notFound } from 'next/navigation';
 import { EventDetailClient } from './EventDetailClient';
+import { EventReview } from '@/lib/utils';
 
 type EventDetailPageProps = {
     params: Promise<{ eventId: string }>;
@@ -38,6 +39,22 @@ export default async function EventDetailPage({ params, searchParams, showReview
         notFound();
     }
     const venue = await getVenueById(event.locationid);
+    
+    // Fetch host reviews from previous events
+    const hostPreviousReviewsMap = new Map<string, EventReview[]>();
+    if (event.hostIDs && event.hostIDs.length > 0) {
+        for (const hostId of event.hostIDs) {
+            const reviews = await getHostPreviousEventReviews(hostId);
+            hostPreviousReviewsMap.set(hostId, Array.from(reviews.values()).flat());
+        }
+    }
+
+    const venuePreviousReviewsMap = new Map<string, EventReview[]>();
+    if (venue?.id) {
+        const reviews = await getVenuePreviousEventReviews(venue.id);
+        venuePreviousReviewsMap.set(String(venue.id), Array.from(reviews.values()).flat());
+    }
+
     return (
         <EventDetailClient 
             event={event} 
@@ -45,6 +62,8 @@ export default async function EventDetailPage({ params, searchParams, showReview
             relatedEvents={relatedEvents} 
             venueAddress={venue ? venue.address : ''}
             showReviewModal={shouldShowReviewModal}
+            hostPreviousReviewsMap={hostPreviousReviewsMap}
+            venuePreviousReviewsMap={venuePreviousReviewsMap}
         />
     );
 }

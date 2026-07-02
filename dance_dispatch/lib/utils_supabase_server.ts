@@ -165,7 +165,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id')
       .order('start', { ascending: true }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
-    supabase.from('Hosts').select('id,name,bio,image_url,tags,external_urls').order('name'),
+    supabase.from('Hosts').select('id,name,bio,image_url,tags').order('name'),
     supabase.from('event_hosts').select('event_id,host_id'),
   ]);
 
@@ -274,8 +274,6 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     bio: row.bio ?? '',
     photoUrl: row.image_url ?? '',
     tags: row.tags ?? '',
-    externalLinks:
-      hostLinksByHostId.get(Number(row.id)) ?? normalizeHostLinks((row as any).external_urls),
   }));
 
   return { events, hosts, venues };
@@ -524,6 +522,177 @@ export async function getUserReviews(userId: string): Promise<EventReview[]> {
   } catch (error) {
     console.error('Error fetching event reviews from Supabase:', error);
     return [];
+  }
+}
+
+export async function getHostPreviousEventReviews(hostId: string): Promise<Map<string, EventReview[]>> {
+  try {
+    const supabase = await createServerClient();
+    console.log(`Fetching previous event reviews for host ID: ${hostId}`);
+    // Get all events hosted by this host
+    const events = await getCachedEvents(false);
+    const hostEventIds = events
+      .filter((event) => event.hostIDs?.some((id) => id === hostId))
+      .map((event) => Number(event.id));
+
+    if (hostEventIds.length === 0) {
+      return new Map();
+    }
+
+    // Fetch reviews for these events where entity_type='host' and entity_id=hostId
+    const { data, error } = await supabase
+      .from('Reviews')
+      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+      .in('event_id', hostEventIds)
+      .eq('entity_type', 'host')
+      .eq('entity_id', Number(hostId))
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const allEvents = await getCachedEvents(false);
+    const eventMap = new Map(allEvents.map((event) => [String(event.id), event.title]));
+
+    const userIds = Array.from(new Set((data ?? []).map((row: any) => row.user_id)));
+    const users = await Promise.all(userIds.map((id) => getUserById(id)));
+    const userMap = new Map(users.map((user) => [user?.id, user?.username]));
+
+    // Group rows by user + 1-minute bucket
+    const getGroupKey = (row: any): string => {
+      const ms = new Date(row.created_at).getTime();
+      const minuteBucket = Math.floor(ms / 60_000);
+      return `${row.user_id}-${minuteBucket}`;
+    };
+
+    const reviewsByKey = new Map<string, EventReview>();
+
+    const rows = data ?? [];
+    for (const row of rows) {
+      const key = getGroupKey(row);
+      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
+
+      if (!reviewsByKey.has(key)) {
+        reviewsByKey.set(key, {
+          eventName: eventMap.get(String(row.event_id)) ?? 'Unknown Event',
+          eventId: String(row.event_id),
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
+          userId: row.privacy_level === 'anonymous' ? undefined : String(row.user_id),
+          dateSubmitted: row.created_at,
+          privacyLevel: row.privacy_level,
+          mainComment: row.comment || '',
+          mediaPaths: mediaPaths,
+          venueReview: undefined,
+          djReviews: [],
+        });
+      }
+    }
+
+    // Group reviews by event_id, keeping max 3 per event
+    const reviewsByEventId = new Map<string, EventReview[]>();
+    for (const review of reviewsByKey.values()) {
+      const eventId = review.eventId;
+      if (!reviewsByEventId.has(eventId)) {
+        reviewsByEventId.set(eventId, []);
+      }
+      const eventReviews = reviewsByEventId.get(eventId)!;
+      if (eventReviews.length < 3) {
+        eventReviews.push(review);
+      }
+    }
+
+    return reviewsByEventId;
+  } catch (error) {
+    console.error('Error fetching host previous event reviews from Supabase:', error);
+    return new Map();
+  }
+}
+
+export async function getVenuePreviousEventReviews(venueId: string | number): Promise<Map<string, EventReview[]>> {
+  try {
+    const supabase = await createServerClient();
+    const normalizedVenueId = Number(venueId);
+
+    if (!normalizedVenueId) {
+      return new Map();
+    }
+
+    const events = await getCachedEvents(false);
+    const venueEventIds = events
+      .filter((event) => String(event.locationid) === String(normalizedVenueId))
+      .map((event) => Number(event.id));
+
+    if (venueEventIds.length === 0) {
+      return new Map();
+    }
+
+    const { data, error } = await supabase
+      .from('Reviews')
+      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+      .in('event_id', venueEventIds)
+      .eq('entity_type', 'venue')
+      .eq('entity_id', normalizedVenueId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const venues = await getCachedVenues();
+    const venueMap = new Map(venues.map((venue) => [String(venue.id), venue.name]));
+
+    const allEvents = await getCachedEvents(false);
+    const eventMap = new Map(allEvents.map((event) => [String(event.id), event.title]));
+
+    const userIds = Array.from(new Set((data ?? []).map((row: any) => row.user_id)));
+    const users = await Promise.all(userIds.map((id) => getUserById(id)));
+    const userMap = new Map(users.map((user) => [user?.id, user?.username]));
+
+    const getGroupKey = (row: any): string => {
+      const ms = new Date(row.created_at).getTime();
+      const minuteBucket = Math.floor(ms / 60_000);
+      return `${row.user_id}-${minuteBucket}`;
+    };
+
+    const reviewsByKey = new Map<string, EventReview>();
+
+    for (const row of data ?? []) {
+      const key = getGroupKey(row);
+      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
+
+      if (!reviewsByKey.has(key)) {
+        reviewsByKey.set(key, {
+          eventName: eventMap.get(String(row.event_id)) ?? 'Unknown Event',
+          eventId: String(row.event_id),
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
+          userId: row.privacy_level === 'anonymous' ? undefined : String(row.user_id),
+          dateSubmitted: row.created_at,
+          privacyLevel: row.privacy_level,
+          mainComment: row.comment || '',
+          mediaPaths,
+          venueReview: {
+            venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
+            rating: row.rating,
+            comments: row.comment || '',
+          },
+          djReviews: [],
+        });
+      }
+    }
+
+    const reviewsByEventId = new Map<string, EventReview[]>();
+    for (const review of reviewsByKey.values()) {
+      const eventId = review.eventId;
+      if (!reviewsByEventId.has(eventId)) {
+        reviewsByEventId.set(eventId, []);
+      }
+      const eventReviews = reviewsByEventId.get(eventId)!;
+      if (eventReviews.length < 3) {
+        eventReviews.push(review);
+      }
+    }
+
+    return reviewsByEventId;
+  } catch (error) {
+    console.error('Error fetching previous venue event reviews from Supabase:', error);
+    return new Map();
   }
 }
 

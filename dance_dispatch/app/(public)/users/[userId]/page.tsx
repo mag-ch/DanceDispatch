@@ -13,7 +13,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
     getAllFollowedUsers(userId).catch(() => []),
     getSavedEventsForUserServer(userId, "upcoming").catch(() => []),
     getSavedEventsForUserServer(userId, "past").catch(() => []),
-    getUserReviews(userId).catch(() => []),
+    getUserReviews(user.id),
   ]);
 
   return (

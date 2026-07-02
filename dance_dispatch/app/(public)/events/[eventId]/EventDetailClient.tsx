@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Event, EventReview, Host } from '@/lib/utils';
@@ -17,6 +18,8 @@ interface EventDetailClientProps {
     relatedEvents: Event[];
     venueAddress: string;
     showReviewModal?: boolean;
+    hostPreviousReviewsMap?: Map<string, EventReview[]>;
+    venuePreviousReviewsMap?: Map<string, EventReview[]>;
 }
 
 const APPROVED_USER_IDS = [
@@ -26,7 +29,7 @@ const APPROVED_USER_IDS = [
 
 const canEditEventDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
 
-export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false }: EventDetailClientProps) {
+export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map() }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -38,6 +41,42 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             name,
         }))
     );
+
+    const previousReviewGroups = (() => {
+        const groups = new Map<string, { eventId: string; eventName: string; sources: Set<string>; reviews: EventReview[] }>();
+
+        const addReviews = (sourceLabel: string, reviews: EventReview[]) => {
+            for (const review of reviews) {
+                const key = review.eventId || 'unknown';
+                const existing = groups.get(key);
+                if (existing) {
+                    existing.sources.add(sourceLabel);
+                    existing.reviews.push(review);
+                } else {
+                    groups.set(key, {
+                        eventId: key,
+                        eventName: review.eventName || 'Event',
+                        sources: new Set([sourceLabel]),
+                        reviews: [review],
+                    });
+                }
+            }
+        };
+
+        hostPreviousReviewsMap.forEach((hostReviews, hostId) => {
+            if (hostReviews.length === 0) return;
+            const hostName = eventHosts.find((host) => host.id === hostId)?.name || 'Host';
+            addReviews(`Host: ${hostName}`, hostReviews);
+        });
+
+        venuePreviousReviewsMap.forEach((venueReviews) => {
+            if (venueReviews.length === 0) return;
+            const venueLabel = event.location || 'Venue';
+            addReviews(`Venue: ${venueLabel}`, venueReviews);
+        });
+
+        return Array.from(groups.values());
+    })();
     const [allHosts, setAllHosts] = useState<Host[]>([]);
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
     const [hostSearchQuery, setHostSearchQuery] = useState('');
@@ -872,6 +911,44 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 eventStartAt={eventStartAt}
                             />
                         </div>
+
+                        {/* Previous Event Review Groups */}
+                        {previousReviewGroups.length > 0 && (
+                            <div className="space-y-6">
+                                <div className="bg-surface rounded-lg p-6">
+                                    <h2 className="text-2xl font-bold mb-2 text-text">Previous Reviews for Hosts and Venue</h2>
+                                    <p className="text-sm text-muted">Grouped by event so shared past events appear once instead of per host.</p>
+                                </div>
+                                {previousReviewGroups.map((group) => (
+                                    <div key={group.eventId} className="bg-surface rounded-lg p-6">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                                            <Link href={`/events/${group.eventId}`} className="text-lg font-semibold text-accent hover:underline">
+                                                {group.eventName}
+                                            </Link>
+                                            <div className="flex flex-wrap gap-2">
+                                                {Array.from(group.sources).map((source) => (
+                                                    <span key={source} className="rounded-full bg-muted px-3 py-1 text-xs text-text/80">
+                                                        {source}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-4 lg:grid-cols-3">
+                                            {group.reviews.slice(0, 3).map((review, index) => (
+                                                <DisplayEventReview key={index} review={review} compact />
+                                            ))}
+                                        </div>
+                                        {group.reviews.length > 3 && (
+                                            <div className="mt-4 text-sm">
+                                                <Link href={`/events/${group.eventId}`} className="text-accent hover:underline font-semibold">
+                                                    See {group.reviews.length - 3} more reviews for this event
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column - Related Events */}

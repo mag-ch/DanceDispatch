@@ -1,9 +1,5 @@
 'use server';
 
-import path from 'path';
-import  {parse}  from 'csv-parse/sync';
-import { promises as fs } from "fs";
-
 export interface Event {
     id: string;
     title: string;

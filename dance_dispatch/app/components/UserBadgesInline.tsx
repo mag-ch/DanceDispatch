@@ -118,7 +118,7 @@ async function fetchUserBadges(userId: string, maxBadges: number): Promise<Badge
     ])
   );
 
-  const ordered = badgeIds.map((id) => byId.get(id)).filter((row): row is BadgeRow => Boolean(row)).slice(0, maxBadges);
+  const ordered = badgeIds.map((id) => byId.get(String(id))).filter((row): row is BadgeRow => Boolean(row)).slice(0, maxBadges);
 
   badgesCache.set(cacheKey, ordered);
   return ordered;

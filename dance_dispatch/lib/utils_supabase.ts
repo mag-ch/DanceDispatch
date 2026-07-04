@@ -6,7 +6,7 @@ export async function getUsernameFromId(userId: string | number): Promise<string
       .from('profiles')
       .select('username')
       .eq('id', userId)
-      .single<{ username: string }>();
+      .single();
 
 
     if (error) {
@@ -14,7 +14,8 @@ export async function getUsernameFromId(userId: string | number): Promise<string
       return null;
     }
 
-    return data?.username ?? null;
+    const row = data as { username?: string } | null;
+    return row?.username ?? null;
   } catch (error: unknown) {
     console.error('An unexpected error occurred:', error instanceof Error ? error.message : String(error));
     return null;

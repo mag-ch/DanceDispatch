@@ -1805,14 +1805,15 @@ export async function getUsernameFromId(userId: string | number): Promise<string
       .from('profiles')
       .select('username')
       .eq('id', userId)
-      .single<{ username: string }>();
+      .single();
 
     if (error) {
       console.error('Error fetching username:', error.message);
       return null;
     }
 
-    return data?.username ?? null;
+    const row = data as { username?: string } | null;
+    return row?.username ?? null;
   } catch (error: unknown) {
     console.error('An unexpected error occurred:', error instanceof Error ? error.message : String(error));
     return null;
@@ -1827,14 +1828,15 @@ export async function getPatchNoteFromId(id: string | number): Promise<any | nul
       .from('patch_notes')
       .select('description, created_at, href')
       .eq('id', id)
-      .single<{ description: string; created_at: string; href: string }>();
+      .single();
 
     if (error) {
       console.error('Error fetching patch note:', error.message);
       return null;
     }
 
-    return data;
+    const row = data as { description?: string; created_at?: string; href?: string } | null;
+    return row;
   } catch (error: unknown) {
     console.error('An unexpected error occurred:', error instanceof Error ? error.message : String(error));
     return null;

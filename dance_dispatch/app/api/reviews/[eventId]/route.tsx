@@ -2,6 +2,7 @@ import { userSubmitReview } from '@/lib/utils_supabase_server';
 import { validateAndSanitizeReviews } from '@/lib/validator';
 import { requireAuth } from '@/lib/auth-helpers';
 import { awardPoints, POINTS } from '@/lib/points';
+import { sendReviewPushToFollowers } from '@/lib/push-notifications';
 
 export async function POST(
     request: Request,
@@ -29,6 +30,12 @@ export async function POST(
         }
 
         await awardPoints(user.id, 'review', POINTS.review, eventId);
+
+        try {
+            await sendReviewPushToFollowers(user.id, eventId);
+        } catch (notificationError) {
+            console.error('Failed to send follower review notifications:', notificationError);
+        }
 
         return new Response(JSON.stringify({ success: true }), {
             status: 200,

@@ -37,12 +37,13 @@ export async function GET(
             await requireAuth();
             const { hostId } = await params;
             const body = await request.json();
-            const { name, bio, tags, photoUrl } = body;
+                const { name, bio, tags, genre, photoUrl } = body;
 
             const updates: Record<string, unknown> = {};
             if (typeof name === 'string') updates.name = name.trim();
             if (typeof bio === 'string') updates.bio = bio.trim();
             if (Array.isArray(tags)) updates.tags = tags;
+            if (Array.isArray(genre)) updates.genre = genre;
             if (typeof photoUrl === 'string') updates.image_url = photoUrl.trim();
 
             if (Object.keys(updates).length === 0) {

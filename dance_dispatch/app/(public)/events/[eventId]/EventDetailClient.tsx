@@ -449,7 +449,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4 py-6"
                     onClick={() => {
-                        console.log('backdrop clicked');
+                        // console.log('backdrop clicked');
                         setShowImageModal(false);
                     }}                    role="dialog"
                     aria-modal="true"
@@ -943,21 +943,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     <h2 className="text-2xl font-bold text-text">Previous Reviews for Hosts and Venue</h2>
                                 </div>
                                 {previousReviewGroups.map((group) => {
-                                    // Group reviews by source (venue/host)
-                                    // const reviewsBySource = new Map<string,  { eventId: string; eventName: string; sourceReviews: Map<string, { username: string; rating: number; comment: string; }[]>; }>();
-                                    // group.sourceReviews.forEach((review) => {
-                                    //     Array.from(group.sourceReviews.keys()).forEach((source) => {
-                                    //         if (!reviewsBySource.has(source)) {
-                                    //             reviewsBySource.set(source, []);
-                                    //         }
-                                    //         reviewsBySource.get(source)!.push({
-                                    //             username: review.username,
-                                    //             rating: review.rating,
-                                    //             comment: review.comment,
-                                    //         });
-                                    //     });
-                                    // });
-
                                     return (
                                         <div key={group.eventId} className="bg-surface rounded-lg p-6">
                                             <Link href={`/events/${group.eventId}`} className="text-lg font-semibold text-accent hover:underline block mb-4">

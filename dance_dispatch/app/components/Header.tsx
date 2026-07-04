@@ -11,10 +11,12 @@ import UserBadgesInline from './UserBadgesInline';
 
 type NotificationItem = {
     id: string;
+    type: string;
     title: string;
     description: string;
     createdAt: string;
     href: string;
+    isRead: boolean;
 };
 
 type FeedbackItem = {
@@ -47,6 +49,7 @@ export function Header() {
     const [username, setUsername] = useState<string | null>(null);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [isNotificationUpdating, setIsNotificationUpdating] = useState(false);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [feedbackDraft, setFeedbackDraft] = useState('');
     const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
@@ -81,7 +84,10 @@ export function Header() {
     const loadNotifications = useCallback(async () => {
         try {
             const res = await fetch('/api/notifications?limit=8', { cache: 'no-store' });
-            if (!res.ok) return;
+            if (!res.ok) {
+                setNotifications([]);
+                return;
+            }
 
             const data = (await res.json()) as NotificationItem[];
             setNotifications(Array.isArray(data) ? data : []);
@@ -143,17 +149,58 @@ export function Header() {
 
         loadNotifications();
 
-        const topic = `notifications-header:${session.user.id}`;
-        
-        const channel = supabase.channel(topic, { config: { private: true } })
-          .on('broadcast', { event: 'INSERT' }, (payload) => {
-            void loadNotifications();
-          })
+                const channel = supabase.channel(`notifications-header:${session.user.id}`)
+          .on(
+              'postgres_changes',
+              {
+                  event: '*',
+                  schema: 'public',
+                  table: 'user_notifications',
+                  filter: `user_id=eq.${session.user.id}`,
+              },
+              () => {
+                  void loadNotifications();
+              }
+          )
           .subscribe();
         return () => {
           void supabase.removeChannel(channel);
         };
     }, [loadNotifications, session?.user?.id]);
+
+    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+    const markNotificationAsRead = useCallback(async (notificationId: string) => {
+        setNotifications((current) =>
+            current.map((item) => (item.id === notificationId ? { ...item, isRead: true } : item))
+        );
+
+        await fetch(`/api/notifications/${encodeURIComponent(notificationId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isRead: true }),
+        }).catch(() => {
+            // Keep optimistic state; realtime refresh will reconcile if needed.
+        });
+    }, []);
+
+    const markAllNotificationsAsRead = useCallback(async () => {
+        if (unreadCount === 0) {
+            return;
+        }
+
+        setIsNotificationUpdating(true);
+        setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
+        try {
+            await fetch('/api/notifications', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ markAllRead: true, isRead: true }),
+            });
+        } finally {
+            setIsNotificationUpdating(false);
+        }
+    }, [unreadCount]);
 
     const handleLogout = async () => {
         await logout();
@@ -269,6 +316,11 @@ export function Header() {
                                         aria-label="Open notifications"
                                     >
                                         <Bell className="h-5 w-5" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
                                     </button>
                                     <button
                                         type="button"
@@ -395,14 +447,26 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                     >
                         <div className="mb-3 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-text">Notifications</h2>
-                            <button
-                                type="button"
-                                onClick={() => setIsNotificationModalOpen(false)}
-                                className="rounded-md p-1 hover:bg-slate-100 dark:hover:bg-slate-700"
-                                aria-label="Close notifications"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={unreadCount === 0 || isNotificationUpdating}
+                                    onClick={() => {
+                                        void markAllNotificationsAsRead();
+                                    }}
+                                    className="rounded-md border border-default px-2 py-1 text-xs font-medium text-text hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700"
+                                >
+                                    {isNotificationUpdating ? 'Updating...' : 'Mark all read'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsNotificationModalOpen(false)}
+                                    className="rounded-md p-1 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                    aria-label="Close notifications"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
                         <ul className="space-y-2">
                             {notifications.length === 0 ? (
@@ -411,16 +475,20 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                                 </li>
                             ) : (
                                 notifications.map((notification) => (
-                                    <li key={notification.id} className="rounded-lg border border-default px-3 py-2">
+                                    <li key={notification.id} className={`rounded-lg border border-default px-3 py-2 ${notification.isRead ? 'opacity-80' : 'bg-bg/40'}`}>
                                         <button
                                             type="button"
                                             onClick={() => {
+                                                if (!notification.isRead) {
+                                                    void markNotificationAsRead(notification.id);
+                                                }
                                                 setIsNotificationModalOpen(false);
                                                 router.push(resolveNotificationHref(notification.href));
                                             }}
                                             className="w-full text-left"
                                         >
                                             <p className="text-sm font-medium text-text">{notification.title}</p>
+                                            <p className="text-xs text-muted line-clamp-2">{notification.description}</p>
                                             <p className="text-xs text-muted">{formatRelativeTime(notification.createdAt)}</p>
                                         </button>
                                     </li>

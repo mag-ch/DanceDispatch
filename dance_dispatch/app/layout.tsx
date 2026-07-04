@@ -8,6 +8,7 @@ import { AuthContextProvider } from "./providers/AuthContext";
 import { Header } from "./components/Header";
 import { PWARegister } from "./components/PWARegister";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { PushNotificationPrompt } from "./components/PushNotificationPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default function RootLayout({
           <AuthContextProvider>
             <PWARegister />
             <PWAInstallPrompt />
+            <PushNotificationPrompt />
             <Suspense fallback={null}>
               <Header />
             </Suspense>

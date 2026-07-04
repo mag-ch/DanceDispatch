@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
     root: path.dirname(fileURLToPath(import.meta.url)),
   },
   images: {
-    // Single wildcard pattern avoids the 50-entry cap while we proxy/allowlist in app code.
     remotePatterns: [
       {
         protocol: 'https',
@@ -19,4 +18,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-module.exports = nextConfig;

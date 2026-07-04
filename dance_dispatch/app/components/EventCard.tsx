@@ -116,6 +116,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
     const extLink = event.externallink ? await processUrl(event.externallink) : undefined;
+    const hostGenres = Array.from(new Set((event.hostGenres ?? []).map((genre) => String(genre).trim()).filter(Boolean)));
 
     const truncateDescription = (text: string, maxLength: number = 100) => {
         return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
@@ -124,9 +125,20 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     return (
         <div className={styles.card}>
             <CustomLink href={`/events/${event.id}`} className={styles.cardLink}>
-                <img src={defaultThumbnail} alt={event.title} className={styles.imageLg} />
-                <div className={styles.saveOverlay}>
-                    <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
+                <div className={styles.imageWrap}>
+                    <img src={defaultThumbnail} alt={event.title} className={styles.imageLg} />
+                    {hostGenres.length > 0 && (
+                        <div className={styles.genreOverlay}>
+                            <div className={styles.genreRow}>
+                                {hostGenres.map((genre) => (
+                                    <span key={genre} className={styles.genreChip}>{genre}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div className={styles.saveOverlay}>
+                        <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
+                    </div>
                 </div>
                 <div className={styles.content}>
                     <h3 className={styles.titleLg}>{event.title}</h3>

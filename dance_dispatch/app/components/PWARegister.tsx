@@ -4,19 +4,17 @@ import { useEffect } from "react";
 
 export function PWARegister() {
   useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      return;
+    }
     if (!("serviceWorker" in navigator)) {
       return;
     }
 
     const register = async () => {
       try {
-         if (
-        process.env.NODE_ENV === "production" &&
-        "serviceWorker" in navigator
-      ) {
-        navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      }      
-     } catch (error) {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      } catch (error) {
         console.error("Service worker registration failed", error);
       }
     };

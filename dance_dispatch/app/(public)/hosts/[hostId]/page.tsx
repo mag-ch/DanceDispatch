@@ -28,6 +28,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [editName, setEditName] = useState('');
     const [editBio, setEditBio] = useState('');
     const [editTags, setEditTags] = useState('');
+    const [editGenre, setEditGenre] = useState('');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [mediaType, setMediaType] = useState('soundcloud');
@@ -41,6 +42,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         setEditName(h.name);
         setEditBio(h.bio ?? '');
         setEditTags(Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : ''));
+        setEditGenre(Array.isArray(h.genre) ? h.genre.join(', ') : '');
         setSaveError(null);
         setEditing(true);
     };
@@ -56,17 +58,18 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         setSaveError(null);
         try {
             const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
+            const genre = editGenre.split(',').map((g) => g.trim()).filter(Boolean);
             const res = await fetch(`/api/hosts/${hostId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editName, bio: editBio, tags }),
+                body: JSON.stringify({ name: editName, bio: editBio, tags, genre }),
             });
             if (!res.ok) {
                 const err = await res.json();
                 setSaveError(err.error ?? 'Failed to save');
                 return;
             }
-            setHost({ ...h, name: editName, bio: editBio, tags });
+            setHost({ ...h, name: editName, bio: editBio, tags, genre });
             setEditing(false);
         } catch {
             setSaveError('Failed to save');
@@ -268,6 +271,12 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                                 className="bg-bg text-text border border-default rounded p-2 w-full"
                                                 value={editTags}
                                                 onChange={(e) => setEditTags(e.target.value)}
+                                            />
+                                            <label className="text-sm text-muted mt-1">Genres (comma-separated)</label>
+                                            <input
+                                                className="bg-bg text-text border border-default rounded p-2 w-full"
+                                                value={editGenre}
+                                                onChange={(e) => setEditGenre(e.target.value)}
                                             />
                                         </div>
                                     ) : (

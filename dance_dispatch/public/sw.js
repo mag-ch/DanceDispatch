@@ -71,3 +71,62 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch {
+      payload = { body: event.data.text() };
+    }
+  }
+
+  const title = payload.title || "DanceDispatch";
+  const body = payload.body || "You have a new notification.";
+  const href = payload.href || "/notifications";
+  const tag = payload.tag || "dance-dispatch";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      tag,
+      icon: "/icons/icon_1.png",
+      badge: "/icons/icon_1.png",
+      data: { href },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetHref = event.notification.data?.href || "/notifications";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url === targetHref && "focus" in client) {
+          return client.focus();
+        }
+      }
+
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetHref);
+      }
+
+      return undefined;
+    })
+  );
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) =>
+      Promise.all(
+        windowClients.map((client) => client.postMessage({ type: "dd-pushsubscriptionchange" }))
+      )
+    )
+  );
+});

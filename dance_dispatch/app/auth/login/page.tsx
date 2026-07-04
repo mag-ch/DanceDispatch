@@ -11,7 +11,6 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-
     const waitForSession = async (attempts = 10, delayMs = 120) => {
         for (let i = 0; i < attempts; i += 1) {
             const { data } = await supabase.auth.getSession();
@@ -24,7 +23,6 @@ export default function LoginPage() {
 
         return null;
     };
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);

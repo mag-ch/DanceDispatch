@@ -131,6 +131,42 @@ function normalizeHostLinks(value: unknown): HostExternalLink[] {
     .map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
 }
 
+function normalizeStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
+  }
+
+  const raw = String(value ?? '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return normalizeStringList(parsed);
+    }
+  } catch {
+    // Fall through to delimiter-based parsing
+  }
+
+  if (raw.startsWith('[') && raw.endsWith(']')) {
+    const matches = Array.from(raw.matchAll(/'([^']+)'|"([^"]+)"/g))
+      .map((match) => (match[1] ?? match[2] ?? '').trim())
+      .filter(Boolean);
+
+    if (matches.length > 0) {
+      return matches;
+    }
+  }
+
+  const separator = raw.includes('|') ? '|' : ',';
+  return raw
+    .split(separator)
+    .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
+}
+
 export async function getRelatedEvents(eventId: string): Promise<Event[]> {
   // get events similar in date and location to the current event
   const allEvents = await getCachedEvents(false);
@@ -165,7 +201,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id')
       .order('start', { ascending: true }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
-    supabase.from('Hosts').select('id,name,bio,image_url,tags').order('name'),
+    supabase.from('Hosts').select('id,name,bio,image_url,tags,genres').order('name'),
     supabase.from('event_hosts').select('event_id,host_id'),
   ]);
 
@@ -219,6 +255,12 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       .filter(([id]) => !Number.isNaN(id))
   );
 
+  const hostGenresById = new Map<number, string[]>(
+    hostRows
+      .map((row: any) => [Number(row.id), normalizeStringList(row.genres)] as const)
+      .filter(([id]) => !Number.isNaN(id))
+  );
+
   const hostIdsByEventId = new Map<number, number[]>();
   for (const row of eventHostRows) {
     const eventId = Number((row as any).event_id);
@@ -236,6 +278,11 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     const { date: enddate, time: endtime } = splitDbDateTime(row.end);
     const numericLocationId = Number(row.location);
     const mappedHostIds = hostIdsByEventId.get(Number(row.id)) ?? [];
+    const hostGenres = Array.from(
+      new Set(
+        mappedHostIds.flatMap((id) => hostGenresById.get(id) ?? [])
+      )
+    );
 
     return {
       id: String(row.id),
@@ -255,6 +302,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       externallink: row.external_url ?? undefined,
       hostIDs: mappedHostIds.map((id) => String(id)),
       hostNames: mappedHostIds.map((id) => hostNameById.get(id) ?? 'Unknown Host'),
+      hostGenres,
     };
   });
 
@@ -273,7 +321,8 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     name: row.name,
     bio: row.bio ?? '',
     photoUrl: row.image_url ?? '',
-    tags: row.tags ?? '',
+    tags: normalizeStringList(row.tags),
+    genre: normalizeStringList(row.genre),
   }));
 
   return { events, hosts, venues };

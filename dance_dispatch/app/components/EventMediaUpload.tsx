@@ -6,6 +6,7 @@ import imageCompression from 'browser-image-compression';
 import { Upload, X, ImageIcon, Film, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../providers/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import type { FileObject } from "@supabase/storage-js";
 
 
 const MAX_FILES_PER_USER = 3;
@@ -58,14 +59,14 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
         const myFiles: MediaFile[] = [];
 
         await Promise.all(
-            folders.map(async (folder) => {
+            folders.map(async (folder: FileObject) => {
                 const { data: files } = await supabase.storage
                     .from('event-media')
                     .list(`events/${eventId}/${folder.name}`);
 
                 if (!files) return;
 
-                files.forEach((file) => {
+                files.forEach((file: FileObject) => {
                     const path = `events/${eventId}/${folder.name}/${file.name}`;
                     const { data: urlData } = supabase.storage
                         .from('event-media')

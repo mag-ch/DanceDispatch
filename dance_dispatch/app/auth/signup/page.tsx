@@ -16,19 +16,6 @@ export default function SignUp() {
     const [referrerId, setReferrerId] = useState<string | null>(null);
     const router = useRouter();
 
-    const waitForSession = async (attempts = 10, delayMs = 120) => {
-        for (let i = 0; i < attempts; i += 1) {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-                return data.session;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-
-        return null;
-    };
-
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
@@ -112,21 +99,15 @@ export default function SignUp() {
                 }
             }
 
-            const activeSession = await waitForSession();
-            if (!activeSession) {
-                throw new Error('Could not establish a login session after sign up.');
-            }
-
             if (referrerId) {
                 await fetch('/api/referral', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ referrerId }),
-                }).catch(() => { /* non-critical — don't block sign-up */ });
+                }).catch(() => { /* non-critical - do not block sign-up */ });
             }
 
             router.replace(returnPath || '/');
-            window.location.assign(returnPath || '/');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sign up failed');
         } finally {

@@ -19,6 +19,7 @@ export interface Event {
     externallink?: string;
     hostNames?: string[]; 
     hostIDs?: string[]; 
+    hostGenres?: string[];
     // Add other fields as needed based on your CSV structure
 }
 export interface Venue {
@@ -37,6 +38,7 @@ export interface Host {
     bio: string;
     photoUrl: string;
     tags: string[];
+    genre: string[];
     externalLinks?: HostExternalLink[];
     // Add other fields as needed based on your CSV structure
 }

@@ -2,12 +2,14 @@ import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: projectRoot,
   turbopack: {
-    root: path.dirname(fileURLToPath(import.meta.url)),
+    root: projectRoot,
   },
   images: {
-    // Single wildcard pattern avoids the 50-entry cap while we proxy/allowlist in app code.
     remotePatterns: [
       {
         protocol: 'https',
@@ -19,4 +21,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-module.exports = nextConfig;

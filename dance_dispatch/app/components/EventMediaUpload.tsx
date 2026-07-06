@@ -360,7 +360,7 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
                     onClick={() => setLightboxItem(null)}
                 >
                     <div
-                        className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center"
+                        className="relative w-full max-w-[75vw] max-h-[75vh] flex items-center justify-center"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
@@ -376,7 +376,7 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
                         {lightboxItem.type === 'video' ? (
                             <video
                                 src={lightboxItem.url}
-                                className="max-w-full max-h-[80vh] rounded-xl shadow-2xl"
+                                className="max-w-full max-h-[70vh] rounded-xl shadow-2xl"
                                 controls
                                 autoPlay
                                 playsInline
@@ -385,7 +385,7 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
                             <img
                                 src={lightboxItem.url}
                                 alt={lightboxItem.name}
-                                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+                                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl"
                             />
                         )}
 

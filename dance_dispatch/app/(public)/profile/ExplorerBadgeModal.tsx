@@ -50,7 +50,7 @@ export default function ExplorerBadgeModal({ missionStatus }: ExplorerBadgeModal
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-default bg-surface p-6 shadow-2xl"
+            className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-2xl border border-default bg-surface p-6 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"

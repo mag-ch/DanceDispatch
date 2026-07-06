@@ -216,7 +216,7 @@ export default function UserProfileClient({
           onClick={() => setActiveFollowModal(null)}
         >
           <div
-            className="w-full max-w-4xl rounded-xl border border-text/10 bg-surface p-6 shadow-2xl"
+            className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-xl border border-text/10 bg-surface p-6 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -233,7 +233,7 @@ export default function UserProfileClient({
               </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto pr-2">
+            <div className="max-h-[60vh] overflow-y-auto pr-2">
               {modalConfig.content.length > 0 ? (
                 <div className="space-y-3">{modalConfig.content}</div>
               ) : (

@@ -14,7 +14,7 @@ export async function POST() {
     const result = await sendPushToUser(PUSH_TEST_USER_ID, {
       title: 'DanceDispatch push test',
       body: 'Your web push stack is live.',
-      href: '/notifications',
+      href: '/?announcement=1',
       tag: 'dance-dispatch-test',
     });
 

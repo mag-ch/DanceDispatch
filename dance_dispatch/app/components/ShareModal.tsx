@@ -266,7 +266,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6" onClick={onClose}>
             <div
-                className="w-full max-w-2xl rounded-2xl border border-default bg-surface p-6 shadow-2xl"
+                className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-2xl border border-default bg-surface p-6 shadow-2xl"
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"

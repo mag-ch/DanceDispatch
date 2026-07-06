@@ -150,7 +150,7 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onCl
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
-            <div className="relative w-full max-w-lg rounded-xl bg-bg shadow-xl dark:bg-surface max-h-[90vh] overflow-y-auto">
+            <div className="relative w-full max-w-[75vw] rounded-xl bg-bg shadow-xl dark:bg-surface max-h-[75vh] overflow-y-auto">
                 <button
                     type="button"
                     className="absolute right-4 top-4 rounded-full p-1 text-muted hover:text-text"

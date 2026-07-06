@@ -160,7 +160,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-surface rounded-lg p-6 w-full max-w-md max-h-[70vh] flex flex-col shadow-lg">
+            <div className="bg-surface rounded-lg p-6 w-full max-w-[75vw] max-h-[75vh] flex flex-col shadow-lg">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-text">Leave a Review</h2>

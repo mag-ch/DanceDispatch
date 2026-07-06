@@ -455,7 +455,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                     aria-modal="true"
                     aria-label={`${event.title} image preview`}
                 >
-                    <div className="relative flex h-full max-h-[90vh] w-full max-w-6xl items-center justify-center">
+                    <div className="relative flex w-full max-w-[75vw] max-h-[75vh] items-center justify-center">
                         <button
                             type="button"
                             className="absolute right-0 top-0 z-10 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80"
@@ -468,7 +468,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             <X size={20} />
                         </button>
                         <div
-                            className="relative h-full max-h-[85vh] w-full overflow-hidden rounded-2xl"
+                            className="relative h-full w-full overflow-auto rounded-2xl"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Image
@@ -486,7 +486,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             {/* Main Content */}
             {isEditingEventDetails && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-6">
-                    <div className="w-full max-w-2xl rounded-2xl bg-surface p-6 shadow-2xl">
+                    <div className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-2xl bg-surface p-6 shadow-2xl">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-text">Edit Event Details</h2>
                             <button

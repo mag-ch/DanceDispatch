@@ -17,7 +17,7 @@ export const AuthRequiredModal: React.FC<AuthRequiredModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="flex flex-col items-center rounded-lg bg-bg p-6 shadow-lg dark:bg-surface">
+            <div className="flex max-h-[75vh] w-full max-w-[75vw] flex-col items-center overflow-y-auto rounded-lg bg-bg p-6 shadow-lg dark:bg-surface">
                 <p className="mb-4 text-center text-text">{message}</p>
                 <button
                     onClick={() => {

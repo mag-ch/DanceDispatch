@@ -439,7 +439,7 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                     onClick={() => setIsNotificationModalOpen(false)}
                 >
                     <div
-                        className="w-full max-w-sm rounded-xl border border-default bg-surface p-4 shadow-2xl"
+                        className="w-full max-w-[75vw] max-h-[75vh] rounded-xl border border-default bg-surface p-4 shadow-2xl flex flex-col"
                         onClick={(event) => event.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
@@ -468,7 +468,7 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                                 </button>
                             </div>
                         </div>
-                        <ul className="space-y-2">
+                        <ul className="space-y-2 overflow-y-auto pr-1">
                             {notifications.length === 0 ? (
                                 <li className="rounded-lg border border-default px-3 py-2">
                                     <p className="text-sm text-muted">No notifications yet.</p>
@@ -515,7 +515,7 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                     onClick={() => setIsFeedbackModalOpen(false)}
                 >
                     <div
-                        className="w-full max-w-5xl overflow-hidden rounded-2xl border border-default bg-surface shadow-2xl"
+                        className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-2xl border border-default bg-surface shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                         role="dialog"
                         aria-modal="true"

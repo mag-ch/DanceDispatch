@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEventButton";
+import { LandingAnnouncementModal } from "./components/LandingAnnouncementModal";
 
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
@@ -21,6 +22,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (    
     <main className="min-h-screen bg-bg text-text">
+      <LandingAnnouncementModal />
       <section
         className="relative py-24 text-center shadow-sm"
         style={{

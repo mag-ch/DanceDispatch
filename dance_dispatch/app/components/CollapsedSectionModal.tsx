@@ -70,7 +70,7 @@ export default function CollapsedSectionModal({
                     onClick={() => setOpen(false)}
                 >
                     <div
-                        className="bg-surface rounded-lg max-w-5xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl"
+                        className="bg-surface rounded-lg w-full max-w-[75vw] max-h-[75vh] overflow-y-auto p-6 shadow-xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-4 sticky top-0 bg-surface">

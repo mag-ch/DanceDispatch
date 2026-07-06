@@ -32,8 +32,12 @@ const canEditEventDetails = (userId?: string | null) => Boolean(userId && APPROV
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map() }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [isSavedEvent, setIsSavedEvent] = useState<boolean | null>(null);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
+    const [showAttendanceConfirmModal, setShowAttendanceConfirmModal] = useState(false);
+    const [isConfirmingAttendance, setIsConfirmingAttendance] = useState(false);
+    const [attendanceConfirmError, setAttendanceConfirmError] = useState<string | null>(null);
     const [isEditingHosts, setIsEditingHosts] = useState(false);
     const [eventHosts, setEventHosts] = useState(() =>
         (event.hostNames ?? []).map((name, index) => ({
@@ -127,13 +131,102 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
     useEffect(() => {
-        if (authLoading || !showReviewModal) return;
-        if (session) {
-            setIsReviewModalOpen(true);
-        } else {
-            setShowAuthModal(true);
+        let isMounted = true;
+
+        if (authLoading || !session) {
+            setIsSavedEvent(null);
+            return () => {
+                isMounted = false;
+            };
         }
-    }, [authLoading, showReviewModal, session]);
+
+        fetch(`/api/users/saved-events/${event.id}`)
+            .then((response) => response.json())
+            .then((data) => {
+                if (isMounted) {
+                    setIsSavedEvent(Boolean(data?.isSaved));
+                }
+            })
+            .catch(() => {
+                if (isMounted) {
+                    setIsSavedEvent(false);
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [authLoading, event.id, session]);
+
+    const openReviewFlow = async () => {
+        if (!session) {
+            setShowAuthModal(true);
+            return;
+        }
+
+        if (!isPastEvent) {
+            setIsReviewModalOpen(true);
+            return;
+        }
+
+        let savedState = isSavedEvent;
+        if (savedState === null) {
+            try {
+                const response = await fetch(`/api/users/saved-events/${event.id}`);
+                const data = await response.json().catch(() => null);
+                savedState = Boolean(data?.isSaved);
+                setIsSavedEvent(savedState);
+            } catch {
+                savedState = false;
+                setIsSavedEvent(false);
+            }
+        }
+
+        if (savedState) {
+            setIsReviewModalOpen(true);
+            return;
+        }
+
+        setAttendanceConfirmError(null);
+        setShowAttendanceConfirmModal(true);
+    };
+
+    useEffect(() => {
+        if (authLoading || !showReviewModal) return;
+        void openReviewFlow();
+    }, [authLoading, showReviewModal, session, isSavedEvent, isPastEvent]);
+
+    const handleConfirmPastAttendance = async () => {
+        if (!session) {
+            setShowAttendanceConfirmModal(false);
+            setShowAuthModal(true);
+            return;
+        }
+
+        try {
+            setIsConfirmingAttendance(true);
+            setAttendanceConfirmError(null);
+
+            const response = await fetch(`/api/users/saved-events/${event.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ saveToggle: true }),
+            });
+
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
+            }
+
+            setIsSavedEvent(true);
+            setShowAttendanceConfirmModal(false);
+            setIsReviewModalOpen(true);
+        } catch (error) {
+            setAttendanceConfirmError(error instanceof Error ? error.message : 'Failed to save RSVP before review.');
+        } finally {
+            setIsConfirmingAttendance(false);
+        }
+    };
 
     const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
     const canEditHosts = !authLoading && Boolean(session);
@@ -890,11 +983,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             </div>
                             <button
                                 onClick={() => {
-                                    if (!session) {
-                                        setShowAuthModal(true);
-                                        return;
-                                    }
-                                    setIsReviewModalOpen(true);
+                                    void openReviewFlow();
                                 }}
                                 className="w-full mt-4 px-4 py-2 border rounded-lg hover-bg-accent-soft font-semibold text-text"
                             >
@@ -926,6 +1015,53 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 onClose={() => setShowAuthModal(false)}
                                 message={`Please log in or sign up to submit a review for ${event.title}.`}
                             />
+                            {showAttendanceConfirmModal && (
+                                <div
+                                    className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4 py-6"
+                                    onClick={() => setShowAttendanceConfirmModal(false)}
+                                >
+                                    <div
+                                        className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-2xl border border-default bg-surface p-6 shadow-2xl"
+                                        onClick={(modalEvent) => modalEvent.stopPropagation()}
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-label="Confirm attendance before writing review"
+                                    >
+                                        <h3 className="text-xl font-semibold text-text">Did you attend this event?</h3>
+                                        <p className="mt-3 text-sm text-muted">
+                                            This event has ended and you did not RSVP yet. If you attended, confirm now and we will RSVP this event for you before opening the review form.
+                                        </p>
+                                        <p className="mt-2 text-sm text-muted">
+                                            Next time, RSVP before the event ends so your review flow is faster.
+                                        </p>
+
+                                        {attendanceConfirmError && (
+                                            <p className="mt-3 text-sm text-red-500">{attendanceConfirmError}</p>
+                                        )}
+
+                                        <div className="mt-6 flex flex-wrap justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAttendanceConfirmModal(false)}
+                                                className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-text hover-bg-accent-soft"
+                                                disabled={isConfirmingAttendance}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    void handleConfirmPastAttendance();
+                                                }}
+                                                className="btn-highlighted rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                                                disabled={isConfirmingAttendance}
+                                            >
+                                                {isConfirmingAttendance ? 'Confirming...' : 'Yes, I attended'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <ShareModal
                                 isOpen={showShareModal}
                                 onClose={() => setShowShareModal(false)}

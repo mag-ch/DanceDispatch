@@ -52,7 +52,9 @@ function splitDbDateTime(value: unknown): { date: string; time: string } {
     return { date: '', time: '' };
   }
 
-  const raw = String(value).replace('T', ' ');
+  const rawValue = String(value).trim();
+
+  const raw = rawValue.replace('T', ' ');
   const [datePart = '', timeWithZone = ''] = raw.split(' ');
   const timeNoMs = timeWithZone.split('.')[0] ?? '';
   const timePart = timeNoMs.split('+')[0]?.split('-')[0]?.replace('Z', '') ?? '';
@@ -955,394 +957,6 @@ function getSharedItemHref(entityType: string, entityId: string): string {
   return '/search';
 }
 
-export async function getUserNotifications(userId: string, limit = 30): Promise<UserNotification[]> {
-  const supabase = await createServerClient();
-
-  const [followedUsersRes, followedHostsRes, followedVenuesRes, newFollowers, allEvents, allHosts, allVenues, allUsers, userProfileRes] = await Promise.all([
-    supabase
-      .from('UserFollowUsers')
-      .select('followed_id')
-      .eq('user_id', userId),
-    supabase.from('UserFollowedHosts').select('host_id').eq('user_id', userId),
-    supabase.from('UserFollowedVenues').select('venue_id').eq('user_id', userId),
-    supabase.from('UserFollowUsers').select('user_id, created_at').eq('followed_id', userId),
-    getCachedEvents(false),
-    getCachedHosts(),
-    getCachedVenues(),
-    getUsers(),
-    supabase.from('profiles').select('created_at').eq('id', userId).single(),
-  ]);
-
-  if (followedUsersRes.error) {
-    throw followedUsersRes.error;
-  }
-  if (followedHostsRes.error) {
-    throw followedHostsRes.error;
-  }
-  if (followedVenuesRes.error) {
-    throw followedVenuesRes.error;
-  }
-  if (newFollowers.error) {
-    throw newFollowers.error;
-  }
-
-  const followedUserIds = (followedUsersRes.data ?? [])
-    .map((row: any) => String(row.followed_id))
-    .filter((id) => id && id !== userId);
-  const followedHostIds = (followedHostsRes.data ?? [])
-    .map((row: any) => Number(row.host_id))
-    .filter((id) => !Number.isNaN(id));
-  const followedVenueIds = (followedVenuesRes.data ?? [])
-    .map((row: any) => Number(row.venue_id))
-    .filter((id) => !Number.isNaN(id));
-
-  const notifications: UserNotification[] = [];
-  const now = new Date();
-  const eventById = new Map(allEvents.map((event) => [String(event.id), event]));
-  const hostById = new Map(allHosts.map((host) => [Number(host.id), host]));
-  const venueById = new Map(allVenues.map((venue) => [Number(venue.id), venue]));
-  const usernameById = new Map(allUsers.map((user) => [String(user.id), user.username]));
-
-  if (followedUserIds.length > 0) {
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id,username')
-      .in('id', followedUserIds);
-
-    if (!profilesError) {
-      for (const profile of profilesData ?? []) {
-        const username = String((profile as any).username ?? '').trim();
-        const id = String((profile as any).id ?? '').trim();
-        if (!id) continue;
-        usernameById.set(id, username || 'A user you follow');
-      }
-    }
-  }
-  const { data: sharedItemsData, error: sharedItemsError } = await supabase
-    .from('SharedItems')
-    .select('id,sender_id,recipient_id,entity_type,entity_id,message,created_at')
-    .eq('recipient_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(75);
-
-
-  if (sharedItemsError) {
-    console.warn('Skipping shared item notifications:', sharedItemsError.message);
-  } else if ((sharedItemsData ?? []).length > 0) {
-    const profileIds = Array.from(
-      new Set(
-        (sharedItemsData ?? [])
-          .flatMap((row: any) => {
-            const ids: string[] = [];
-            const senderId = String((row as any).sender_id ?? '').trim();
-            const entityType = normalizeNotificationEntityType((row as any).entity_type);
-            const entityId = String((row as any).entity_id ?? '').trim();
-
-            if (senderId) ids.push(senderId);
-            if (entityType === 'user' && entityId) ids.push(entityId);
-            return ids;
-          })
-          .filter(Boolean)
-      )
-    );
-
-    if (profileIds.length > 0) {
-      const { data: sharedProfilesData, error: sharedProfilesError } = await supabase
-        .from('profiles')
-        .select('id,username,full_name')
-        .in('id', profileIds);
-
-      if (!sharedProfilesError) {
-        for (const profile of sharedProfilesData ?? []) {
-          const id = String((profile as any).id ?? '').trim();
-          if (!id) continue;
-          const username = String((profile as any).username ?? (profile as any).full_name ?? '').trim();
-          usernameById.set(id, username || 'Someone');
-        }
-      }
-    }
-
-    for (const row of sharedItemsData ?? []) {
-      const id = String((row as any).id ?? '').trim();
-      const senderId = String((row as any).sender_id ?? '').trim();
-      const entityId = String((row as any).entity_id ?? '').trim();
-      const entityType = normalizeNotificationEntityType((row as any).entity_type);
-      const message = String((row as any).message ?? '').trim();
-      const createdAt = String((row as any).created_at ?? '').trim();
-      const senderName = usernameById.get(senderId) ?? 'Someone';
-      let href = getSharedItemHref(entityType, entityId);
-
-      let description = message;
-      if (!description && entityType === 'event') {
-        const event = eventById.get(entityId);
-        if (event) {
-          const start = new Date(`${event.startdate} ${event.starttime}`);
-          description = start < now
-            ? `${event.title} is over. Click the link to leave a review.`
-            : `${event.title} is coming up. Open the event page to RSVP.`;
-          href = `/events/${event.id}${start < now ? '?showReviewModal=true' : ''}`;
-        }
-      }
-
-      if (!description && entityType === 'host') {
-        description = hostById.get(Number(entityId))?.name ?? 'Open the DJ page to see details.';
-      }
-
-      if (!description && entityType === 'venue') {
-        description = venueById.get(Number(entityId))?.name ?? 'Open the venue page to see details.';
-      }
-
-      if (!description && entityType === 'user') {
-        description = `${usernameById.get(entityId) ?? 'A profile'} was shared with you.`;
-      }
-
-      if (!description) {
-        description = 'Open to see what was shared with you.';
-      }
-
-      notifications.push({
-        id: id || `shared-${senderId}-${entityType}-${entityId}-${createdAt}`,
-        type: 'shared_item',
-        title: `${senderName} shared ${entityType === 'event' ? 'an event' : entityType === 'host' ? 'a DJ' : entityType === 'venue' ? 'a venue' : entityType === 'user' ? 'a profile' : 'something'} with you`,
-        description,
-        createdAt: createdAt || new Date().toISOString(),
-        href,
-      });
-    }
-  }
-
-  // 1) A user you follow RSVPs to a new event
-  if (followedUserIds.length > 0) {
-    const { data: savedEventsData, error: savedEventsError } = await supabase
-      .from('SavedEvents')
-      .select('user_id,event_id,created_at')
-      .in('user_id', followedUserIds)
-      .order('created_at', { ascending: false })
-      .limit(75);
-
-    if (!savedEventsError) {
-      for (const row of savedEventsData ?? []) {
-        const eventId = String((row as any).event_id ?? '');
-        const followedUserId = String((row as any).user_id ?? '');
-        const createdAt = String((row as any).created_at ?? '');
-        const event = eventById.get(eventId);
-        if (!event) continue;
-
-        const eventStart = new Date(`${event.startdate} ${event.starttime}`);
-        if (eventStart < now) continue;
-
-        const username = usernameById.get(followedUserId) ?? 'A user you follow';
-        notifications.push({
-          id: `rsvp-${followedUserId}-${eventId}-${createdAt}`,
-          type: 'followed_user_rsvp',
-          title: `${username} RSVP'd to a new event`,
-          description: `${event.title}`,
-          createdAt: createdAt || eventStartIso(event),
-          href: `/events/${event.id}`,
-        });
-      }
-    }
-  }
-
-  // 2) A user you follow comments on something
-  if (followedUserIds.length > 0) {
-    const { data: reviewsData, error: reviewsError } = await supabase
-      .from('Reviews')
-      .select('user_id,event_id,entity_type,comment,created_at')
-      .in('user_id', followedUserIds)
-      .order('created_at', { ascending: false })
-      .limit(75);
-
-    if (!reviewsError) {
-      for (const row of reviewsData ?? []) {
-        const comment = String((row as any).comment ?? '').trim();
-        if (!comment) continue;
-
-        const followedUserId = String((row as any).user_id ?? '');
-        const eventId = String((row as any).event_id ?? '');
-        const entityType = String((row as any).entity_type ?? 'event');
-        const createdAt = String((row as any).created_at ?? '');
-        const username = usernameById.get(followedUserId) ?? 'A user you follow';
-        const event = eventById.get(eventId);
-
-        const subject =
-          entityType === 'host'
-            ? 'a DJ'
-            : entityType === 'venue'
-              ? 'a venue'
-              : event?.title ?? 'an event';
-
-        notifications.push({
-          id: `comment-${followedUserId}-${eventId}-${createdAt}`,
-          type: 'followed_user_comment',
-          title: `${username} commented on ${subject}`,
-          description: comment.length > 120 ? `${comment.slice(0, 120)}...` : comment,
-          createdAt:
-            createdAt ||
-            (event
-              ? eventStartIso(event)
-              : allEvents[0]
-                ? eventStartIso(allEvents[0])
-                : new Date().toISOString()),
-          href: event ? `/events/${event.id}` : '/search',
-        });
-      }
-    }
-  }
-
-  // 3) A DJ you follow is listed on a new event
-  if (followedHostIds.length > 0) {
-    const { data: eventHostsData, error: eventHostsError } = await supabase
-      .from('event_hosts')
-      .select('host_id,event_id,Events(created_at)')
-      .in('host_id', followedHostIds)
-      .limit(200);
-
-    if (!eventHostsError) {
-      const dedupe = new Set<string>();
-
-      for (const row of eventHostsData ?? []) {
-        const hostId = Number((row as any).host_id);
-        const eventId = String((row as any).event_id ?? '');
-        if (Number.isNaN(hostId) || !eventId) continue;
-
-        const dedupeKey = `${hostId}-${eventId}`;
-        if (dedupe.has(dedupeKey)) continue;
-        dedupe.add(dedupeKey);
-
-        const event = eventById.get(eventId);
-        if (!event) continue;
-
-        const eventStart = new Date(`${event.startdate} ${event.starttime}`);
-        if (eventStart < now) continue;
-
-        const hostName = hostById.get(hostId)?.name ?? 'A DJ you follow';
-
-        const eventCreatedAt = (row.Events as { created_at?: string } | null)?.created_at;
-        notifications.push({
-          id: `dj-${hostId}-${eventId}`,
-          type: 'followed_dj_new_event',
-          title: `${hostName} is listed on a new event: ${event.title}`,
-          description: event.title,
-          createdAt: eventCreatedAt ?? eventStartIso(event),
-          href: `/events/${event.id}`,
-        });
-      }
-    }
-  }
-  // 4) A venue you follow is listed on a new event
-  if (followedVenueIds.length > 0) {
-    const { data: eventVenuesData, error: eventVenuesError } = await supabase
-      .from('Events')
-      .select('id, location, created_at')
-      .in('location', followedVenueIds)
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    if (!eventVenuesError) {
-      const dedupe = new Set<string>();
-
-
-      for (const row of eventVenuesData ?? []) {
-        const venueId = Number((row as any).location);
-        const eventId = String((row as any).id ?? '');
-        if (Number.isNaN(venueId) || !eventId) continue;
-
-
-
-        const dedupeKey = `${venueId}-${eventId}`;
-        if (dedupe.has(dedupeKey)) continue;
-        dedupe.add(dedupeKey);
-
-        const event = eventById.get(eventId);
-        if (!event) continue;
-
-        const eventStart = new Date(`${event.startdate} ${event.starttime}`);
-        if (eventStart < now) continue;
-
-        const venueName = venueById.get(venueId)?.name ?? 'A venue you follow';
-
-        notifications.push({
-          id: `venue-${venueId}-${eventId}`,
-          type: 'followed_venue_new_event',
-          title: `${venueName} is listed on a new event: ${event.title}`,
-          description: event.title,
-          createdAt: row.created_at ?? eventStartIso(event),
-          href: `/events/${event.id}`,
-        });
-      }
-    }
-  }
-
-  //5) pull recent patch notes
-  const { data: patchNotesData, error: patchNotesError } = await supabase
-    .from('patch_notes')
-    .select('id, description, created_at')
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  if (!patchNotesError) {
-      console.log('Processing patch notes notifications:', { count: patchNotesData?.length ?? 0 });
-
-    for (const row of patchNotesData ?? []) {
-
-      const dedupe = new Set<string>();
-
-      const patchId = String((row as any).id ?? '');
-      const href = String((row as any).href ?? `/notifications?patchNotes=${patchId}`);
-      if (Number.isNaN(patchId)) continue;
-
-
-
-      const dedupeKey = `${patchId}`;
-      if (dedupe.has(dedupeKey)) continue;
-      dedupe.add(dedupeKey);
-
-      notifications.push({
-        id: `patch-${patchId}`,
-        type: 'patch_notes',
-        title: `Patch notes #${patchId}`,
-        description: row.description,
-        createdAt: row.created_at,
-        href: href,
-      });
-    }
-  }
-
-  if (newFollowers.data && newFollowers.data.length > 0) {
-    for (const row of newFollowers.data) {
-      const followerId = String((row as any).user_id ?? '').trim();
-      if (!followerId) continue;
-      const username = usernameById.get(followerId) ?? 'Someone';
-
-      notifications.push({
-        id: `newfollower-${followerId}`,
-        type: 'followed_user_rsvp',
-        title: `${username} started following you`,
-        description: `Check out their profile!`,
-        createdAt: row.created_at || new Date().toISOString(),
-        href: `/users/${followerId}`,
-      });
-    }
-  }
-
-  // 6) New user missions — always present, dated to account creation
-  const userCreatedAt = (userProfileRes.data as any)?.created_at ?? new Date().toISOString();
-  notifications.push({
-    id: `new-user-missions-${userId}`,
-    type: 'new_user_missions',
-    title: 'Welcome! Complete your first missions',
-    description: 'Save an event, follow a DJ, and write a review to earn your Explorer Badge.',
-    createdAt: userCreatedAt,
-    href: `/notifications?newUserMissions=true`,
-  });
-
-  // check the sorting of notifications
-  return notifications
-    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
-    .slice(0, Math.max(1, limit));
-}
-
 export async function userSubmitReview(reviewData: any, userId: string, eventId: string): Promise<string> {
   const supabase = await createServerClient();
   const { data: parent, error: parentErr } = await supabase
@@ -1379,15 +993,62 @@ export async function userSubmitReview(reviewData: any, userId: string, eventId:
 
   return 'success';
 }
-export async function updateEvent(eventId: string, updatedFields: Partial<Event> & { location?: string; newVenueName?: string; newVenueAddress?: string }): Promise<string | null> {
+
+export async function updateEvent(
+  eventId: string,
+  updatedFields: Partial<Event> & {
+    start?: string;
+    end?: string;
+    location?: string;
+    newVenueName?: string;
+    newVenueAddress?: string;
+  }
+): Promise<string | null> {
   const patch: any = {};
   const supabase = await createServerClient();
+  const normalizeTime = (value: string) => (value.length === 5 ? `${value}:00` : value);
+
+  const normalizeDateTimeInput = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+
+    if (!trimmed.includes('T')) {
+      return trimmed;
+    }
+
+    const [datePart = '', rawTimePart = ''] = trimmed.split('T');
+    const timeNoMs = rawTimePart.split('.')[0] ?? '';
+    const timePart = timeNoMs.split('+')[0]?.split('-')[0]?.replace('Z', '') ?? '';
+    if (!datePart || !timePart) {
+      return trimmed;
+    }
+
+    return `${datePart}T${normalizeTime(timePart)}`;
+  };
+
+  if (updatedFields.start && typeof updatedFields.start === 'string') {
+    const normalizedStart = normalizeDateTimeInput(updatedFields.start);
+    if (normalizedStart) {
+      patch.start = normalizedStart;
+    }
+  }
+
+  if (updatedFields.end && typeof updatedFields.end === 'string') {
+    const normalizedEnd = normalizeDateTimeInput(updatedFields.end);
+    if (normalizedEnd) {
+      patch.end = normalizedEnd;
+    }
+  }
+
+  if (!patch.start && updatedFields.startdate && updatedFields.starttime) {
+    patch.start = `${updatedFields.startdate}T${normalizeTime(updatedFields.starttime)}`;
+  }
+
+  if (!patch.end && updatedFields.enddate && updatedFields.endtime) {
+    patch.end = `${updatedFields.enddate}T${normalizeTime(updatedFields.endtime)}`;
+  }
 
   if (updatedFields.title !== undefined) patch.title = updatedFields.title;
-  if (updatedFields.startdate !== undefined) patch.start_date = updatedFields.startdate;
-  if (updatedFields.starttime !== undefined) patch.start_time = updatedFields.starttime;
-  if (updatedFields.enddate !== undefined) patch.end_date = updatedFields.enddate;
-  if (updatedFields.endtime !== undefined) patch.end_time = updatedFields.endtime;
   if (updatedFields.locationid !== undefined) patch.location = Number(updatedFields.locationid);
   else if (updatedFields.location !== undefined) {
     const trimmedLocation = updatedFields.location.trim();
@@ -1443,7 +1104,7 @@ export async function updateEvent(eventId: string, updatedFields: Partial<Event>
     return null;
   }
 
-  console.log(`Event ${patch.flyer_url} updated successfully. Invalidating cache.`);
+  console.log(`Event ${eventId} updated successfully. Invalidating cache.`);
   revalidateCatalogCache();
   return eventId;
 }

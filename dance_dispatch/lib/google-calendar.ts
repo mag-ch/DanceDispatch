@@ -317,14 +317,47 @@ export function normalizeGoogleCalendarDateTime(input?: string): string | null {
     return null;
   }
 
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString();
+  const dateOnlyMatch = /^(\d{4}-\d{2}-\d{2})$/.exec(trimmed);
+  if (dateOnlyMatch) {
+    return `${dateOnlyMatch[1]}T00:00:00`;
   }
 
-  const fallback = new Date(`${trimmed}T00:00:00Z`);
+  const naiveDateTimeMatch = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?/.exec(trimmed);
+  const hasTimezoneSuffix = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed);
+  if (naiveDateTimeMatch && !hasTimezoneSuffix) {
+    const datePart = naiveDateTimeMatch[1];
+    const hhmm = naiveDateTimeMatch[2];
+    const seconds = naiveDateTimeMatch[3] ?? '00';
+    return `${datePart}T${hhmm}:${seconds}`;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(parsed);
+
+    const byType = new Map(parts.map((part) => [part.type, part.value]));
+    const datePart = `${byType.get('year') ?? ''}-${byType.get('month') ?? ''}-${byType.get('day') ?? ''}`;
+    const timePart = `${byType.get('hour') ?? ''}:${byType.get('minute') ?? ''}:${byType.get('second') ?? ''}`;
+    if (datePart !== '--' && timePart !== '::') {
+      return `${datePart}T${timePart}`;
+    }
+  }
+
+  const fallback = new Date(`${trimmed}T00:00:00`);
   if (!Number.isNaN(fallback.getTime())) {
-    return fallback.toISOString();
+    const year = fallback.getFullYear();
+    const month = String(fallback.getMonth() + 1).padStart(2, '0');
+    const day = String(fallback.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}T00:00:00`;
   }
 
   return null;

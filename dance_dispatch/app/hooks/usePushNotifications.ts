@@ -19,6 +19,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 type PushState = {
   isSupported: boolean;
   isSubscribed: boolean;
+  hasCheckedSubscription: boolean;
   permission: NotificationPermission | 'unsupported';
   isLoading: boolean;
   error: string | null;
@@ -29,6 +30,7 @@ export function usePushNotifications() {
   const [state, setState] = useState<PushState>({
     isSupported: false,
     isSubscribed: false,
+    hasCheckedSubscription: false,
     permission: 'unsupported',
     isLoading: false,
     error: null,
@@ -48,6 +50,7 @@ export function usePushNotifications() {
         ...current,
         isSupported,
         isSubscribed: false,
+        hasCheckedSubscription: true,
         permission: isSupported ? Notification.permission : 'unsupported',
         isLoading: false,
         error: null,
@@ -63,6 +66,7 @@ export function usePushNotifications() {
         ...current,
         isSupported: true,
         isSubscribed: Boolean(subscription),
+        hasCheckedSubscription: true,
         permission: Notification.permission,
         error: null,
       }));
@@ -79,6 +83,7 @@ export function usePushNotifications() {
         ...current,
         isSupported: true,
         isSubscribed: false,
+        hasCheckedSubscription: true,
         permission: Notification.permission,
         error: error instanceof Error ? error.message : 'Failed to load push notification state.',
       }));

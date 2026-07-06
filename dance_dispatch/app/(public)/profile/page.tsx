@@ -10,6 +10,7 @@ import ExplorerBadgeModal from './ExplorerBadgeModal';
 import { DisplayEventReview } from '@/app/components/EventReview';
 import ExpandableList from '@/app/components/ExpandableList';
 import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
+import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
 
 
 
@@ -173,6 +174,7 @@ export default async function ProfilePage() {
                         <p className="text-sm text-text">Member Since</p>
                         <p className="text-xl font-semibold text-text">{new Date(user.created_at).toLocaleDateString()}</p>
                     </div>
+                    <NotificationSubscriptionToggle />
                 </section>
             </div>
 

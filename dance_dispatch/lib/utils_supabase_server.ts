@@ -324,7 +324,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     bio: row.bio ?? '',
     photoUrl: row.image_url ?? '',
     tags: normalizeStringList(row.tags),
-    genre: normalizeStringList(row.genre),
+    genres: normalizeStringList(row.genres),
   }));
 
   return { events, hosts, venues };

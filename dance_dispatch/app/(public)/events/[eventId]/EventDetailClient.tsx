@@ -11,6 +11,7 @@ import { RelatedEventCard } from '@/app/components/EventCard';
 import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { openInMaps } from '@/lib/utils_supabase';
+import { canEditDetails } from '@/lib/supabase/client';
 
 interface EventDetailClientProps {
     event: Event;
@@ -22,12 +23,6 @@ interface EventDetailClientProps {
     venuePreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
 }
 
-const APPROVED_USER_IDS = [
-    'ba398812-06a0-4c48-9f15-0660d3af0047',
-    'f2694e1c-5457-45b0-b299-c3a03a77d8c5'
-];
-
-const canEditEventDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map() }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
@@ -778,7 +773,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 >
                                     {event.price != undefined ? (event.price == 0 ? 'Free RSVP' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
-                                {canEditEventDetails(session?.user?.id) && (
+                                {canEditDetails(session?.user?.id) && (
                                     <button
                                         type="button"
                                         className="px-4 py-2 rounded-lg font-semibold text-text border border-default hover:bg-accent transition"

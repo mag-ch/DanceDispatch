@@ -34,7 +34,7 @@ export interface Host {
     bio: string;
     photoUrl: string;
     tags: string[];
-    genre: string[];
+    genres: string[];
     externalLinks?: HostExternalLink[];
     // Add other fields as needed based on your CSV structure
 }
@@ -53,37 +53,6 @@ function inferPlatformFromUrl(url: string): string {
     if (normalized.includes('instagram.com')) return 'instagram';
     if (normalized.includes('mixcloud.com')) return 'mixcloud';
     return 'website';
-}
-
-function parseExternalLinks(value: unknown): HostExternalLink[] {
-    if (Array.isArray(value)) {
-        return value
-            .map((entry) => String(entry).trim())
-            .filter(Boolean)
-            .map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
-    }
-
-    const raw = String(value ?? '').trim();
-    if (!raw) {
-        return [];
-    }
-
-    if (raw.startsWith('[') && raw.endsWith(']')) {
-        const matches = Array.from(raw.matchAll(/'([^']+)'|"([^"]+)"/g))
-            .map((match) => (match[1] ?? match[2] ?? '').trim())
-            .filter(Boolean);
-
-        if (matches.length > 0) {
-            return matches.map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
-        }
-    }
-
-    const separator = raw.includes('|') ? '|' : ',';
-    return raw
-        .split(separator)
-        .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ''))
-        .filter(Boolean)
-        .map((url) => ({ url, platform: inferPlatformFromUrl(url) }));
 }
 
 export async function getBoroughFromAddress(address: string): Promise<string> {

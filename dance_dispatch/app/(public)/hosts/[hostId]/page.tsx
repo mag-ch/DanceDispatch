@@ -9,6 +9,7 @@ import { Host } from '@/lib/utils';
 import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
+import { canEditDetails } from '@/lib/supabase/client';
 
 
 export default function HostPage({ params }: { params: Promise<{ hostId: string }> }) {
@@ -36,13 +37,14 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [mediaEmbedCode, setMediaEmbedCode] = useState('');
     const [mediaSaving, setMediaSaving] = useState(false);
     const [mediaError, setMediaError] = useState<string | null>(null);
+    const [deletingMediaId, setDeletingMediaId] = useState<number | null>(null);
 
     const startEditing = () => {
         if (!h) return;
         setEditName(h.name);
         setEditBio(h.bio ?? '');
         setEditTags(Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : ''));
-        setEditGenre(Array.isArray(h.genre) ? h.genre.join(', ') : '');
+        setEditGenre(Array.isArray(h.genres) ? h.genres.join(', ') : '');
         setSaveError(null);
         setEditing(true);
     };
@@ -58,18 +60,18 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         setSaveError(null);
         try {
             const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
-            const genre = editGenre.split(',').map((g) => g.trim()).filter(Boolean);
+            const genres = editGenre.split(',').map((g) => g.trim()).filter(Boolean);
             const res = await fetch(`/api/hosts/${hostId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editName, bio: editBio, tags, genre }),
+                body: JSON.stringify({ name: editName, bio: editBio, tags, genres }),
             });
             if (!res.ok) {
                 const err = await res.json();
-                setSaveError(err.error ?? 'Failed to save');
+                setSaveError(err.error ?? 'Failed to save' + err.error.message);
                 return;
             }
-            setHost({ ...h, name: editName, bio: editBio, tags, genre });
+            setHost({ ...h, name: editName, bio: editBio, tags: tags, genres: genres });
             setEditing(false);
         } catch {
             setSaveError('Failed to save');
@@ -151,6 +153,31 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             setMediaError(error instanceof Error ? error.message : 'Failed to add media');
         } finally {
             setMediaSaving(false);
+        }
+    };
+
+    const deleteHostMedia = async (mediaId: number) => {
+        if (!canEditDetails(session?.user?.id)) {
+            return;
+        }
+
+        setDeletingMediaId(mediaId);
+        setMediaError(null);
+        try {
+            const response = await fetch(`/api/host-media/${hostId}?mediaId=${mediaId}`, {
+                method: 'DELETE',
+            });
+
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(payload?.error ?? 'Failed to delete media');
+            }
+
+            setHostMedia((current) => current.filter((media) => Number(media.id) !== mediaId));
+        } catch (error) {
+            setMediaError(error instanceof Error ? error.message : 'Failed to delete media');
+        } finally {
+            setDeletingMediaId(null);
         }
     };
 
@@ -272,6 +299,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                                 value={editTags}
                                                 onChange={(e) => setEditTags(e.target.value)}
                                             />
+
+                                            <input
+                                            className="text-4xl text-text font-bold bg-bg border border-default rounded p-2 w-full"
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                        />
+                                        
                                             <label className="text-sm text-muted mt-1">Genres (comma-separated)</label>
                                             <input
                                                 className="bg-bg text-text border border-default rounded p-2 w-full"
@@ -280,27 +314,24 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                             />
                                         </div>
                                     ) : (
-                                        <div className="flex flex-wrap gap-2">
+                                        <div className="flex flex-col gap-2 w-full">
                                             {h.tags?.map((tag) => (
                                                 <span key={tag} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
                                                     {tag.trim().replace(/[\[\]']/g, '')}
                                                 </span>
                                             ))}
+                                            <h1 className="text-4xl text-text font-bold">{h.name}</h1>
+                                             {h.genres?.map((g) => (
+                                                <span key={g} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
+                                                    {g.trim().replace(/[\[\]']/g, '')}
+                                                </span>
+                                            ))}
                                         </div>
-                                    )}
-                                    {editing ? (
-                                        <input
-                                            className="text-4xl text-text font-bold bg-bg border border-default rounded p-2 w-full"
-                                            value={editName}
-                                            onChange={(e) => setEditName(e.target.value)}
-                                        />
-                                    ) : (
-                                        <h1 className="text-4xl text-text font-bold">{h.name}</h1>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <FollowEntityButton entity="hosts" entityId={h.id} />
-                                    {isAuthenticated && !editing && (
+                                    {canEditDetails(session?.user?.id) && (
                                         <button onClick={startEditing} className="p-2 rounded border border-default hover:border-accent transition" title="Edit">
                                             <Pencil className="w-4 h-4" />
                                         </button>
@@ -333,6 +364,47 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 ) : (
                                     <p className="text-muted">{h.bio}</p>
                                 )}
+                            
+                            </section>
+                        )}
+
+                        
+                        {(hostComments.length > 0 || ratingCount > 0) && (
+                            <section className="bg-surface rounded-lg p-6 mb-6">
+                                <h2 className="font-semibold text-text text-lg mb-4">Reviews & Comments</h2>
+                                <div className="mb-5 rounded-lg border border-default p-4">
+                                    <p className="text-sm text-muted mb-2">Aggregate Rating</p>
+                                    {ratingCount > 0 ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <Star key={star} size={18} className={star <= roundedAverageStars ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                                                ))}
+                                            </div>
+                                            <p className="text-sm text-text">
+                                                {averageRatingDisplay} out of 5 ({ratingCount} rating{ratingCount === 1 ? '' : 's'})
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted">No ratings yet.</p>
+                                    )}
+                                </div>
+                                <div className="space-y-3">
+                                    {hostComments.filter((comment) => Boolean(comment.comment)).length > 0 ? (
+                                        hostComments
+                                            .filter((comment) => Boolean(comment.comment))
+                                            .map((comment, index) => (
+                                                <div key={index} className="rounded-lg border border-default p-4">
+                                                    <h4 className="text-sm font-semibold text-text mb-2">
+                                                        {comment.privacy_level === 'public' ? comment.user_id : 'Anon'}
+                                                    </h4>
+                                                    <p className="text-sm text-text">{comment.comment}</p>
+                                                </div>
+                                            ))
+                                    ) : (
+                                        <p className="text-sm text-muted">No written comments yet.</p>
+                                    )}
+                                </div>
                             </section>
                         )}
 
@@ -398,7 +470,21 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 <div className="space-y-4">
                                     {hostMedia.map((media, index) => (
                                         <div key={media.id ?? `${media.type}-${index}`} className="rounded-lg border border-default p-4 space-y-3">
-                                            <h3 className="text-base font-semibold capitalize">{media.type || 'Link'}</h3>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <h3 className="text-base font-semibold capitalize">{media.type || 'Link'}</h3>
+                                                {editing && Number.isFinite(Number(media.id)) && (
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg border border-red-500 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-60"
+                                                        onClick={() => {
+                                                            void deleteHostMedia(Number(media.id));
+                                                        }}
+                                                        disabled={deletingMediaId === Number(media.id)}
+                                                    >
+                                                        {deletingMediaId === Number(media.id) ? 'Deleting...' : 'Delete'}
+                                                    </button>
+                                                )}
+                                            </div>
                                             {media.link && (
                                                 <a
                                                     href={media.link}
@@ -441,44 +527,6 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             </section>
                         </div>
 
-                        {(hostComments.length > 0 || ratingCount > 0) && (
-                            <section className="bg-surface rounded-lg p-6 mb-6">
-                                <h2 className="font-semibold text-text text-lg mb-4">Reviews & Comments</h2>
-                                <div className="mb-5 rounded-lg border border-default p-4">
-                                    <p className="text-sm text-muted mb-2">Aggregate Rating</p>
-                                    {ratingCount > 0 ? (
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <Star key={star} size={18} className={star <= roundedAverageStars ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-                                                ))}
-                                            </div>
-                                            <p className="text-sm text-text">
-                                                {averageRatingDisplay} out of 5 ({ratingCount} rating{ratingCount === 1 ? '' : 's'})
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-muted">No ratings yet.</p>
-                                    )}
-                                </div>
-                                <div className="space-y-3">
-                                    {hostComments.filter((comment) => Boolean(comment.comment)).length > 0 ? (
-                                        hostComments
-                                            .filter((comment) => Boolean(comment.comment))
-                                            .map((comment, index) => (
-                                                <div key={index} className="rounded-lg border border-default p-4">
-                                                    <h4 className="text-sm font-semibold text-text mb-2">
-                                                        {comment.privacy_level === 'public' ? comment.user_id : 'Anon'}
-                                                    </h4>
-                                                    <p className="text-sm text-text">{comment.comment}</p>
-                                                </div>
-                                            ))
-                                    ) : (
-                                        <p className="text-sm text-muted">No written comments yet.</p>
-                                    )}
-                                </div>
-                            </section>
-                        )}
                     </div>
 
                     <div>

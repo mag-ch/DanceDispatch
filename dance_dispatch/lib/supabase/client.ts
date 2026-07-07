@@ -40,3 +40,10 @@ export const supabase = new Proxy({} as BrowserSupabaseClient, {
 export const createClient = () => {
     return getBrowserClient();
 };
+
+export const APPROVED_USER_IDS = [
+    'ba398812-06a0-4c48-9f15-0660d3af0047',
+    'f2694e1c-5457-45b0-b299-c3a03a77d8c5'
+];
+
+export const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));

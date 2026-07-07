@@ -3,6 +3,13 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { NextResponse } from 'next/server';
 
+const APPROVED_USER_IDS = [
+    'ba398812-06a0-4c48-9f15-0660d3af0047',
+    'f2694e1c-5457-45b0-b299-c3a03a77d8c5',
+];
+
+const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ hostId: string }> }
@@ -74,6 +81,50 @@ export async function POST(
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to create host media';
         const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
+        return NextResponse.json({ error: message }, { status });
+    }
+}
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ hostId: string }> }
+) {
+    try {
+        const user = await requireAuth();
+        if (!canEditDetails(user.id)) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        const { hostId } = await params;
+        const parsedHostId = Number(hostId);
+        if (Number.isNaN(parsedHostId)) {
+            return NextResponse.json({ error: 'Invalid host id' }, { status: 400 });
+        }
+
+        const url = new URL(request.url);
+        const mediaIdRaw = url.searchParams.get('mediaId') ?? '';
+        const mediaId = Number(mediaIdRaw);
+        if (!mediaIdRaw || Number.isNaN(mediaId)) {
+            return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
+        }
+
+        const supabase = await createClient();
+        const { error } = await supabase
+            .from('host_media')
+            .delete()
+            .eq('id', mediaId)
+            .eq('host_id', parsedHostId);
+
+        if (error) {
+            console.error('Error deleting host media:', error);
+            return NextResponse.json({ error: 'Failed to delete host media' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true }, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete host media';
+        const lowered = message.toLowerCase();
+        const status = lowered.includes('unauthorized') ? 401 : 500;
         return NextResponse.json({ error: message }, { status });
     }
 }

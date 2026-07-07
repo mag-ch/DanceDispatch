@@ -2,13 +2,7 @@ import { getHostMedia } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { NextResponse } from 'next/server';
-
-const APPROVED_USER_IDS = [
-    'ba398812-06a0-4c48-9f15-0660d3af0047',
-    'f2694e1c-5457-45b0-b299-c3a03a77d8c5',
-];
-
-const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
+import { canEditDetails } from '@/lib/supabase/client';
 
 export async function GET(
     request: Request,

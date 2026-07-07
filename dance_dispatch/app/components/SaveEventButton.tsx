@@ -12,12 +12,53 @@ interface SaveEventButtonProps {
     isDisabled?: boolean;
 }
 
+interface ActionToastProps {
+    message: string;
+}
+
+const ActionToast: React.FC<ActionToastProps> = ({ message }) => (
+    <div
+        role="status"
+        aria-live="polite"
+        className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg sm:bottom-5 sm:left-4 sm:w-auto sm:translate-x-0"
+    >
+        {message}
+    </div>
+);
+
+const getFollowedEntityLabel = (entity: string) => {
+    if (entity === 'users') return 'user';
+    if (entity === 'venues') return 'venue';
+    if (entity === 'hosts') return 'host';
+    return 'entity';
+};
+
 export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
     const [showPopup, setShowPopup] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const isSubmittingRef = useRef(false);
+    const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const showToast = (message: string) => {
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+
+        setToastMessage(message);
+        toastTimerRef.current = setTimeout(() => {
+            setToastMessage(null);
+            toastTimerRef.current = null;
+        }, 2200);
+    };
+
+    useEffect(() => () => {
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -82,12 +123,23 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         isSubmittingRef.current = true;
         const newSavedState = !isSaved;
         try {
-            await fetch(`/api/users/saved-${entity}/${entityId}`, {
+            const response = await fetch(`/api/users/saved-${entity}/${entityId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saveToggle: newSavedState })
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to update saved state');
+            }
+
             setIsSaved(newSavedState);
+            if (newSavedState) {
+                showToast("RSVP'ed to event");
+            }
+            else {
+                showToast('Removed from RSVPs');
+            }
         } catch (error) {
             console.error('Failed to save event:', error);
         } finally {
@@ -114,6 +166,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
                 onClose={() => setShowPopup(false)}
                 message="Please log in or sign up to save events."
             />
+            {toastMessage && <ActionToast message={toastMessage} />}
         </>
     );
 };
@@ -123,7 +176,27 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
     const [showPopup, setShowPopup] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const isSubmittingRef = useRef(false);
+    const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const showToast = (message: string) => {
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+
+        setToastMessage(message);
+        toastTimerRef.current = setTimeout(() => {
+            setToastMessage(null);
+            toastTimerRef.current = null;
+        }, 2200);
+    };
+
+    useEffect(() => () => {
+        if (toastTimerRef.current) {
+            clearTimeout(toastTimerRef.current);
+        }
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -188,12 +261,22 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
         isSubmittingRef.current = true;
         const newSavedState = !isSaved;
         try {
-            await fetch(`/api/users/saved-${entity}/${entityId}`, {
+            const response = await fetch(`/api/users/saved-${entity}/${entityId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saveToggle: newSavedState })
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to update follow state');
+            }
+
             setIsSaved(newSavedState);
+            showToast(
+                newSavedState
+                    ? `Now following this ${getFollowedEntityLabel(entity)}`
+                    : `Unfollowed this ${getFollowedEntityLabel(entity)}`
+            );
         } catch (error) {
             console.error('Failed to follow/unfollow user:', error);
         } finally {
@@ -217,6 +300,7 @@ export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, ent
                 onClose={() => setShowPopup(false)}
                 message="Please log in or sign up to follow users."
             />
+            {toastMessage && <ActionToast message={toastMessage} />}
         </>
     );
 };

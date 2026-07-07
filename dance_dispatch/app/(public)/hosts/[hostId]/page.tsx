@@ -314,7 +314,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                             />
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col gap-2 w-full">
+                                        <div className="flex flex-col gap-2">
                                             {h.tags?.map((tag) => (
                                                 <span key={tag} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
                                                     {tag.trim().replace(/[\[\]']/g, '')}

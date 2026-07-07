@@ -43,7 +43,8 @@ export const createClient = () => {
 
 export const APPROVED_USER_IDS = [
     'ba398812-06a0-4c48-9f15-0660d3af0047',
-    'f2694e1c-5457-45b0-b299-c3a03a77d8c5'
+    'f2694e1c-5457-45b0-b299-c3a03a77d8c5',
+    'e8191ca7-7856-4e81-9140-b93a944ec711'
 ];
 
 export const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));

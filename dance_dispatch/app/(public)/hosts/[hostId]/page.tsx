@@ -11,6 +11,31 @@ import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
 import { canEditDetails } from '@/lib/supabase/client';
 
+const chipPalette = [
+    'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
+    'bg-blue-500/20 border-blue-400/50 text-blue-200',
+    'bg-emerald-500/20 border-emerald-400/50 text-emerald-200',
+    'bg-amber-500/20 border-amber-400/50 text-amber-200',
+    'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200',
+    'bg-rose-500/20 border-rose-400/50 text-rose-200',
+];
+
+function chipColorFor(value: string, offset = 0): string {
+    const normalized = value.trim().toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i += 1) {
+        hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
+        hash |= 0;
+    }
+
+    const index = Math.abs(hash + offset) % chipPalette.length;
+    return chipPalette[index];
+}
+
+function normalizeChipLabel(value: string): string {
+    return value.trim().replace(/[\[\]']/g, '');
+}
+
 
 export default function HostPage({ params }: { params: Promise<{ hostId: string }> }) {
     const { hostId } = use(params);
@@ -315,17 +340,41 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         </div>
                                     ) : (
                                         <div className="flex flex-col gap-2">
-                                            {h.tags?.map((tag) => (
-                                                <span key={tag} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
-                                                    {tag.trim().replace(/[\[\]']/g, '')}
-                                                </span>
-                                            ))}
+                                            {Array.isArray(h.tags) && h.tags.length > 0 && (
+                                                <div className="w-full max-w-full overflow-x-auto">
+                                                    <div className="flex min-w-max flex-nowrap gap-2 pb-1">
+                                                        {h.tags.map((tag) => {
+                                                            const label = normalizeChipLabel(tag);
+                                                            return (
+                                                                <span
+                                                                    key={`tag-${tag}`}
+                                                                    className={`rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${chipColorFor(label)}`}
+                                                                >
+                                                                    {label}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                             <h1 className="text-4xl text-text font-bold">{h.name}</h1>
-                                             {h.genres?.map((g) => (
-                                                <span key={g} className="text-sm bg-surface border border-default px-3 py-1 rounded text-white" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>
-                                                    {g.trim().replace(/[\[\]']/g, '')}
-                                                </span>
-                                            ))}
+                                            {Array.isArray(h.genres) && h.genres.length > 0 && (
+                                                <div className="w-full max-w-full mt-3 overflow-x-auto">
+                                                    <div className="flex min-w-max flex-nowrap gap-2 pb-1">
+                                                        {h.genres.map((genre) => {
+                                                            const label = normalizeChipLabel(genre);
+                                                            return (
+                                                                <span
+                                                                    key={`genre-${genre}`}
+                                                                    className={`rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${chipColorFor(label, 17)}`}
+                                                                >
+                                                                    {label}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

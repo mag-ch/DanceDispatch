@@ -812,12 +812,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <p className="text-text">{event.description}</p>
                             </div>
                         )}
-                        <div>
+                        {eventReviews.length > 0 && (
+                          <div>
                             <EventMediaGallery
                             eventId={event.id}
                             />
                         </div>
-
+                        )}
+                      
                         {/* Hosts */}
                         {(eventHosts.length > 0 || canEditHosts) &&
                         ( <div className="bg-surface rounded-lg p-4 mb-6"> 

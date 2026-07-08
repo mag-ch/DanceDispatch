@@ -174,7 +174,7 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
         : mode === 'inline' ? userMedia : allMedia;
 
     return (
-        <div className='bg-surface rounded-lg p-3'>
+        <div className='bg-surface rounded-lg p-3 sm:p-4 mb-6'>
             {mode === 'standalone' && (
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-text">Community Media</h2>

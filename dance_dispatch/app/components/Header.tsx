@@ -7,7 +7,6 @@ import { getUsernameFromId } from '@/lib/utils_supabase';
 import { ThemeToggle } from './ThemeProvider';
 import { Bell, Menu, MessageSquarePlus, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
-import UserBadgesInline from './UserBadgesInline';
 
 type NotificationItem = {
     id: string;
@@ -400,7 +399,7 @@ export function Header() {
                                     onClick={() => setIsMobileMenuOpen(false)}
 className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap inline-flex items-center gap-2"                                >
 <span>{username ?? 'Profile'}</span>
-                                    <UserBadgesInline userId={session.user.id} maxBadges={1} />                                </Link>
+                                    </Link>
                                 <button
                                     type="button"
                                     onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}

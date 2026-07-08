@@ -28,6 +28,11 @@ function formatEventDate(startdate?: string | null, starttime?: string | null): 
     minute: '2-digit',
   });
 }
+
+function getEventImageSrc(event: Event): string {
+  return event.imageurl && event.imageurl.trim() ? event.imageurl : '/images/default_event.jpg';
+}
+
 export default async function PartyPlanPage({ params }: { params: Promise<{ planId: string }> }) {
   const { planId } = await params;
 
@@ -99,11 +104,20 @@ export default async function PartyPlanPage({ params }: { params: Promise<{ plan
               <Link
                 key={event.id}
                 href={`/events/${event.id}`}
-                className="block rounded-lg border border-default px-4 py-3 transition hover:bg-accent-soft"
+                className="flex items-stretch gap-4 rounded-lg border border-default px-4 py-3 transition hover:bg-accent-soft"
               >
-                <p className="text-base font-semibold text-text">{event.title}</p>
-                <p className="mt-1 text-sm text-muted">{formatEventDate(event.startdate, event.starttime)}</p>
-                <p className="text-sm text-muted">{event.location || 'Location TBD'}</p>
+                <div className="aspect-square w-20 sm:w-24 rounded-md flex-none">
+                  <img
+                    src={getEventImageSrc(event)}
+                    alt={`${event.title} flyer`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-text">{event.title}</p>
+                  <p className="mt-1 text-sm text-muted">{formatEventDate(event.startdate, event.starttime)}</p>
+                  <p className="text-sm text-muted">{event.location || 'Location TBD'}</p>
+                </div>
               </Link>
             ))}
           </div>

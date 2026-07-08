@@ -136,7 +136,7 @@ export default async function ProfilePage() {
     const reviewItems = userReviews.map((review, index) => (
         <div
             key={index}
-            className="[&_img]:!max-w-[160px] [&_img]:!max-h-[160px] [&_img]:!object-cover [&_video]:!max-w-[160px] [&_video]:!max-h-[160px] [&_video]:!object-cover"
+            className="[&_.aspect-square]:!max-w-[160px] [&_.aspect-square]:!max-h-[160px] [&_.aspect-square_img]:!object-cover [&_.aspect-square_video]:!object-cover"
         >
             <DisplayEventReview review={review} />
         </div>

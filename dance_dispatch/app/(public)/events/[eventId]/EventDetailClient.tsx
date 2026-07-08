@@ -536,15 +536,24 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
            {showImageModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4 py-6"
-                    onClick={() => {
-                        setShowImageModal(false);
-                    }}                    role="dialog"
+                    onPointerDown={(event) => {
+                        if (event.target === event.currentTarget) {
+                            setShowImageModal(false);
+                        }
+                    }}
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                            setShowImageModal(false);
+                        }
+                    }}
+                    role="dialog"
                     aria-modal="true"
                     aria-label={`${event.title} image preview`}
                 >
                     <div className="relative flex h-[75vh] w-[95vw] max-w-[75vw] items-center justify-center">
                         <div
                             className="relative h-full w-full overflow-hidden rounded-2xl"
+                            onPointerDown={(event) => event.stopPropagation()}
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Image
@@ -767,7 +776,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                         className="px-4 py-2 rounded-lg font-semibold text-text border border-default hover:bg-accent transition"
                                         onClick={openEventDetailsEditor}
                                     >
-                                        ✎ Edit Event Details
+                                        ✎ Edit Details
                                     </button>
                                 )}
                                 {(!event.externallink || event.externallink.length <= 3) && event.price != undefined && <span className="px-2 py-2 rounded-lg font-semibold text-muted">

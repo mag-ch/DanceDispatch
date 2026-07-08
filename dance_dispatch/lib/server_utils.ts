@@ -2,8 +2,11 @@ import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
 import { Event, EventReview } from '@/lib/utils';
-import { getCachedEvents, getUsers } from '@/lib/utils_supabase_server';
+import { getCachedEvents, getUserById, getUsers } from '@/lib/utils_supabase_server';
 import { combineChunks } from '@supabase/ssr';
+import { defaultPlanNameFromEvents, normalizeEventIds } from './supabase/client';
+import { buildPartyPlanSummary, normalizePlanPrice, serializeEventIdsParam } from './party-plan';
+import { SavedPlan } from '@/app/(public)/profile/MakePartyPlanButton';
 
 export type SavedEventsMode = 'all' | 'upcoming' | 'past';
 
@@ -234,6 +237,52 @@ const BADGE_TIER_RANK: Record<CompactUserBadge['tier'], number> = {
     platinum: 4,
 };
 
+export async function getPlanFromId(planId: string): Promise<SavedPlan | null> {
+    const supabase = await createClient();
+
+    const { data: rows, error } = await supabase
+      .from('user_plans')
+      .select('id, user_id, plan_name, event_ids')
+      .eq('id', Number(planId))
+      .limit(1);
+
+    if (error) {
+        console.error('Error fetching plan from Supabase:', error);
+        return null;
+    }
+
+
+    const allEvents = await getCachedEvents(false);
+    const eventById = new Map(
+      allEvents.map((event: any) => [Number(event.id), event]),
+    );
+
+    const plans = (rows ?? []).map(async (row: any, index: number) => {
+        const user = await getUserById(row?.user_id);
+        const username = user ? user.username : 'Unknown User';
+
+        const eventIds = normalizeEventIds(row?.event_ids);
+        const events = eventIds
+                .map((eventId) => eventById.get(eventId));
+
+        const summary = buildPartyPlanSummary(events);
+        const planKey = serializeEventIdsParam(eventIds);
+        const planName = String(row?.plan_name ?? '').trim() || defaultPlanNameFromEvents(events);
+
+        return {
+            id: Number(row?.id ?? index + 1),
+            name: planName,
+            username: username,
+            planKey,
+            eventIds,
+            events,
+            summary,
+        };
+    });
+
+    return plans[0] ?? null;
+}
+    
 
 export async function getUserPointsSummary(userId: string): Promise<UserPointsSummary> {
     const supabase = await createClient();

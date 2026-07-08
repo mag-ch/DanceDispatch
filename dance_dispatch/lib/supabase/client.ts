@@ -47,4 +47,46 @@ export const APPROVED_USER_IDS = [
     'e8191ca7-7856-4e81-9140-b93a944ec711'
 ];
 
+
+
+
 export const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
+
+
+
+export function normalizeEventIds(rawValues: unknown): number[] {
+  const values = Array.isArray(rawValues) ? rawValues : [];
+  return [...new Set(values.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))];
+}
+
+export function normalizePlanId(rawValue: unknown): number | null {
+  const value = Number(rawValue);
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+export function formatPlanDefaultDate(startdate?: string | null, starttime?: string | null): string {
+  const date = String(startdate ?? '').trim();
+  if (!date) {
+    return 'Party Plan';
+  }
+
+  const time = String(starttime ?? '').trim() || '00:00:00';
+  const parsed = new Date(`${date}T${time}`);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Party Plan';
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export function defaultPlanNameFromEvents(events: Array<{ startdate?: string | null; starttime?: string | null }>): string {
+  if (events.length === 0) {
+    return 'Party Plan';
+  }
+
+  return `Party Plan - ${formatPlanDefaultDate(events[0].startdate, events[0].starttime)}`;
+}

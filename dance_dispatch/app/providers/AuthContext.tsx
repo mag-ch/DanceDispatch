@@ -9,6 +9,14 @@ interface AuthContextType {
     logout: () => Promise<void>;
 }
 
+const fallbackAuthContext: AuthContextType = {
+    session: null,
+    loading: false,
+    logout: async () => {
+        // no-op fallback when auth context is unavailable
+    },
+};
+
 let bootstrapPromise: Promise<Session | null> | null = null;
 let cachedBootstrapSession: Session | null = null;
 let cachedBootstrapAt = 0;
@@ -123,7 +131,10 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
     const context = useContext(AuthContext);
     if (context === undefined) {
-        throw new Error('useAuth must be used within AuthContextProvider');
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('useAuth called without AuthContextProvider; falling back to unauthenticated state.');
+        }
+        return fallbackAuthContext;
     }
     return context;
 }

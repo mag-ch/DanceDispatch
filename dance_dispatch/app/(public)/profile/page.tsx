@@ -11,7 +11,7 @@ import { DisplayEventReview } from '@/app/components/EventReview';
 import ExpandableList from '@/app/components/ExpandableList';
 import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
 import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
-
+import MakePartyPlanButton from './MakePartyPlanButton';
 
 
 export default async function ProfilePage() {
@@ -280,7 +280,19 @@ export default async function ProfilePage() {
 
             {/* Upcoming Events - kept fully displayed */}
             <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Upcoming Events ({upcomingEvents.length})</h2>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-2xl font-semibold text-text">Upcoming Events ({upcomingEvents.length})</h2>
+                    <MakePartyPlanButton
+                        upcomingEvents={upcomingEvents.map((event: Event) => ({
+                            id: event.id,
+                            title: event.title,
+                            startdate: event.startdate,
+                            starttime: event.starttime,
+                            location: event.location,
+                            price: event.price,
+                        }))}
+                    />
+                </div>
                 <div className="space-y-4">
                     {upcomingEvents.map((event: Event, index: number) => (
                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>

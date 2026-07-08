@@ -290,8 +290,6 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
         if (authLoading ) return;
         if (session) {
             setIsOwner(!!session?.user?.id && session.user.id === review.userId);
-            console.log(session.user.id);
-            console.log(review);
         } else {
             setIsOwner(false);
         }

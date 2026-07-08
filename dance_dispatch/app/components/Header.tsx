@@ -338,7 +338,6 @@ export function Header() {
                                     <>
                                         <Link href="/profile" className="hover:underline inline-flex items-center gap-2">
                                             <span>{username}</span>
-                                            <UserBadgesInline userId={session.user.id} maxBadges={1} />
                                         </Link>
                                         <button
                                             onClick={handleLogout}

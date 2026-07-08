@@ -1,12 +1,21 @@
 // components/SoundcloudPlayer.jsx
 
+function stripScriptTags(html: string): string {
+  if (!html) {
+    return '';
+  }
+
+  // Prevent React from encountering script nodes in rendered HTML.
+  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+}
 
 export const SoundcloudPlayer = ({ embedCode }: { embedCode: string }) => {
+  const safeEmbedCode = stripScriptTags(embedCode);
     
   return (
     <div 
-      // dangerouslySetInnerHTML is used to render the raw HTML string
-      dangerouslySetInnerHTML={{ __html: embedCode }} 
+      // Render provider embed markup after removing script tags.
+      dangerouslySetInnerHTML={{ __html: safeEmbedCode }} 
     />
   );
 }

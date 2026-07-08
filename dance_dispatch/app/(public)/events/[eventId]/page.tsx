@@ -1,8 +1,18 @@
 import { getEventById, getEventReviews, getRelatedEvents, getHostPreviousEventReviews, getVenuePreviousEventReviews } from '@/lib/utils_supabase_server';
-import { getVenueById } from '@/lib/server_utils';
+import { CompactUserBadge, getTopBadgesForUsers, getVenueById } from '@/lib/server_utils';
 import { notFound } from 'next/navigation';
 import { EventDetailClient } from './EventDetailClient';
 import { EventReview } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/server';
+
+type EventRsvpUser = {
+    userId: string;
+    username: string;
+    fullName: string | null;
+    profilePicture: string | null;
+    savedAt: string;
+    badges: CompactUserBadge[];
+};
 
 type EventDetailPageProps = {
     params: Promise<{ eventId: string }>;
@@ -29,10 +39,11 @@ export default async function EventDetailPage({ params, searchParams, showReview
     const shouldShowReviewModal = showReviewModalFromRoute ?? showReviewModal;
     
     // Fetch all data in parallel on the server
-    const [event, eventReviews, relatedEvents] = await Promise.all([
+    const [event, eventReviews, relatedEvents, rsvpUsers] = await Promise.all([
         getEventById(eventId),
         getEventReviews(eventId),
-        getRelatedEvents(eventId) // You can implement this function to fetch related events based on the current event's details
+        getRelatedEvents(eventId),
+        getEventRsvpUsers(eventId),
     ]);
 
     if (!event) {
@@ -64,6 +75,81 @@ export default async function EventDetailPage({ params, searchParams, showReview
             showReviewModal={shouldShowReviewModal}
             hostPreviousReviewsMap={hostPreviousReviewsMap}
             venuePreviousReviewsMap={venuePreviousReviewsMap}
+            rsvpUsers={rsvpUsers}
         />
     );
+}
+
+async function getEventRsvpUsers(eventId: string): Promise<EventRsvpUser[]> {
+    const supabase = await createClient();
+
+    const { data: savedRows, error: savedError } = await supabase
+        .from('SavedEvents')
+        .select('user_id, created_at')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false })
+        .limit(60);
+
+    if (savedError) {
+        console.error('Failed to fetch event RSVPs:', savedError);
+        return [];
+    }
+
+    const dedupedRows = [] as Array<{ user_id: string; created_at: string }>;
+    const seenUsers = new Set<string>();
+    for (const row of savedRows ?? []) {
+        const userId = String((row as any).user_id ?? '').trim();
+        if (!userId || seenUsers.has(userId)) {
+            continue;
+        }
+
+        seenUsers.add(userId);
+        dedupedRows.push({
+            user_id: userId,
+            created_at: String((row as any).created_at ?? ''),
+        });
+    }
+
+    const userIds = dedupedRows.map((row) => row.user_id);
+    if (userIds.length === 0) {
+        return [];
+    }
+
+    const [{ data: profiles, error: profilesError }, badgeMap] = await Promise.all([
+        supabase
+            .from('profiles')
+            .select('id, username, full_name, profile_picture')
+            .in('id', userIds),
+        getTopBadgesForUsers(userIds, 1),
+    ]);
+
+    if (profilesError) {
+        console.error('Failed to fetch RSVP user profiles:', profilesError);
+        return [];
+    }
+
+    const profileById = new Map(
+        (profiles ?? []).map((profile: any) => [String(profile.id), profile]),
+    );
+
+    return dedupedRows
+        .map((row) => {
+            const profile = profileById.get(row.user_id);
+            if (!profile) {
+                return null;
+            }
+
+            const username = String(profile.username ?? '').trim();
+            const fullName = profile.full_name ? String(profile.full_name) : null;
+
+            return {
+                userId: row.user_id,
+                username: username || fullName || 'User',
+                fullName,
+                profilePicture: profile.profile_picture ? String(profile.profile_picture) : null,
+                savedAt: row.created_at,
+                badges: badgeMap[row.user_id] ?? [],
+            } satisfies EventRsvpUser;
+        })
+        .filter((user): user is EventRsvpUser => Boolean(user));
 }

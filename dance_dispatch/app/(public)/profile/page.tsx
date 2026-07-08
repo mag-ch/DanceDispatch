@@ -27,7 +27,7 @@ export default async function ProfilePage() {
         getAllFollowedUsers(user.id),
         getSavedEventsForUserServer(user.id, 'upcoming'),
         getSavedEventsForUserServer(user.id, 'past'),
-        getUserReviews(user.id),
+        getUserReviews(user.id, true),
         checkNewUserMissions(user.id),
         getUserPointsSummary(user.id),
     ]);

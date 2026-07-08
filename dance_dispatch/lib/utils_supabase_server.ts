@@ -489,14 +489,28 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
 }
 
 
-export async function getUserReviews(userId: string): Promise<EventReview[]> {
+export async function getUserReviews(userId: string, includeAnon: boolean): Promise<EventReview[]> {
   try {
     const supabase = await createServerClient();
-    const { data, error } = await supabase
-      .from('Reviews')
-      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    var data, error;
+    if (includeAnon) {
+      const result = await supabase
+        .from('Reviews')
+        .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      data = result.data;
+      error = result.error;
+    } else {
+      const result = await supabase
+        .from('Reviews')
+        .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+        .eq('user_id', userId)
+        .neq('privacy_level', 'anonymous')
+        .order('created_at', { ascending: false });
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) throw error;
 

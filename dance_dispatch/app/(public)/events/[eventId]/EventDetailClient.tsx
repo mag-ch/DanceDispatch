@@ -10,6 +10,7 @@ import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
 import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
+import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
 import { canEditDetails } from '@/lib/supabase/client';
 
@@ -21,10 +22,38 @@ interface EventDetailClientProps {
     showReviewModal?: boolean;
     hostPreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
     venuePreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
+    rsvpUsers?: Array<{
+        userId: string;
+        username: string;
+        fullName: string | null;
+        profilePicture: string | null;
+        savedAt: string;
+        badges: Array<{
+            id: string;
+            code: string;
+            name: string;
+            icon: string | null;
+            tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+            sortOrder: number;
+            unlockedAt: string;
+        }>;
+    }>;
 }
 
 
-export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map() }: EventDetailClientProps) {
+function formatCompactDate(value: string): string {
+    const timestamp = Date.parse(value);
+    if (Number.isNaN(timestamp)) {
+        return 'Recently';
+    }
+
+    return new Date(timestamp).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+    });
+}
+
+export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSavedEvent, setIsSavedEvent] = useState<boolean | null>(null);
@@ -821,6 +850,57 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <p className="text-text">{event.description}</p>
                             </div>
                         )}
+
+                        <div className="mb-6 rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-4 shadow-[0_12px_35px_rgba(8,145,178,0.14)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10 lg:hidden">
+                            <div className="mb-3 flex items-end justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Who's Going? ({rsvpUsers.length})</p>
+                                </div>
+                            </div>
+
+                            {rsvpUsers.length === 0 ? (
+                                <p className="text-sm text-muted">No RSVPs yet. Be the first to join.</p>
+                            ) : (
+                                <div className="overflow-x-auto overflow-y-hidden pb-2">
+                                    <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-2 sm:gap-3">
+                                        {rsvpUsers.map((rsvpUser) => {
+                                            const displayName = rsvpUser.fullName?.trim() || rsvpUser.username;
+                                            const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
+
+                                            return (
+                                                <Link
+                                                    key={rsvpUser.userId}
+                                                    href={`/users/${rsvpUser.userId}`}
+                                                    className="group h-[60px] w-[150px] shrink-0 snap-start rounded-xl border border-cyan-200/60 bg-bg/80 p-3 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-cyan-400/70 hover:shadow-[0_12px_26px_rgba(8,145,178,0.2)] dark:bg-bg/75"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {rsvpUser.profilePicture ? (
+                                                            <Image
+                                                                src={rsvpUser.profilePicture}
+                                                                alt={displayName}
+                                                                width={32}
+                                                                height={32}
+                                                                className="h-8 w-8 rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200">
+                                                                {avatarLetter}
+                                                            </div>
+                                                        )}
+                                                        <p className="truncate text-xs font-semibold text-text">{displayName}</p>
+                                                    </div>
+{/* 
+                                                    <div className="mt-2 min-h-[20px]">
+                                                        <BadgeChipsInline badges={rsvpUser.badges} maxBadges={1} showNames={true} />
+                                                    </div> */}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {eventReviews.length > 0 && (
                           <div>
                             <EventMediaGallery
@@ -1113,14 +1193,64 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         )}
                     </div>
 
-                    {/* Right Column - Related Events */}
+                    {/* Right Column */}
                     <div>
-                        <div className="bg-surface rounded-lg p-6 sticky top-8">
-                            <h2 className="text-2xl text-text font-bold mb-4">Related Events</h2>
-                            <div className="space-y-4">
-                                {relatedEvents.map((relEvent) => (
-                                    <RelatedEventCard key={relEvent.id} event={relEvent} />
-                                ))}
+                        <div className="space-y-6 lg:sticky lg:top-8">
+                            <div className="hidden rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-4 shadow-[0_12px_35px_rgba(8,145,178,0.14)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10 lg:block">
+                                <div className="mb-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Who's Going? ({rsvpUsers.length})</p>
+                                </div>
+
+                                {rsvpUsers.length === 0 ? (
+                                    <p className="text-sm text-muted">No RSVPs yet.</p>
+                                ) : (
+                                    <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                                        {rsvpUsers.map((rsvpUser) => {
+                                            const displayName = rsvpUser.fullName?.trim() || rsvpUser.username;
+                                            const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
+
+                                            return (
+                                                <Link
+                                                    key={rsvpUser.userId}
+                                                    href={`/users/${rsvpUser.userId}`}
+                                                    className="group block rounded-lg border border-cyan-200/60 bg-bg/80 p-2.5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-cyan-400/70 hover:shadow-[0_10px_22px_rgba(8,145,178,0.18)] dark:bg-bg/75"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {rsvpUser.profilePicture ? (
+                                                            <Image
+                                                                src={rsvpUser.profilePicture}
+                                                                alt={displayName}
+                                                                width={30}
+                                                                height={30}
+                                                                className="h-[30px] w-[30px] rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-cyan-100 text-[11px] font-bold text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200">
+                                                                {avatarLetter}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="mt-1 flex min-h-[18px] items-center gap-1 overflow-hidden">
+                                                                <p className="min-w-0 flex-shrink truncate text-xs font-semibold text-text">{displayName}</p>
+                                                                <BadgeChipsInline badges={rsvpUser.badges} maxBadges={1} showNames={true} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-surface rounded-lg p-6">
+                                <h2 className="text-2xl text-text font-bold mb-4">Related Events</h2>
+                                <div className="space-y-4">
+                                    {relatedEvents.map((relEvent) => (
+                                        <RelatedEventCard key={relEvent.id} event={relEvent} />
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

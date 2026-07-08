@@ -240,8 +240,8 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             const res = await fetch(`/api/events?onlyUpcoming=false&hostId=${encodeURIComponent(hostId)}`);
             const events = await res.json();
             const past = events
-                .filter((event: any) => new Date(`${event.startdate} ${event.starttime}`) < new Date())
-                .sort((a: any, b: any) => new Date(`${b.startdate} ${b.starttime}`).getTime() - new Date(`${a.startdate} ${a.starttime}`).getTime())
+                .filter((event: any) => new Date(`${event.enddate} ${event.endtime}`) < new Date())
+                .sort((a: any, b: any) => new Date(`${b.enddate} ${b.endtime}`).getTime() - new Date(`${a.enddate} ${a.endtime}`).getTime())
                 .slice(0, 5);
             const upcoming = events.filter((event: any) => new Date(`${event.startdate} ${event.starttime}`) >= new Date());
             setPastEvents(past);

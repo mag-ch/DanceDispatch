@@ -16,8 +16,8 @@ export type SavedEventsBuckets = {
 };
 
 function isUpcomingEvent(event: Event, now: Date): boolean {
-    const eventStart = new Date(`${event.startdate} ${event.starttime}`);
-    return eventStart >= now;
+    const eventEnd = new Date(`${event.enddate} ${event.endtime}`);
+    return eventEnd >= now;
 }
 
 export async function getSavedEventsForUserServer(userId: string, mode: SavedEventsMode = 'all'): Promise<Event[]> {

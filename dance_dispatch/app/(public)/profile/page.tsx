@@ -280,18 +280,20 @@ export default async function ProfilePage() {
 
             {/* Upcoming Events - kept fully displayed */}
             <section className="mb-8">
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-4 flex flex-col gap-3">
                     <h2 className="text-2xl font-semibold text-text">Upcoming Events ({upcomingEvents.length})</h2>
-                    <MakePartyPlanButton
-                        upcomingEvents={upcomingEvents.map((event: Event) => ({
-                            id: event.id,
-                            title: event.title,
-                            startdate: event.startdate,
-                            starttime: event.starttime,
-                            location: event.location,
-                            price: event.price,
-                        }))}
-                    />
+                    <div className="w-fit self-start">
+                        <MakePartyPlanButton
+                            upcomingEvents={upcomingEvents.map((event: Event) => ({
+                                id: event.id,
+                                title: event.title,
+                                startdate: event.startdate,
+                                starttime: event.starttime,
+                                location: event.location,
+                                price: event.price,
+                            }))}
+                        />
+                    </div>
                 </div>
                 <div className="space-y-4">
                     {upcomingEvents.map((event: Event, index: number) => (

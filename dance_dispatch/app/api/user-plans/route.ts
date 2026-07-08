@@ -138,7 +138,7 @@ export async function PATCH(request: Request) {
 
     const { data: validEvents, error: validEventsError } = await supabase
       .from('Events')
-      .select('id, startdate, starttime')
+      .select('id, start')
       .in('id', eventIds);
 
     if (validEventsError) {
@@ -159,7 +159,7 @@ export async function PATCH(request: Request) {
     const { data: updatedRows, error: updateError } = await supabase
       .from('user_plans')
       .update({ plan_name: planName, event_ids: validatedIds })
-      .eq('id', planId)
+      .eq('id', Number(planId))
       .eq('user_id', user.id)
       .select('id, plan_name, event_ids')
       .limit(1);
@@ -197,7 +197,7 @@ export async function DELETE(request: Request) {
     const { data: deletedRows, error: deleteError } = await supabase
       .from('user_plans')
       .delete()
-      .eq('id', planId)
+      .eq('id', Number(planId))
       .eq('user_id', user.id)
       .select('id')
       .limit(1);

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { PartyPlanEvent } from '@/lib/party-plan';
+import CopyShareButton from '../party-plan/[planId]/CopyShareButton';
 
 type MakePartyPlanButtonProps = {
   upcomingEvents: PartyPlanEvent[];
@@ -108,6 +109,10 @@ export default function MakePartyPlanButton({ upcomingEvents }: MakePartyPlanBut
 
   const toShareUrl = (planId: number) => {
     return `${window.location.origin}/party-plan/${planId}`;
+  };
+
+  const openPlanInNewTab = (planId: number) => {
+    window.open(toShareUrl(planId), '_blank', 'noopener,noreferrer');
   };
 
   const closeAll = () => {
@@ -367,7 +372,20 @@ export default function MakePartyPlanButton({ upcomingEvents }: MakePartyPlanBut
                   const isDeleting = isDeletingPlanId === plan.id;
 
                   return (
-                    <div key={plan.id} className="rounded-xl border border-default p-4">
+                    <div
+                      key={plan.id}
+                      className="cursor-pointer rounded-xl border border-default p-4 transition hover:bg-accent-soft"
+                      onClick={() => openPlanInNewTab(plan.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openPlanInNewTab(plan.id);
+                        }
+                      }}
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`Open ${plan.name || `Plan ${index + 1}`} in a new tab`}
+                    >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold text-text">{plan.name || `Plan ${index + 1}`}</p>
@@ -378,7 +396,11 @@ export default function MakePartyPlanButton({ upcomingEvents }: MakePartyPlanBut
                           <p className="mt-1 text-xs text-muted line-clamp-2">Flow: {plan.summary.locationFlow}</p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
+                        <div
+                          className="flex flex-wrap gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={() => openBuilderForEdit(plan.id, plan.eventIds, plan.name)}
@@ -396,13 +418,7 @@ export default function MakePartyPlanButton({ upcomingEvents }: MakePartyPlanBut
                           >
                             {isDeleting ? 'Deleting...' : 'Delete'}
                           </button>
-                          <Link
-                            href={shareUrlForPlan}
-                            className="rounded border border-default px-3 py-1.5 text-xs font-semibold text-text hover:bg-accent-soft"
-                            target="_blank"
-                          >
-                            Open
-                          </Link>
+                          <CopyShareButton shareUrl={shareUrlForPlan} />
                         </div>
                       </div>
                     </div>

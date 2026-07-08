@@ -4,6 +4,7 @@ import { getCachedEvents } from '@/lib/utils_supabase_server';
 import { Event } from '@/lib/utils';
 import { getPlanFromId } from '@/lib/server_utils';
 import { SavedPlan } from '../../profile/MakePartyPlanButton';
+import CopyShareButton from './CopyShareButton';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -69,12 +70,15 @@ export default async function PartyPlanPage({ params }: { params: Promise<{ plan
 
   const summary = partyPlan.summary;
 
+  const shareUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/party-plan/${planId}`;
+
   return (
     <main className="min-h-screen bg-bg text-text">
       <section className="container mx-auto px-6 py-12">
         <div className="rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_12px_35px_rgba(8,145,178,0.14)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">{partyPlan.username}'s Party Plan</p>
           <h1 className="mt-1 text-3xl font-bold">{partyPlan.name} Plan Summary</h1>
+         <CopyShareButton shareUrl={shareUrl} />
           <p className="mt-2 text-sm text-muted">A shareable itinerary of RSVPed events.</p>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">

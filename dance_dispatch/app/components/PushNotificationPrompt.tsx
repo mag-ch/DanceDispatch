@@ -77,7 +77,7 @@ export function PushNotificationPrompt() {
               </button>
             )}
 
-            {isSubscribed && isTestUser && (
+            {/* {isSubscribed && isTestUser && (
               // Test flow (test user only): send a push, then report whether any subscription received it.
               <button
                 type="button"
@@ -93,7 +93,7 @@ export function PushNotificationPrompt() {
                 <Send className="h-4 w-4" />
                 {isLoading ? 'Sending...' : 'Send Test'}
               </button>
-            )}
+            )} */}
           </div>
         </div>
       </div>

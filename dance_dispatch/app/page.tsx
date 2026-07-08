@@ -96,7 +96,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           {recentActivity.length === 0 ? (
             <p className="relative mt-4 text-sm text-muted">No recent activity yet.</p>
           ) : (
-            <div className="relative mt-6 overflow-x-auto pb-2">
+            <div className="relative mt-6 overflow-x-auto pb-2 overflow-y-hidden">
               <div className="flex min-w-max snap-x snap-mandatory gap-3 pr-2 sm:gap-4">
                 {recentActivity.map((activity) => {
                   const theme = recentActivityTheme(activity.type);

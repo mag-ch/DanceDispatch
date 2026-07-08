@@ -1,10 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { Bell, BellOff, Send } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bell, BellOff } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { usePushNotifications } from '@/app/hooks/usePushNotifications';
-import { PUSH_TEST_USER_ID } from '@/lib/push-notification-constants';
+
+const PROMPT_RESPONSE_KEY_PREFIX = 'dd_push_prompt_response_v1';
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+type PromptResponseRecord = {
+  respondedAt: string;
+  enabled: boolean;
+};
 
 export function PushNotificationPrompt() {
   const { session, loading: authLoading } = useAuth();
@@ -16,17 +23,68 @@ export function PushNotificationPrompt() {
     isLoading,
     error,
     subscribe,
-    sendTestNotification,
   } = usePushNotifications();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [canShowPrompt, setCanShowPrompt] = useState(false);
+  const [hasLoadedPromptState, setHasLoadedPromptState] = useState(false);
 
-  if (authLoading || !session?.user?.id || !isSupported || !hasCheckedSubscription) {
+  const userId = session?.user?.id ?? null;
+  const responseStorageKey = useMemo(
+    () => (userId ? `${PROMPT_RESPONSE_KEY_PREFIX}:${userId}` : null),
+    [userId],
+  );
+
+  const savePromptResponse = (enabled: boolean) => {
+    if (!responseStorageKey) {
+      return;
+    }
+
+    const response: PromptResponseRecord = {
+      respondedAt: new Date().toISOString(),
+      enabled,
+    };
+    localStorage.setItem(responseStorageKey, JSON.stringify(response));
+  };
+
+  useEffect(() => {
+    if (!responseStorageKey) {
+      setCanShowPrompt(false);
+      setHasLoadedPromptState(false);
+      return;
+    }
+
+    let shouldShow = true;
+    const rawRecord = localStorage.getItem(responseStorageKey);
+
+    if (rawRecord) {
+      try {
+        const parsedRecord = JSON.parse(rawRecord) as PromptResponseRecord;
+        const respondedAtMs = new Date(parsedRecord.respondedAt).getTime();
+        const hasValidDate = Number.isFinite(respondedAtMs);
+
+        if (parsedRecord.enabled) {
+          shouldShow = false;
+        } else if (hasValidDate) {
+          shouldShow = Date.now() - respondedAtMs >= THIRTY_DAYS_MS;
+        }
+      } catch {
+        // Ignore malformed localStorage data and fall back to showing the prompt.
+      }
+    }
+
+    setCanShowPrompt(shouldShow);
+    setHasLoadedPromptState(true);
+  }, [responseStorageKey]);
+
+  if (authLoading || !userId || !isSupported || !hasCheckedSubscription) {
     return null;
   }
 
-  const isTestUser = session.user.id === PUSH_TEST_USER_ID;
+  if (!hasLoadedPromptState || !canShowPrompt) {
+    return null;
+  }
 
-  if (isSubscribed && !isTestUser) {
+  if (isSubscribed) {
     return null;
   }
 
@@ -66,6 +124,8 @@ export function PushNotificationPrompt() {
                 onClick={async () => {
                   setSuccessMessage(null);
                   const subscribed = await subscribe();
+                  savePromptResponse(subscribed);
+                  setCanShowPrompt(false);
                   if (subscribed) {
                     setSuccessMessage('Push notifications enabled on this device.');
                   }
@@ -74,6 +134,21 @@ export function PushNotificationPrompt() {
                 className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
               >
                 {isLoading ? 'Enabling...' : 'Enable Push'}
+              </button>
+            )}
+
+            {!isSubscribed && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessMessage(null);
+                  savePromptResponse(false);
+                  setCanShowPrompt(false);
+                }}
+                disabled={isLoading}
+                className="rounded-md border border-default px-4 py-2 text-sm font-semibold text-text hover-bg-accent-soft disabled:opacity-60"
+              >
+                Not now
               </button>
             )}
 

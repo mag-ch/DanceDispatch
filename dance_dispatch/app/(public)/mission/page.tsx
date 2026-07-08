@@ -7,10 +7,10 @@ export default function MissionPage() {
         <h1 className="text-4xl font-bold mb-6">What is our Mission?</h1>
         <div className="rounded-xl border border-default bg-surface p-6 space-y-5">
           <p className="text-base leading-7 text-text/90">
-            On the surface, DanceDispatch helps people discover events, venues and DJs in local underground music scenes.
+            This is not an events aggregator. 
           </p>
           <p className="text-base leading-7 text-text/90">
-            However, it goes much deeper than that.
+            This is a hub for dancers and clubheads to share information, log memories, connect, and discover. This is a platform for DIY parties to reach the audience that will appreciate them. This is a tool for underground communities to flourish, independent of ticketing platforms, commercial venues, and social media algorithms.
           </p>
 
           <div className="pt-2">

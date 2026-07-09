@@ -53,6 +53,18 @@ function formatCompactDate(value: string): string {
     });
 }
 
+function renderDescriptionWithLineBreaks(text: string) {
+    const normalized = text.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+    const lines = normalized.split('\n');
+
+    return lines.map((line, index) => (
+        <span key={index}>
+            {line}
+            {index < lines.length - 1 && <br />}
+        </span>
+    ));
+}
+
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -847,7 +859,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         {event.description && (
                             <div className="bg-surface rounded-lg p-6 mb-6">
                                 <h2 className="text-2xl font-bold mb-4 text-text">About</h2>
-                                <p className="text-text">{event.description}</p>
+                                <p className="text-text">{renderDescriptionWithLineBreaks(event.description)}</p>
                             </div>
                         )}
 

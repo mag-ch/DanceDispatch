@@ -32,7 +32,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (    
     <main className="min-h-screen bg-bg text-text">
-      <LandingAnnouncementModal />
+      {/* <LandingAnnouncementModal /> */}
       <section
         className="relative py-24 text-center shadow-sm"
         style={{

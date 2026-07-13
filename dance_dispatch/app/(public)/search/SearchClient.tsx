@@ -319,36 +319,6 @@ export default function SearchClient({
                         <div className="bg-surface rounded-lg shadow p-4 sm:p-5 lg:sticky lg:top-8">
                             <h2 className="text-lg font-bold mb-4 text-text">Filters</h2>
 
-                            {/* Borough filter — shown whenever events or venues are active */}
-                            {(displayCategories.includes('events') || displayCategories.includes('venues')) && (
-                                <div className="mb-6">
-                                    <h3 className="font-semibold mb-3 text-text">Location</h3>
-                                    <label className="block text-sm font-medium mb-1 text-text">Boroughs</label>
-                                    <Select
-                                        isMulti
-                                        options={boroughOptions}
-                                        value={selectedBoroughs}
-                                        onChange={(e) => setSelectedBoroughs(e ? [...e] : [])}
-                                        placeholder="All boroughs"
-                                        className="bg-surface text-text text-sm"
-                                        styles={{
-                                            control: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
-                                            menu: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
-                                            menuList: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
-                                            option: (base, state) => ({
-                                                ...base,
-                                                backgroundColor: state.isSelected
-                                                    ? 'rgba(37, 99, 235, 0.75)'
-                                                    : state.isFocused
-                                                        ? 'rgba(37, 99, 235, 0.35)'
-                                                        : 'transparent',
-                                                color: 'rgb(var(--text))',
-                                            }),
-                                        }}
-                                    />
-                                </div>
-                            )}
-
                             {displayCategories.includes('events') && (
                                 <div className="mb-6">
                                     <h3 className="font-semibold mb-3 text-text">Event Filters</h3>
@@ -424,6 +394,38 @@ export default function SearchClient({
                                     </div>
                                 </div>
                             )}
+
+                            
+                            {/* Borough filter — shown whenever events or venues are active */}
+                            {(displayCategories.includes('events') || displayCategories.includes('venues')) && (
+                                <div className="mb-6">
+                                    <h3 className="font-semibold mb-3 text-text">Location</h3>
+                                    <label className="block text-sm font-medium mb-1 text-text">Boroughs</label>
+                                    <Select
+                                        isMulti
+                                        options={boroughOptions}
+                                        value={selectedBoroughs}
+                                        onChange={(e) => setSelectedBoroughs(e ? [...e] : [])}
+                                        placeholder="All boroughs"
+                                        className="bg-surface text-text text-sm"
+                                        styles={{
+                                            control: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
+                                            menu: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
+                                            menuList: (base) => ({ ...base, backgroundColor: 'rgb(var(--surface))' }),
+                                            option: (base, state) => ({
+                                                ...base,
+                                                backgroundColor: state.isSelected
+                                                    ? 'rgba(37, 99, 235, 0.75)'
+                                                    : state.isFocused
+                                                        ? 'rgba(37, 99, 235, 0.35)'
+                                                        : 'transparent',
+                                                color: 'rgb(var(--text))',
+                                            }),
+                                        }}
+                                    />
+                                </div>
+                            )}
+
                         </div>
                     </aside>
 

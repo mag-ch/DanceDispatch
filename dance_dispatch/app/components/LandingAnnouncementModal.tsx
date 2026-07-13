@@ -7,10 +7,10 @@ type LandingAnnouncement = {
   events: LandingAnnouncementEvent[];
 };
 
-const ANNOUNCEMENT_ID = 'weekend-parties-july-4-5-2026';
-const ANNOUNCEMENT_HEADER = 'did you attend any of these parties this weekend? Leave a review!';
-const ANNOUNCEMENT_RANGE_START = '2026-07-04';
-const ANNOUNCEMENT_RANGE_END = '2026-07-05';
+const ANNOUNCEMENT_ID = 'weekend-parties-july-10-12-2026';
+const ANNOUNCEMENT_HEADER = 'Did you attend any of these parties this weekend? Leave a review!';
+const ANNOUNCEMENT_RANGE_START = '2026-07-10';
+const ANNOUNCEMENT_RANGE_END = '2026-07-12';
 
 function getOrdinalDay(value: number): string {
   const mod100 = value % 100;
@@ -65,7 +65,7 @@ export async function LandingAnnouncementModal() {
 
   const sampleSecondAnnouncement: LandingAnnouncement = {
     announcementId: 'sample-announcement-new-features-2026-07-05',
-    header: 'new this week: profile notification controls and leaderboard updates',
+    header: 'New this week: profile notification controls and leaderboard updates',
     events: (await getCachedEvents())
       .slice(0, 3)
       .map((event) => ({

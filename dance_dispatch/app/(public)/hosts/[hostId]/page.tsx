@@ -48,7 +48,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [hostComments, setHostComments] = useState<any[]>([]);
 
     const { session } = useAuth();
-    const isAuthenticated = !!session && session.user.id == 'ba398812-06a0-4c48-9f15-0660d3af0047';
+    const isAuthenticated = !!session && canEditDetails(session?.user?.id);
 
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState('');
@@ -380,7 +380,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <FollowEntityButton entity="hosts" entityId={h.id} />
-                                    {canEditDetails(session?.user?.id) && (
+                                    {isAuthenticated && (
                                         <button onClick={startEditing} className="p-2 rounded border border-default hover:border-accent transition" title="Edit">
                                             <Pencil className="w-4 h-4" />
                                         </button>

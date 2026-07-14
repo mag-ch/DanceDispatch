@@ -874,6 +874,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <p className="text-sm text-muted">No RSVPs yet. Be the first to join.</p>
                             ) : (
                                 <div className="overflow-x-auto overflow-y-hidden pb-2">
+                                    {/* {!session && (
+                                        <>
+                                            {setShowAuthModal(true)}
+                                            <p className="mb-2 text-sm text-muted">Log in to see who is attending.</p>
+                                        </>
+                                    )} */}
                                     <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-2 sm:gap-3">
                                         {rsvpUsers.map((rsvpUser) => {
                                             const displayName = rsvpUser.fullName?.trim() || rsvpUser.username;

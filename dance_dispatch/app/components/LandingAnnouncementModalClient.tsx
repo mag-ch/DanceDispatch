@@ -70,10 +70,10 @@ export function LandingAnnouncementClient({
     return (
       <button
         onClick={handleToggleCollapse}
-        className="w-full flex items-center justify-center gap-2.5 py-3.5 text-sm font-semibold text-purple-300 hover:text-purple-200 transition-all shadow-lg"
+        className="w-full flex items-center justify-center text-sm text-text hover:text-purple-200 transition-all"
       >
-        <Calendar className="w-4 h-4" />
-        <span>Review recent parties</span>
+        <Calendar className="w-4 h-4 mr-1" />
+        <span>  Review recent parties</span>
         {unreviewedCount > 0 && (
           <span className="ml-1 px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/20">
             {unreviewedCount}
@@ -87,8 +87,8 @@ export function LandingAnnouncementClient({
   return (
     <section className="container overflow-hidden">
       {/* Header */}
-      <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-        <div>
+      <div className="relative flex flex-row items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
             Announcement
           </p>
@@ -103,7 +103,7 @@ export function LandingAnnouncementClient({
         </div>
         <button
           onClick={handleToggleCollapse}
-          className="shrink-0 self-start p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
+          className="shrink-0 p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
           aria-label="Collapse section"
         >
           <X className="w-4 h-4" />

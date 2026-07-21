@@ -92,9 +92,11 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <div className="container mx-auto px-2 py-2 justify-center items-center flex">
+      {userId && (
+        <div className="container mx-auto px-2 py-2 justify-center items-center flex">
         <EventRankingModalTrigger />
         </div>
+      )}
       
       <section className="container mx-auto mb-8 px-6 mt-10">
         <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">

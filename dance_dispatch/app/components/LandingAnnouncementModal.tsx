@@ -54,31 +54,34 @@ export async function LandingAnnouncementSection() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  let savedInRange: any[] = [];
+  let savedIds = new Set<string>();
+  let reviewedEventIds = new Set<string>();
+if (user) {
+    // 1. Fetch saved events and all events in range
+    const savedEventsRaw = await getSavedEventsForUserServer(user.id, 'past');
+    savedInRange = savedEventsRaw
+      .filter((event) => event.startdate >= rangeStart && event.startdate <= rangeEnd)
+      .sort(sortByDateTime);
 
-  // 1. Fetch saved events and all events in range
-  const savedEventsRaw = await getSavedEventsForUserServer(user.id, 'past');
-  const savedInRange = savedEventsRaw
-    .filter((event) => event.startdate >= rangeStart && event.startdate <= rangeEnd)
-    .sort(sortByDateTime);
+    savedIds = new Set(savedInRange.map((e) => String(e.id)));
 
-  const savedIds = new Set(savedInRange.map((e) => String(e.id)));
+    // 2. Check which saved events already have reviews
+    const { data: reviewRows } = await supabase
+      .from('Reviews')
+      .select('event_id')
+      .eq('user_id', user.id)
+      .eq('entity_type', 'event');
+
+    reviewedEventIds = new Set(
+      (reviewRows ?? []).map((r) => String(r.event_id))
+    );
+  }
 
   const allEvents = (await getCachedEvents(false))
     .filter((event) => event.startdate >= rangeStart && event.startdate <= rangeEnd)
     .filter((event) => !savedIds.has(String(event.id)))
     .sort(sortByDateTime);
-
-  // 2. Check which saved events already have reviews
-  const { data: reviewRows } = await supabase
-    .from('Reviews')
-    .select('event_id')
-    .eq('user_id', user.id)
-    .eq('entity_type', 'event');
-
-  const reviewedEventIds = new Set(
-    (reviewRows ?? []).map((r) => String(r.event_id))
-  );
 
   // 3. Merge: saved first, then others
   const combined = [...savedInRange, ...allEvents];
@@ -88,11 +91,13 @@ export async function LandingAnnouncementSection() {
     title: event.title,
     subtitle: event.location || 'Unknown Venue',
     dayHeading: toDayHeading(event.startdate),
-    href: `/events/${event.id}?showReviewModal=true`,
+    href: user ? `/events/${event.id}?showReviewModal=true` : `/events/${event.id}`,
     startdate: event.startdate,
-    isSaved: savedIds.has(String(event.id)),
+    isSaved: user ? savedIds.has(String(event.id)) : false,
     imageUrl: event.imageurl || undefined,
-    needsReview: savedIds.has(String(event.id)) && !reviewedEventIds.has(String(event.id)),
+    needsReview: user
+      ? savedIds.has(String(event.id)) && !reviewedEventIds.has(String(event.id))
+      : false,
   }));
 
   if (events.length === 0) return null;
@@ -100,12 +105,13 @@ export async function LandingAnnouncementSection() {
   const savedCount = savedInRange.length;
   const unreviewedCount = events.filter((e) => e.needsReview).length;
 
-  const header =
-    unreviewedCount > 0
-      ? `You saved ${savedCount} part${savedCount === 1 ? 'y' : 'ies'} — ${unreviewedCount} waiting for your review`
-      : savedCount > 0
-      ? `You saved ${savedCount} part${savedCount === 1 ? 'y' : 'ies'} recently`
-      : 'How were the parties? Leave a review';
+  const header = !user
+    ? 'What you missed this weekend'
+    : unreviewedCount > 0
+    ? `You saved ${savedCount} part${savedCount === 1 ? 'y' : 'ies'} — ${unreviewedCount} waiting for your review`
+    : savedCount > 0
+    ? `You saved ${savedCount} part${savedCount === 1 ? 'y' : 'ies'} recently`
+    : 'How were the parties? Leave a review';
 
   return (
     <LandingAnnouncementClient

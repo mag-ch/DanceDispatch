@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient, type SupabaseClient } from '@supa
 import { Event, EventReview, Host, HostExternalLink, Venue } from '@/lib/utils';
 import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
+import { revalidatePath } from 'next/cache';
 
 type CatalogData = {
   events: Event[];

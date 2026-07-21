@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from "react";
 import { Event, EventReview } from '@/lib/utils';
-import { Rat, Star, X, Trash2, Globe, Lock, UserX  } from "lucide-react";
+import { Rat, Star, X, Trash2, Globe, Lock, UserX, Clock, ThumbsDown, ThumbsUp  } from "lucide-react";
 import React from "react";
 import EventMediaUpload, { MediaFile } from "./EventMediaUpload";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +31,9 @@ interface RatingCommentComboProps {
     onRatingChange: (rating: number) => void;
     onCommentChange: (comment: string) => void;
 }
+
+const ATTENDANCE_PREFIX = '@@ATTENDANCE@@:';
+
 
 export const RatingCommentCombo: React.FC<RatingCommentComboProps> = ({ 
     rating, 
@@ -198,6 +201,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                         />
                     </div>
 
+                 
+
                     {/* ── Media upload ── */}
                     <div className="mb-5">
                         <label className="block text-sm font-semibold text-text mb-2">
@@ -360,7 +365,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     (review.mainComment ? 1 : 0) +
     (review.venueReview ? 1 : 0) +
     (review.djReviews?.length ?? 0);
-    
+
     // With a small number of modules, let them split the available width evenly.
     // Once there are enough that an even split would feel cramped, fall back to the
     // fixed-width, horizontally-scrolling layout.
@@ -453,7 +458,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                         >
                             {review.eventName}
                         </Link>
-                        <p className="text-sm text-text">{review.mainComment}</p>
+                        {review.mainComment && <p className="text-sm text-text">{review.mainComment}</p> }
                     </div>
                 )}
                 {review.venueReview && (

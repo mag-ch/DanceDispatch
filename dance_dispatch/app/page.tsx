@@ -5,10 +5,10 @@ import { Suspense } from "react";
 import { getCachedEvents, getCachedHosts, getCachedVenues } from "@/lib/utils_supabase_server";
 import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEventButton";
-import { LandingAnnouncementModal } from "./components/LandingAnnouncementModal";
+import { LandingAnnouncementSection } from "./components/LandingAnnouncementModal";
+import { EventRankingModalTrigger } from "./components/EventRankings/EventRankingModalTrigger";
 
 type RecentActivityItem = {
   id: string;
@@ -32,7 +32,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (    
     <main className="min-h-screen bg-bg text-text">
-      <LandingAnnouncementModal />
       <section
         className="relative py-24 text-center shadow-sm"
         style={{
@@ -72,7 +71,30 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </div>
         </div>
       </section>
+{/* 
+      <section className="container mx-auto px-6 py-6">
 
+      </section> */}
+
+      <section className="container mx-auto mb-8 px-6 mt-10">
+        <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl"
+          />
+        <LandingAnnouncementSection />   
+
+          
+        </div>
+      </section>
+
+      <div className="container mx-auto px-2 py-2 justify-center items-center flex">
+        <EventRankingModalTrigger />
+        </div>
       
       <section className="container mx-auto mb-8 px-6 mt-10">
         <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
@@ -84,6 +106,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             aria-hidden
             className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl"
           />
+
 
           <div className="relative flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -498,7 +521,8 @@ async function getRecentActivityFeed(viewerUserId?: string): Promise<RecentActiv
     }
 
     const event = eventById.get(eventId);
-    const eventTitle = event?.title || String(row.title ?? 'a new event');
+    const truncatedTitle = String(row.title ?? '').length > 40 ? String(row.title ?? '').slice(0, 37) + '...' : String(row.title ?? '');
+    const eventTitle = truncatedTitle || String(row.title ?? 'a new event');
 
     let subtitle = 'From entities you follow';
     if (venueMatch) {

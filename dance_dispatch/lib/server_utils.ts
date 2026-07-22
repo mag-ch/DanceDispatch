@@ -27,7 +27,7 @@ export async function getSavedEventsForUserServer(userId: string, mode: SavedEve
         .from('SavedEvents')
         .select('event_id, created_at')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
     if (error) {
         console.error('Error fetching saved events from Supabase:', error);

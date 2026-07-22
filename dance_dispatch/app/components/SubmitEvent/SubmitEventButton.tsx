@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ParsedEventData } from '@/app/api/parse-event/route';
+import type { Event } from "@/lib/utils";
 import { ParseEventFromLink } from './ParseEventFromLink';
 import { SubmitEventModal } from './SubmitEventModal';
 import { X } from 'lucide-react';
@@ -11,7 +11,7 @@ type SubmitMode = 'choice' | 'link' | 'manual';
 export function SubmitEventButton() {
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<SubmitMode>('choice');
-    const [parsedData, setParsedData] = useState<ParsedEventData | null>(null);
+    const [parsedData, setParsedData] = useState<Event | null>(null);
 
     const handleClose = () => {
         setOpen(false);
@@ -19,7 +19,7 @@ export function SubmitEventButton() {
         setParsedData(null);
     };
 
-    const handleParsed = (data: ParsedEventData) => {
+    const handleParsed = (data: Event) => {
         setParsedData(data);
         setMode('manual');
     };
@@ -28,7 +28,8 @@ export function SubmitEventButton() {
         <>
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => {setMode('manual'); setOpen(true);}}
+                // onClick={() => setOpen(true)}
                 className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
             >
                 Submit an Event
@@ -56,6 +57,7 @@ export function SubmitEventButton() {
                                 <button
                                     onClick={() => setMode('link')}
                                     className="flex items-center gap-4 rounded-lg border-2 border-default p-4 transition-colors hover:border-blue-500 hover:bg-blue-500/5"
+                                    disabled={true}
                                 >
                                     <span className="text-3xl">🔗</span>
                                     <div className="text-left">
@@ -99,6 +101,7 @@ export function SubmitEventButton() {
                     isOpen={true}
                     onClose={handleClose}
                     onBack={parsedData ? () => setMode('link') : () => setMode('choice')}
+                    initialData={parsedData ?? undefined}
                 />
             )}
         </>

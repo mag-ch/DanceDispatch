@@ -291,15 +291,32 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     const [deleted, setDeleted] = useState(false);
 
 
-    useEffect(() => {
-        if (authLoading ) return;
-        if (session) {
-            setIsOwner(!!session?.user?.id && session.user.id === review.userId);
-        } else {
-            setIsOwner(false);
-        }
-    }, [authLoading, session, review.userId]);
+    // useEffect(() => {
+    //     if (authLoading ) return;
+    //     if (session) {
+    //         setIsOwner(!!session?.user?.id && session.user.id === review.userId);
+    //     } else {
+    //         setIsOwner(false);
+    //     }
+    // }, [authLoading, session, review.userId]);
     
+    
+    useEffect(() => {
+        let isMounted = true;
+
+        if (authLoading || !session) {
+            setIsOwner(false);
+            return () => {
+                isMounted = false;
+            };
+        }
+
+        setIsOwner(!!session?.user?.id && session.user.id === review.userId);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [authLoading, review.userId, session]);
     
     const displayUsername = privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
     const usernameComponent = review.userId && privacyLevel !== 'anonymous'

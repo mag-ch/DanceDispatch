@@ -7,7 +7,7 @@ import {
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
 import type { Event } from '@/lib/utils';
 
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = 4;
 const INITIAL_LIMIT = 5;
 const EXPANDED_LIMIT = 15;
 

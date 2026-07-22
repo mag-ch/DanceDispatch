@@ -66,11 +66,11 @@ export function EventRankingModal({
   // Auto-open on first view of each new session
   useEffect(() => {
     const alreadyShown = sessionStorage.getItem(SESSION_KEY);
-    if (!alreadyShown) {
+    if (!alreadyShown && initialMatchup) {
       setIsOpen(true);
       sessionStorage.setItem(SESSION_KEY, 'true');
     }
-  }, []);
+  }, [initialMatchup]);
 
   // Auto-close after vote recorded
   useEffect(() => {

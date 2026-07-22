@@ -6,7 +6,7 @@ import { getCachedEvents, getCachedHosts, getCachedVenues } from "@/lib/utils_su
 import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
 import SearchBar from "./components/SearchBar";
-import { SubmitEventButton } from "./components/SubmitEventButton";
+import { SubmitEventButton } from "./components/SubmitEvent/SubmitEventButton";
 import { LandingAnnouncementSection } from "./components/LandingAnnouncementModal";
 import { EventRankingModalTrigger } from "./components/EventRankings/EventRankingModalTrigger";
 

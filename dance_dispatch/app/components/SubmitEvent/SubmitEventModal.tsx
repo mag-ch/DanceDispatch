@@ -1,15 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Venue } from '@/lib/utils';
-
-interface SubmitEventModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
+import { ArrowLeft, X } from 'lucide-react'; 
+import type { Event } from "@/lib/utils";
 
 interface FormState {
     title: string;
@@ -41,10 +37,42 @@ const empty: FormState = {
     externallink: '',
 };
 
-export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onClose }) => {
+export interface SubmitEventModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onBack?: () => void;
+    initialData?: Event; // NEW
+}
+
+// Update the empty form helper to accept initial data
+function createInitialForm(data?: Event): FormState {
+    if (!data) return empty;
+
+    return {
+        title: data.title ?? '',
+        description: data.description ?? '',
+        startdate: data.startdate ?? '',
+        starttime: data.starttime ?? '',
+        enddate: data.enddate ?? '',
+        endtime: data.endtime ?? '',
+        locationid: data.locationid ?? '', 
+        newVenueName: data.location ?? '',
+        newVenueAddress: '',
+        price: data.price !== undefined ? String(data.price) : '',
+        imageurl: data.imageurl ?? '',
+        externallink: data.externallink ?? '',
+    };
+}
+
+export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    onBack,
+    initialData
+}) => {
     const { session, loading: authLoading } = useAuth();
     const [showAuthModal, setShowAuthModal] = useState(false);
-    const [form, setForm] = useState<FormState>(empty);
+    const [form, setForm] = useState<FormState>(createInitialForm(initialData));
     const [venues, setVenues] = useState<Venue[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -151,6 +179,17 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({ isOpen, onCl
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
             <div className="relative w-full max-w-[75vw] rounded-xl bg-bg shadow-xl dark:bg-surface max-h-[75vh] overflow-y-auto">
+                {/* NEW: Back button */}
+                {onBack && (
+                    <button
+                        type="button"
+                        className="absolute left-4 top-4 rounded-full p-1 text-muted hover:text-text"
+                        onClick={onBack}
+                        aria-label="Back"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                )}
                 <button
                     type="button"
                     className="absolute right-4 top-4 rounded-full p-1 text-muted hover:text-text"

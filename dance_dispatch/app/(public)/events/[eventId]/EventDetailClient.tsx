@@ -153,6 +153,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const [isEditingEventDetails, setIsEditingEventDetails] = useState(false);
     const [isSavingEventDetails, setIsSavingEventDetails] = useState(false);
     const [eventDetailEditError, setEventDetailEditError] = useState<string | null>(null);
+    const [saveEventOnSubmit, setSaveEventOnSubmit] = useState(false);
     const [eventDetailEditForm, setEventDetailEditForm] = useState({
         title: event.title ?? '',
         startdate: event.startdate ?? '',
@@ -243,19 +244,20 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             setIsConfirmingAttendance(true);
             setAttendanceConfirmError(null);
 
-            const response = await fetch(`/api/users/saved-events/${event.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ saveToggle: true }),
-            });
+            // const response = await fetch(`/api/users/saved-events/${event.id}`, {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ saveToggle: true }),
+            // });
 
-            const payload = await response.json().catch(() => null);
-            if (!response.ok) {
-                throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
-            }
+            // const payload = await response.json().catch(() => null);
+            // if (!response.ok) {
+            //     throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
+            // }
 
-            setIsSavedEvent(true);
+            // setIsSavedEvent(true);
             setShowAttendanceConfirmModal(false);
+            setSaveEventOnSubmit(true);
             setIsReviewModalOpen(true);
         } catch (error) {
             setAttendanceConfirmError(error instanceof Error ? error.message : 'Failed to save RSVP before review.');
@@ -1087,6 +1089,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     event={event}
                                     onClose={() => setIsReviewModalOpen(false)}
                                     onSubmit={async (reviews) => {
+                                        const saveresponse = await fetch(`/api/users/saved-events/${event.id}`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ saveToggle: true }),
+                                            });
+
+                                            const payload = await saveresponse.json().catch(() => null);
+                                            if (!saveresponse.ok) {
+                                                throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
+                                            }
+
+                                        setIsSavedEvent(true);
                                         if (!event?.id) return;
                                         const response = await fetch(`/api/reviews/${event.id}`, {
                                             method: 'POST',

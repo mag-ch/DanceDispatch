@@ -70,32 +70,32 @@ export function LandingAnnouncementClient({
     return (
       <button
         onClick={handleToggleCollapse}
-        className="w-full flex items-center justify-center gap-2.5 py-3.5 text-sm font-semibold text-purple-300 hover:text-purple-200 transition-all shadow-lg"
+        className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-purple-300 hover:text-purple-200 transition-all"
       >
-        <Calendar className="w-4 h-4" />
+        <Calendar className="w-3.5 h-3.5" />
         <span>Review recent parties</span>
         {unreviewedCount > 0 && (
-          <span className="ml-1 px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/20">
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 rounded-full">
             {unreviewedCount}
           </span>
         )}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
     );
   }
 
   return (
     <section className="container overflow-hidden">
-      {/* Header */}
-      <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      {/* Compact header */}
+      <div className="relative flex flex-row items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
             Announcement
           </p>
-          <h2 className="mt-1.5 text-2xl font-bold text-zinc-100 leading-tight">
+          <h2 className="mt-0.5 text-base sm:text-xl font-bold text-zinc-100 leading-tight truncate">
             {header}
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="text-[11px] text-zinc-500 truncate">
             {savedCount > 0
               ? `${savedCount} saved · ${unreviewedCount > 0 ? `${unreviewedCount} need review` : 'all reviewed'}`
               : `${events.length} parties this week`}
@@ -103,89 +103,76 @@ export function LandingAnnouncementClient({
         </div>
         <button
           onClick={handleToggleCollapse}
-          className="shrink-0 self-start p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
+          className="shrink-0 -mr-1 -mt-1 p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
           aria-label="Collapse section"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Events */}
-      <div className="relative mt-5 space-y-5">
+      {/* Condensed events */}
+      <div className="relative mt-2 space-y-3">
         {Object.entries(grouped).map(([dayHeading, dayEvents]) => (
           <div key={dayHeading}>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500 mb-3">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500 mb-1">
               {dayHeading}
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {dayEvents.map((event) => (
                 <Link
                   key={event.id}
                   href={event.href}
                   className={`
-                    group flex items-center gap-3 rounded-lg border px-4 py-3 transition-all
+                    group flex items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all
                     ${event.needsReview
-                      ? 'border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40'
-                      : 'border-zinc-800/60 bg-zinc-900/40 hover:bg-zinc-800/60 hover:border-zinc-700'
+                      ? 'border-amber-500/25 bg-amber-500/[0.03] hover:bg-amber-500/8'
+                      : 'border-zinc-800/50 bg-zinc-900/30 hover:bg-zinc-800/40'
                     }
                   `}
                 >
-                  {/* Thumbnail */}
-                  <div className="relative shrink-0 w-12 h-12 rounded-lg overflow-hidden ">
+                  {/* Tiny thumbnail */}
+                  <div className="relative shrink-0 w-8 h-8 rounded-md overflow-hidden bg-zinc-800">
                     {event.imageUrl ? (
                       <Image
                         src={event.imageUrl}
                         alt={event.title}
                         fill
                         className="object-cover"
-                        sizes="48px"
+                        sizes="32px"
                       />
                     ) : (
                       <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-zinc-600" />
+                        <Calendar className="w-3.5 h-3.5 text-zinc-600" />
                       </div>
                     )}
                   </div>
-                  {event.isSaved && (
-                        <BookmarkCheck className="w-5 h-5 text-text shrink-0" />
-                      )}
-                  {/* Text */}
+
+                  {/* Text — single line */}
                   <div className="min-w-0 flex-1">
-                    
-                    <div className="flex items-center gap-2">
-                      
-                      <span className="text-sm font-semibold text-text group-hover:text-purple-300 transition-colors truncate">
+                    <div className="flex items-center gap-1.5">
+                      {event.isSaved && (
+                        <BookmarkCheck className="w-3 h-3 text-purple-400 shrink-0" />
+                      )}
+                      <span className="text-xs font-medium text-zinc-200 group-hover:text-purple-300 transition-colors truncate">
                         {event.title}
                       </span>
                     </div>
-                    <span className="mt-0.5 block text-xs text-zinc-500 truncate">
+                    <span className="text-[10px] text-zinc-500 truncate block leading-tight">
                       {event.subtitle}
                     </span>
                   </div>
 
-                  {/* Meta */}
-                  <div className="shrink-0 flex items-center gap-2">
+                  {/* Meta — minimal */}
+                  <div className="shrink-0 flex items-center gap-1.5">
                     {event.needsReview ? (
-                      <>
-                        <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/25">
-                          <Pencil className="w-3 h-3" />
-                          Review
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
-                      </>
-                    ) : (
-                      <>
-                        {event.isSaved && (
-                          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                            Saved
-                          </span>
-                        )}
-                        <span className="text-xs font-medium text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          Review
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-purple-400 transition-colors" />
-                      </>
-                    )}
+                      <span className="flex items-center gap-0.5 text-[10px] font-medium text-amber-400">
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span className="hidden sm:inline">Review</span>
+                      </span>
+                    ) : event.isSaved ? (
+                      <span className="hidden sm:inline text-[10px] text-purple-400/60">Saved</span>
+                    ) : null}
+                    <ArrowRight className="w-3 h-3 text-zinc-600 group-hover:text-purple-400 transition-colors" />
                   </div>
                 </Link>
               ))}
@@ -194,22 +181,22 @@ export function LandingAnnouncementClient({
         ))}
       </div>
 
-      {/* Footer */}
-      <div className="relative mt-4 flex flex-col sm:flex-row items-center gap-3">
+      {/* Compact footer */}
+      <div className="relative mt-2 flex items-center gap-2">
         {hasMore && (
           <button
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2  px-4 py-2.5 text-sm font-semibold  transition-colors"
+            className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             {isExpanded ? (
               <>
-                <ChevronUp className="w-4 h-4" />
-                Show fewer
+                <ChevronUp className="w-3 h-3" />
+                Fewer
               </>
             ) : (
               <>
-                <ChevronDown className="w-4 h-4" />
-                See more recent events
+                <ChevronDown className="w-3 h-3" />
+                More
               </>
             )}
           </button>
@@ -217,9 +204,9 @@ export function LandingAnnouncementClient({
 
         <Link
           href="/search?includePast=true"
-          className="w-full sm:w-auto text-center rounded-lg border-rounded border px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-lg shadow-purple-900/20"
+          className="ml-auto text-[11px] font-medium text-purple-400 hover:text-purple-300 transition-colors"
         >
-          Browse all past events
+          Browse all →
         </Link>
       </div>
     </section>

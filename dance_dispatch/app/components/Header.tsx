@@ -26,7 +26,7 @@ type FeedbackItem = {
     status?: string | null;
 };
 
-const CITY_OPTIONS = ['Brooklyn, NY', 'Manhattan, NY', 'Queens, NY', 'Los Angeles, CA', 'Chicago, IL'];
+const CITY_OPTIONS = ['Brooklyn, NY', 'Manhattan, NY', 'Queens, NY', 'Newark, NJ'];
 
 function CityPicker() {
     const [city, setCity] = useState(CITY_OPTIONS[0]);

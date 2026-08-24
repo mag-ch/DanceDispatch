@@ -34,6 +34,28 @@ interface SearchResultProps {
     topBadges?: CompactBadge[];
 }
 
+const formatEventDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+    }).format(date);
+};
+
+const formatEventTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date(2000, 0, 1, hours, minutes);
+
+    return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    }).format(date);
+};
+
 
 export const SearchResult: React.FC<SearchResultProps> = ({
     header,
@@ -147,12 +169,12 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                     </p>
                     <div className={styles.metaList}>
                         <div className={styles.metaRow}>
-                            <span className={styles.metaLabel}>Start:</span>
-                            {formatDateOnly(event.startdate, event.starttime)}
+                            <span className={styles.metaLabel}>Date:</span>
+                            {formatEventDate(event.startdate)}
                         </div>
                         <div className={styles.metaRow}>
-                            <span className={styles.metaLabel}>End:</span>
-                            {formatDateOnly(event.enddate, event.endtime)}
+                            <span className={styles.metaLabel}>Time:</span>
+                            {formatEventTime(event.starttime)} - {formatEventTime(event.endtime)}
                         </div>
                         <div className={styles.metaRow}>
                             <span className={styles.metaLabel}>Location:</span>

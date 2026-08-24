@@ -121,7 +121,7 @@ export async function LandingAnnouncementSection() {
       : 'How were the parties? Leave a review';
 
   return (
-    <section className="container mx-auto mb-8 mt-10 px-6">
+    <section className="mx-auto mb-8 mt-10 w-full max-w-[1400px] px-4 sm:px-6">
       <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
         <div
           aria-hidden

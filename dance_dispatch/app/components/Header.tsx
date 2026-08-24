@@ -345,7 +345,7 @@ export function Header() {
                 <div className="container mx-auto flex min-h-16 items-center gap-6 px-3 sm:px-4">
                     <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg px-1 py-1 text-xl font-bold tracking-tight hover:underline hover:underline-offset-4 sm:text-2xl">
                         <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full" aria-label="DanceDispatch logo">
-                            <img src="/icons/icon-192.svg" alt="" className="h-full w-full object-cover" />
+                            <img src="/icons/icon_1.png" alt="" className="h-full w-full object-cover" />
                         </span>
                         <span className="hidden text-text md:inline">Dance<span className="bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent">Dispatch</span></span>
                     </Link>

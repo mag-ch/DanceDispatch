@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 
@@ -152,13 +152,14 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
             <button
                 onClick={handleClick}
                 disabled={isLoading || isDisabled}
-                className={`group rounded-full transition ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
+                className={`group rounded-full p-2 transition ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
                 aria-disabled={isLoading || isDisabled}
                 title={isDisabled ? 'RSVP closed for past events' : 'Save event'}
             >
-                <Heart
-                    fill={isSaved ? 'currentColor' : 'none'}
-                    className={`transition-all ${isDisabled ? 'text-slate-400' : 'text-red-500 group-hover:fill-current group-hover:opacity-50'}`}
+                <Bookmark
+                    fill={isSaved ? 'white' : 'none'}
+                    className={`transition-all ${isDisabled ? 'text-slate-400' : 'text-white'}`}
                 />
             </button>
             <AuthRequiredModal

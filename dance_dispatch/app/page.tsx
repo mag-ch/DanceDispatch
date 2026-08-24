@@ -34,7 +34,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   return (    
     <main className="min-h-screen bg-bg text-text">
       <section
-        className="relative min-h-[610px] overflow-hidden py-28 text-left shadow-sm sm:min-h-[660px] sm:py-32"
+        className="relative min-h-[570px] overflow-hidden py-28 text-left shadow-sm sm:min-h-[590px] sm:py-32"
         style={{
           backgroundImage: "linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.93) 100%), url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
           backgroundSize: "cover",
@@ -85,14 +85,15 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       <section className="container mx-auto px-6 py-6">
 
       </section> */}
+      <TrendingEvents selectedFilter={params.mission} />
 
       <LandingAnnouncementSection />
 
-      <div className="container mx-auto px-2 py-2 justify-center items-center flex">
+      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-center px-4 py-2 sm:px-6">
         <EventRankingModalTrigger />
         </div>
       
-      <section className="container mx-auto mb-8 px-6 mt-10">
+      <section className="mx-auto mb-8 mt-10 w-full max-w-[1400px] px-4 sm:px-6">
         <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
           <div
             aria-hidden
@@ -148,10 +149,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      
-      <TrendingEvents selectedFilter={params.mission} />
-
-      <section className="container mx-auto mb-10 px-6 ">
+      <section className="mx-auto mb-10 w-full max-w-[1400px] px-4 sm:px-6">
         <div className="rounded-2xl border border-yellow-400/30 bg-gradient-to-r from-yellow-50 via-surface to-surface p-6 shadow-sm dark:from-yellow-400/10">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -633,7 +631,7 @@ function formatActivityDate(value: string): string {
 
 async function TrendingEvents({ selectedFilter }: { selectedFilter?: string }) {
   return (
-    <section className="container mx-auto px-6 py-6">
+    <section className="mx-auto w-full max-w-[1400px] px-4 py-0 sm:px-6">
       <Suspense fallback={<p className="text-muted">Loading events...</p>}>
         <TrendingEventCards initialFilter={selectedFilter ?? 'All'} />
       </Suspense>

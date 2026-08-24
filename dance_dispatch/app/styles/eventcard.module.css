@@ -98,6 +98,18 @@
   position: relative;
 }
 
+.imageWrap::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 45%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .imageLg {
   width: 100%;
   height: 12rem;
@@ -112,6 +124,7 @@
   padding: 0.5rem 0.6rem;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
   pointer-events: none;
+  z-index: 2;
 }
 
 .genreRow {
@@ -142,6 +155,7 @@
   position: absolute;
   top: 1rem;
   left: 1rem;
+  z-index: 1;
 }
 
 .content {

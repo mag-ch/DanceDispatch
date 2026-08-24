@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/app/providers/AuthContext';
 
 // Re-check location periodically while enabled so an in-progress RSVP'ed event can be confirmed.
-const CHECK_INTERVAL_MS = 1 * 60 * 1000;
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 type LocationCheckInState = {
   isSupported: boolean;

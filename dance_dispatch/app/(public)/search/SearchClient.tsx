@@ -13,9 +13,136 @@ function isSearchCategory(value: string): value is SearchCategory {
     return value === 'events' || value === 'venues' || value === 'hosts' || value === 'users';
 }
 
+type NaturalLanguageIntent = {
+    terms: string[];
+    locationTerms: string[];
+    isFree: boolean;
+    dateFilter: 'today' | 'weekend' | null;
+    wantsGoodSound: boolean;
+};
+
+const LOCATION_ALIASES: Record<string, string[]> = {
+    nyc: ['new york', 'new york city'],
+    'new york': ['nyc', 'new york city'],
+    'new york city': ['nyc', 'new york'],
+    nj: ['new jersey'],
+    'new jersey': ['nj'],
+    la: ['los angeles'],
+    'los angeles': ['la'],
+    sf: ['san francisco'],
+    'san francisco': ['sf'],
+    dc: ['washington dc', 'washington, dc'],
+    'washington dc': ['dc', 'washington, dc'],
+};
+
+const KNOWN_LOCATION_PHRASES = [...new Set([
+    ...Object.keys(LOCATION_ALIASES),
+    ...Object.values(LOCATION_ALIASES).flat(),
+])].sort((a, b) => b.length - a.length);
+
+function parseNaturalLanguageQuery(query: string): NaturalLanguageIntent {
+    const normalized = query.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ');
+    const isFree = /\bfree\b|no\s+cover|without\s+(an?\s+)?cover/.test(normalized);
+    const dateFilter = /\btoday\b|tonight/.test(normalized)
+        ? 'today'
+        : /this\s+weekend|\bweekend\b/.test(normalized)
+            ? 'weekend'
+            : null;
+    const wantsGoodSound = /(good|great|excellent|strong|quality)\s+(sound|audio)|sound\s+systems?/.test(normalized);
+    const locationTerms = Array.from(new Set<string>([
+        ...Array.from(normalized.matchAll(/\b(?:in|near|around|at)\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,3})/g))
+            .map((match) => match[1].replace(/\s+(today|tonight|this\s+weekend|weekend|free|events?|part(y|ies))\b.*$/g, '').trim())
+            .filter((term) => term.length > 2),
+        ...KNOWN_LOCATION_PHRASES.filter((phrase) => normalized.includes(phrase)),
+    ]))
+        .filter((term, index, terms) => !terms.some((other, otherIndex) => otherIndex !== index && other.includes(term)));
+    const queryWithoutLocations = locationTerms.reduce(
+        (text, location) => text.replaceAll(location, ' '),
+        normalized,
+    );
+    const terms = queryWithoutLocations
+        .replace(/\bfree\b|no\s+cover|without\s+(an?\s+)?cover/g, ' ')
+        .replace(/\btoday\b|tonight|this\s+weekend|\bweekend\b/g, ' ')
+        .replace(/(good|great|excellent|strong|quality)\s+(sound|audio)|sound\s+systems?/g, ' ')
+        .split(/\s+/)
+        .filter((term) => term.length > 2 && !locationTerms.includes(term) && !['the', 'and', 'with', 'for', 'are', 'that', 'from', 'events', 'event', 'venues', 'venue', 'hosts', 'host', 'users', 'user', 'parties', 'party'].includes(term));
+
+    return { terms, locationTerms, isFree, dateFilter, wantsGoodSound };
+}
+
+function locationTermMatches(term: string, locationText: string): boolean {
+    if (locationText.includes(term)) return true;
+    return (LOCATION_ALIASES[term] ?? []).some((alias) => locationText.includes(alias));
+}
+
+function isEventOnNaturalLanguageDate(event: any, dateFilter: NaturalLanguageIntent['dateFilter']): boolean {
+    if (!dateFilter) return true;
+
+    const eventDate = new Date(`${event.startdate}T12:00:00`);
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (dateFilter === 'today') {
+        return eventDate.getFullYear() === todayStart.getFullYear()
+            && eventDate.getMonth() === todayStart.getMonth()
+            && eventDate.getDate() === todayStart.getDate();
+    }
+
+    const daysUntilSaturday = (6 - todayStart.getDay() + 7) % 7;
+    const weekendStart = new Date(todayStart);
+    weekendStart.setDate(todayStart.getDate() + daysUntilSaturday);
+    const weekendEnd = new Date(weekendStart);
+    weekendEnd.setDate(weekendStart.getDate() + 1);
+    return eventDate >= weekendStart && eventDate <= weekendEnd;
+}
+
+function venueHasGoodSound(venueAttributes: any[]): boolean {
+    return venueAttributes.some((attribute) => {
+        const attributeName = String(attribute?.attribute ?? '').toLowerCase();
+        if (!/(sound|audio|acoustic)/.test(attributeName)) return false;
+
+        const value = String(attribute?.value ?? '').toLowerCase();
+        const numericValue = Number(attribute?.value);
+        return (Number.isFinite(numericValue) && numericValue >= 4)
+            || /good|great|excellent|quality|strong/.test(value);
+    });
+}
+
+function eventMatchesNaturalLanguage(event: any, intent: NaturalLanguageIntent, venue: any, venueAttributes: any[]): boolean {
+    if (!isEventOnNaturalLanguageDate(event, intent.dateFilter)) return false;
+
+    const eventText = [
+        event.title,
+        event.description,
+        ...(event.hostGenres ?? []),
+        event.location,
+        venue?.name,
+        venue?.type,
+        venue?.address,
+        venue?.bio,
+        ...venueAttributes.flatMap((attribute) => [attribute?.attribute, attribute?.value]),
+    ].filter(Boolean).join(' ').toLowerCase();
+    const locationText = [event.location, venue?.name, venue?.address, venue?.bio].filter(Boolean).join(' ').toLowerCase();
+    if (intent.isFree && !(Number(event.price) === 0 || /free|no\s+cover/.test(eventText))) return false;
+    if (intent.wantsGoodSound && !venueHasGoodSound(venueAttributes) && !/(good|great|excellent|quality)\s+(sound|audio)/.test(eventText)) return false;
+    if (!intent.locationTerms.every((term) => locationTermMatches(term, locationText))) return false;
+    return intent.terms.every((term) => eventText.includes(term));
+}
+
+function getIntentSummary(intent: NaturalLanguageIntent): string[] {
+    const summary: string[] = [];
+    if (intent.isFree) summary.push('Free events');
+    if (intent.dateFilter === 'today') summary.push('Today');
+    if (intent.dateFilter === 'weekend') summary.push('This weekend');
+    if (intent.wantsGoodSound) summary.push('Good sound systems');
+    if (intent.locationTerms.length > 0) summary.push(`Location: ${intent.locationTerms.join(', ')}`);
+    if (intent.terms.length > 0) summary.push(`Keywords: ${intent.terms.join(', ')}`);
+    return summary;
+}
+
 interface SearchClientProps {
     initialEvents: any[];
     initialVenues: any[];
+    initialVenueAttributes: any[];
     initialHosts: any[];
     initialUsers: any[];
     initialBoroughs: any[];
@@ -26,6 +153,7 @@ interface SearchClientProps {
 export default function SearchClient({ 
     initialEvents, 
     initialVenues, 
+    initialVenueAttributes,
     initialHosts,
     initialUsers,
     initialBoroughs,
@@ -52,6 +180,7 @@ export default function SearchClient({
 
     const safeEvents = Array.isArray(initialEvents) ? initialEvents : [];
     const safeVenues = Array.isArray(initialVenues) ? initialVenues : [];
+    const safeVenueAttributes = Array.isArray(initialVenueAttributes) ? initialVenueAttributes : [];
     const safeHosts = Array.isArray(initialHosts) ? initialHosts : [];
     const safeUsers = Array.isArray(initialUsers) ? initialUsers : [];
     const safeBoroughs = Array.isArray(initialBoroughs) ? initialBoroughs : [];
@@ -64,6 +193,18 @@ export default function SearchClient({
         }
         return map;
     }, [safeVenues]);
+
+    const venueAttributesMap = useMemo(() => {
+        const map = new Map<string, any[]>();
+        for (const attribute of safeVenueAttributes) {
+            const venueId = String(attribute?.venue_id ?? '');
+            if (!venueId) continue;
+            const existing = map.get(venueId) ?? [];
+            existing.push(attribute);
+            map.set(venueId, existing);
+        }
+        return map;
+    }, [safeVenueAttributes]);
 
     const [searchQuery, setSearchQuery] = useState(() => searchParams?.get('query') ?? searchBar ?? '');
     const [pastEventsBool, setPastEventsBool] = useState(() => searchParams?.get('includePast') === 'true');
@@ -171,6 +312,8 @@ export default function SearchClient({
     };
 
     const now = new Date();
+    const naturalLanguageIntent = parseNaturalLanguageQuery(searchQuery);
+    const intentSummary = getIntentSummary(naturalLanguageIntent);
 
     const eventEndTime = (event: any) => {
         const dateStr = event.enddate || event.startdate;
@@ -188,9 +331,12 @@ export default function SearchClient({
     // ── Events ──────────────────────────────────────────────────────────────
     let filteredEvents = searchQuery === ''
         ? safeEvents
-        : safeEvents.filter(event =>
-            event.title?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        : safeEvents.filter(event => eventMatchesNaturalLanguage(
+            event,
+            naturalLanguageIntent,
+            venueMap.get(String(event.locationid)),
+            venueAttributesMap.get(String(event.locationid)) ?? [],
+        ));
 
     if (pastEventsBool) {
         filteredEvents = filteredEvents
@@ -231,9 +377,16 @@ export default function SearchClient({
     // ── Venues ──────────────────────────────────────────────────────────────
     let filteredVenues = searchQuery === ''
         ? safeVenues
-        : safeVenues.filter(venue =>
-            venue.name?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        : safeVenues.filter((venue) => {
+            const venueText = [venue.name, venue.type, venue.address, venue.bio]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            if (naturalLanguageIntent.locationTerms.length > 0) {
+                return naturalLanguageIntent.locationTerms.every((term) => locationTermMatches(term, venueText));
+            }
+            return venue.name?.toLowerCase().includes(searchQuery.toLowerCase());
+        });
 
     if (selectedBoroughs.length > 0) {
         filteredVenues = filteredVenues.filter(venue => venueMatchesBoroughs(venue));
@@ -268,6 +421,13 @@ export default function SearchClient({
                         className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-surface text-text placeholder-text text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
+
+                {searchQuery.trim() && (
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-100">
+                        <span className="font-semibold">Interpreted as:</span>{' '}
+                        {intentSummary.length > 0 ? intentSummary.join(' · ') : 'a general search'}
+                    </div>
+                )}
 
                 {/* Category Toggles */}
                 <div className="flex flex-wrap gap-2 mb-4 sm:mb-6 items-center">

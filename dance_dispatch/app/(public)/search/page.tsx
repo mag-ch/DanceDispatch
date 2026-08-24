@@ -1,4 +1,5 @@
 import { getEvents, getVenues, getHosts, getUniqueBoroughs, getUsers } from '@/lib/utils_supabase_server';
+import { getAllVenueAttributes } from '@/lib/server_utils';
 import SearchClient, { SearchCategory } from './SearchClient';
 
 type SearchPageProps = {
@@ -41,7 +42,10 @@ export default async function SearchPage({ searchParams, searchBar, categories }
     const venues = await getVenues();
     const hosts = await getHosts();
     const users = await getUsers();
-    const boroughs = await getUniqueBoroughs();
+    const [boroughs, venueAttributes] = await Promise.all([
+        getUniqueBoroughs(),
+        getAllVenueAttributes(),
+    ]);
 
     const queryString = firstParam(resolvedSearchParams?.query) ?? searchBar ?? '';
     const categoryParams = resolvedSearchParams?.categories;
@@ -59,6 +63,7 @@ export default async function SearchPage({ searchParams, searchBar, categories }
             initialHosts={hosts}
             initialUsers={users}
             initialBoroughs={boroughs}
+            initialVenueAttributes={venueAttributes}
             searchBar={queryString}
             categories={parsedCategories}
         />

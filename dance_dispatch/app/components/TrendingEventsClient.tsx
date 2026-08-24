@@ -80,10 +80,6 @@ export default function TrendingEventsClient({
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="text-2xl font-semibold">Choose your next mission!</h2>
-        <p className="text-sm text-muted">{filter === 'All' ? 'Upcoming events' : `${filter} events`}</p>
-      </div>
       <div className="mb-8 flex gap-2 overflow-x-auto pb-1" aria-label="Filter events">
         {missionFilters.map((option) => (
           <button
@@ -100,6 +96,10 @@ export default function TrendingEventsClient({
             {option}
           </button>
         ))}
+      </div>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <h2 className="text-2xl font-semibold">Choose your next mission!</h2>
+        <p className="text-sm text-muted">{filter === 'All' ? 'Upcoming events' : `${filter} events`}</p>
       </div>
       {visibleCards.length === 0 ? (
         <p className="text-muted">No events match this mission yet.</p>

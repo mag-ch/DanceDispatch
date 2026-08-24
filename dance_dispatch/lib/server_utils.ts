@@ -132,6 +132,20 @@ export async function getUniqueVenueAttributes(venueId: string) {
     return data;
 }
 
+export async function getAllVenueAttributes() {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('venue_attributes')
+        .select('venue_id, attribute, value, data_type');
+
+    if (error) {
+        console.error('Error fetching venue attributes for search:', error);
+        return [];
+    }
+
+    return data ?? [];
+}
+
 // One filter per attribute. 'unique' matches categorical values (e.g. floor material);
 // 'rating' matches an averaged numeric score (e.g. sound system quality) within [min, max].
 export type VenueAttributeFilter =

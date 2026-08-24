@@ -53,7 +53,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               </span>
             </h1>
             <p className="mt-8 max-w-2xl text-base leading-7 text-white/75 sm:text-xl sm:leading-8">
-              Search by the things you actually care about - sound, room, price, crowd. Then log the night and tell everyone how it went.
+              Find events by things you actually care about - sound, room, price, crowd. Then log your experience and share with friends!
             </p>
             <div className="mt-9 max-w-5xl">
               <SearchBar />

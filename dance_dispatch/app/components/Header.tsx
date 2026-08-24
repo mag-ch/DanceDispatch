@@ -347,7 +347,7 @@ export function Header() {
                         <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full" aria-label="DanceDispatch logo">
                             <img src="/icons/icon_1.png" alt="" className="h-full w-full object-cover" />
                         </span>
-                        <span className="text-text">Dance<span className="bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent">Dispatch</span></span>
+                        <span className="hidden text-text md:inline">Dance<span className="bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent">Dispatch</span></span>
                     </Link>
                     <nav className="hidden items-center gap-1 text-sm text-text/60 md:flex">
                         <Link href="/" className="px-4 py-2 transition ">Home</Link>

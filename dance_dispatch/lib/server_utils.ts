@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
 import { Event, EventReview } from '@/lib/utils';
-import { getCachedEvents, getUserById, getUsers } from '@/lib/utils_supabase_server';
+import { getCachedEvents, getUserById, getUsers, getVenues } from '@/lib/utils_supabase_server';
 import { combineChunks } from '@supabase/ssr';
 import { defaultPlanNameFromEvents, normalizeEventIds } from './supabase/client';
 import { buildPartyPlanSummary, normalizePlanPrice, serializeEventIdsParam } from './party-plan';
@@ -130,6 +130,91 @@ export async function getUniqueVenueAttributes(venueId: string) {
         return null;
     }
     return data;
+}
+
+// One filter per attribute. 'unique' matches categorical values (e.g. floor material);
+// 'rating' matches an averaged numeric score (e.g. sound system quality) within [min, max].
+export type VenueAttributeFilter =
+    | { attribute: string; type: 'unique'; values: string[] }
+    | { attribute: string; type: 'rating'; min?: number; max?: number };
+
+async function getVenueIdsMatchingAttributeFilter(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    filter: VenueAttributeFilter
+): Promise<Set<string>> {
+    if (filter.type === 'unique') {
+        if (filter.values.length === 0) return new Set();
+
+        const orClause = filter.values.map((value) => `value.ilike.${value}`).join(',');
+        const { data, error } = await supabase
+            .from('venue_attributes')
+            .select('venue_id')
+            .eq('attribute', filter.attribute)
+            .eq('data_type', 'unique')
+            .or(orClause);
+
+        if (error) {
+            console.error(`Error filtering venues by attribute "${filter.attribute}":`, error);
+            return new Set();
+        }
+
+        return new Set((data ?? []).map((row: any) => String(row.venue_id)));
+    }
+
+    // Rating filters need every row to compute a per-venue average before thresholding.
+    const { data, error } = await supabase
+        .from('venue_attributes')
+        .select('venue_id, value')
+        .eq('attribute', filter.attribute)
+        .eq('data_type', 'rating');
+
+    if (error) {
+        console.error(`Error filtering venues by attribute "${filter.attribute}":`, error);
+        return new Set();
+    }
+
+    const totalsByVenueId = new Map<string, { total: number; count: number }>();
+    for (const row of data ?? []) {
+        const venueId = String((row as any).venue_id);
+        const value = Number((row as any).value);
+        if (Number.isNaN(value)) continue;
+
+        const existing = totalsByVenueId.get(venueId) ?? { total: 0, count: 0 };
+        existing.total += value;
+        existing.count += 1;
+        totalsByVenueId.set(venueId, existing);
+    }
+
+    const matchingVenueIds = new Set<string>();
+    for (const [venueId, { total, count }] of totalsByVenueId) {
+        const average = total / count;
+        if (filter.min !== undefined && average < filter.min) continue;
+        if (filter.max !== undefined && average > filter.max) continue;
+        matchingVenueIds.add(venueId);
+    }
+
+    return matchingVenueIds;
+}
+
+// Filters are AND'd together; add more filter objects to search on more attributes at once.
+export async function searchVenuesByAttributes(filters: VenueAttributeFilter[]) {
+    if (filters.length === 0) {
+        return getVenues();
+    }
+
+    const supabase = await createClient();
+    const idSetsPerFilter = await Promise.all(
+        filters.map((filter) => getVenueIdsMatchingAttributeFilter(supabase, filter))
+    );
+
+    const matchingVenueIds = idSetsPerFilter.reduce((acc, idSet) =>
+        new Set([...acc].filter((venueId) => idSet.has(venueId)))
+    );
+
+    if (matchingVenueIds.size === 0) return [];
+
+    const venues = await getVenues();
+    return venues.filter((venue) => matchingVenueIds.has(String(venue.id)));
 }
 
 export async function getVenueComments(venueId: string) {

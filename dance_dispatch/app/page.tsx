@@ -9,6 +9,7 @@ import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEvent/SubmitEventButton";
 import { LandingAnnouncementSection } from "./components/LandingAnnouncementModal";
 import { EventRankingModalTrigger } from "./components/EventRankings/EventRankingModalTrigger";
+import TrendingEventsClient from "./components/TrendingEventsClient";
 
 type RecentActivityItem = {
   id: string;
@@ -20,7 +21,7 @@ type RecentActivityItem = {
 };
 
 
-export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
+export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string; mission?: string }> }) {
   const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -148,12 +149,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       </section>
 
       
-      <section className="container mx-auto px-6 py-6">
-        <h2 className="text-2xl font-semibold mb-6">Chose your next mission!</h2>
-        <Suspense fallback={<p>Loading events...</p>}>
-          <TrendingEvents userId={userId} />
-        </Suspense>
-      </section>
+      <TrendingEvents selectedFilter={params.mission} />
 
       <section className="container mx-auto mb-10 px-6 ">
         <div className="rounded-2xl border border-yellow-400/30 bg-gradient-to-r from-yellow-50 via-surface to-surface p-6 shadow-sm dark:from-yellow-400/10">
@@ -635,19 +631,25 @@ function formatActivityDate(value: string): string {
 }
 
 
-async function TrendingEvents({ userId }: { userId?: string }) {
+async function TrendingEvents({ selectedFilter }: { selectedFilter?: string }) {
+  return (
+    <section className="container mx-auto px-6 py-6">
+      <Suspense fallback={<p className="text-muted">Loading events...</p>}>
+        <TrendingEventCards initialFilter={selectedFilter ?? 'All'} />
+      </Suspense>
+    </section>
+  );
+}
+
+async function TrendingEventCards({ initialFilter }: { initialFilter: string }) {
   const events = await getCachedEvents();
 
-  if (!events.length) {
-    return <p>No events available.</p>;
-  }
-
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-      {events.map((event: any) => (
-        <EventCard key={event.id} event={event}/>
-      ))}
-    </div>
+    <TrendingEventsClient
+      events={events}
+      initialFilter={initialFilter}
+      cards={events.map((event) => <EventCard key={event.id} event={event} />)}
+    />
   );
 }
 

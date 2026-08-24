@@ -5,8 +5,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { getUsernameFromId } from '@/lib/utils_supabase';
 import { ThemeToggle } from './ThemeProvider';
-import { Bell, Menu, MessageSquarePlus, X } from 'lucide-react';
+import { Bell, MapPin, Menu, MessageSquarePlus, Plus, Search, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { SubmitEventButton } from './SubmitEvent/SubmitEventButton';
 
 type NotificationItem = {
     id: string;
@@ -24,6 +25,37 @@ type FeedbackItem = {
     createdAt: string;
     status?: string | null;
 };
+
+const CITY_OPTIONS = ['Brooklyn, NY', 'Manhattan, NY', 'Queens, NY', 'Los Angeles, CA', 'Chicago, IL'];
+
+function CityPicker() {
+    const [city, setCity] = useState(CITY_OPTIONS[0]);
+
+    useEffect(() => {
+        const savedCity = window.localStorage.getItem('dance-dispatch-city');
+        if (savedCity && CITY_OPTIONS.includes(savedCity)) {
+            setCity(savedCity);
+        }
+    }, []);
+
+    return (
+        <label className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted transition hover:border-accent-2 hover:text-text">
+            <MapPin className="h-4 w-4 text-accent-2" />
+            <span className="sr-only">Choose your city</span>
+            <select
+                aria-label="Choose your city"
+                value={city}
+                onChange={(event) => {
+                    setCity(event.target.value);
+                    window.localStorage.setItem('dance-dispatch-city', event.target.value);
+                }}
+                className="max-w-[8.5rem] cursor-pointer appearance-none bg-transparent font-medium text-text outline-none"
+            >
+                {CITY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+        </label>
+    );
+}
 
 function formatRelativeTime(dateValue: string): string {
     const ts = Date.parse(dateValue);
@@ -46,6 +78,7 @@ export function Header() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [username, setUsername] = useState<string | null>(null);
+    const [profilePicture, setProfilePicture] = useState<string | null>(null);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [isNotificationUpdating, setIsNotificationUpdating] = useState(false);
@@ -121,6 +154,7 @@ export function Header() {
         const user = session?.user;
         if (!user) {
             setUsername(null);
+            setProfilePicture(null);
             return;
         }
 
@@ -138,6 +172,15 @@ export function Header() {
                 setUsername(fetchedUsername);
             }
         });
+
+        supabase
+            .from('profiles')
+            .select('profile_picture')
+            .eq('id', user.id)
+            .maybeSingle()
+            .then(({ data }: { data: { profile_picture?: unknown } | null }) => {
+                setProfilePicture(typeof data?.profile_picture === 'string' ? data.profile_picture : null);
+            });
     }, [session?.user]);
 
     useEffect(() => {
@@ -288,11 +331,9 @@ export function Header() {
 
     if (loading || !isHydrated) {
         return (
-            <header className="bg-bg site-header border-b border-border">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex justify-between items-center">
-                        <Link href="/" className="text-2xl text-text font-bold">DanceDispatch</Link>
-                    </div>
+            <header className="site-header border-b border-border bg-[#0b0912] text-white">
+                <div className="container mx-auto flex h-16 items-center px-4">
+                    <Link href="/" className="text-xl font-black uppercase tracking-tight">Dance<span className="text-fuchsia-400">Dispatch</span></Link>
                 </div>
             </header>
         );
@@ -300,110 +341,120 @@ export function Header() {
 
     return (
         <>
-            <header className="bg-bg dark:bg-surface site-header shadow-md sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex justify-between items-center">
-                        <Link href="/" className="text-2xl text-text font-bold">DanceDispatch</Link>
-                         <nav className="flex items-center text-muted gap-2">
-                            <ThemeToggle />
-                            {session && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={handleNotificationClick}
-                                        className="relative rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                                        aria-label="Open notifications"
-                                    >
-                                        <Bell className="h-5 w-5" />
-                                        {unreadCount > 0 && (
-                                            <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white">
-                                                {unreadCount > 9 ? '9+' : unreadCount}
-                                            </span>
-                                        )}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleFeedbackClick}
-                                        className="inline-flex items-center gap-2 px-1 py-2 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                                    >
-                                        <MessageSquarePlus className="h-4 w-4" />
-                                    </button>
-                                </>
-                            )}
-                            <div className="hidden md:flex items-center gap-2">
-                                <Link href="/search" className="hover:underline">Search</Link>
-                                <Link href="/party-calendar" className="hover:underline">Calendar</Link>
-                                {session ? (
-                                    <>
-                                        <Link href="/profile" className="hover:underline inline-flex items-center gap-2">
-                                            <span>{username}</span>
-                                        </Link>
-                                        <button
-                                            onClick={handleLogout}
-                                            className="px-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                                        >
-                                            Logout
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href="/auth/login"
-                                            className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
-                                        >
-                                            Login
-                                        </Link>
-                                        <Link
-                                            href="/auth/signup"
-                                            className="btn-highlighted px-4 py-2 rounded-lg transition"
-                                        >
-                                            Sign Up
-                                        </Link>
-                                    </>
-                                )}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                                className="md:hidden rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                                aria-label="Open menu"
-                                aria-expanded={isMobileMenuOpen}
-                            >
-                                <Menu className="h-5 w-5" />
-                            </button>
-                        </nav>
-                    </div>
+            <header className="site-header sticky top-0 z-50 border-b border-white/5 bg-bg text-white shadow-lg">
+                <div className="container mx-auto flex min-h-16 items-center gap-6 px-3 sm:px-4">
+                    <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg px-1 py-1 text-xl font-bold tracking-tight hover:underline hover:underline-offset-4 sm:text-2xl">
+                        <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full" aria-label="DanceDispatch logo">
+                            <img src="/icons/icon_1.png" alt="" className="h-full w-full object-cover" />
+                        </span>
+                        <span className="text-text">Dance<span className="bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent">Dispatch</span></span>
+                    </Link>
+                    <nav className="hidden items-center gap-1 text-sm text-text/60 md:flex">
+                        <Link href="/" className="px-4 py-2 transition ">Home</Link>
+                        <Link href="/mission" className="px-4 py-2 transition ">Mission</Link>
+                        <Link href="/party-calendar" className="px-4 py-2 transition">Calendar</Link>
+                     <SubmitEventButton
+                            label="Add event"
+                            className="hidden items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
+                        />
+                    </nav>
+                    <nav className="ml-auto flex items-center gap-2 text-white/70">
+                        <CityPicker />
+                        <Link href="/search" className="rounded-full p-2 transition hover:bg-white/10 hover:text-white" aria-label="Search">
+                            <Search className="h-5 w-5" />
+                        </Link>
+                        {session && (
+                            <>
+                                <button type="button" onClick={handleNotificationClick} className="relative rounded-full p-2 transition hover:bg-white/10 hover:text-white" aria-label="Open notifications">
+                                    <Bell className="h-5 w-5" />
+                                    {unreadCount > 0 && <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-fuchsia-400" />}
+                                </button>
+                                <button type="button" onClick={handleFeedbackClick} className="hidden rounded-full p-2 transition hover:bg-white/10 hover:text-white md:block" aria-label="Send feedback">
+                                    <MessageSquarePlus className="h-5 w-5" />
+                                </button>
+                                <span className="hidden md:inline-flex">
+                                    <ThemeToggle />
+                                </span>
+                                <Link href='/profile' className="hidden items-center gap-2 rounded-full border border-white/10 pl-1 pr-3 transition hover:border-white/25 md:flex" aria-label="Open profile">
+                                    <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-300 text-sm font-bold text-[#191323]">
+                                        {profilePicture ? <span className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profilePicture})` }} /> : (username?.[0] ?? 'D').toUpperCase()}
+                                    </span>
+                                    <span className=" max-w-20 truncate text-sm font-semibold text-text">{username ?? 'Profile'}</span>
+                                </Link>
+                            </>
+                        )}
+                       
+                    
+                        {!session && (
+                            <>
+                            <Link href="/auth/login" className="hidden rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-white/10 md:block">Log in</Link>
+                            <Link href="/auth/signup" className="hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 md:block">Sign up</Link>
+                            </>
+                        )}
+                        {session && (
+                            <Link href="/profile" className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-300 text-sm font-bold text-[#191323] md:hidden" aria-label="Open profile">
+                                {profilePicture ? <span className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profilePicture})` }} /> : (username?.[0] ?? 'D').toUpperCase()}
+                            </Link>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                            className="rounded-full p-2 transition hover:bg-white/10 md:hidden"
+                            aria-label="Open menu"
+                            aria-expanded={isMobileMenuOpen}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </button>
+                    </nav>
                 </div>
 
             {isMobileMenuOpen && (
-                <div className="md:hidden border-b border-border bg-surface shadow-md">
-                    <nav className="flex flex-col items-end px-4 py-2 gap-1">
+                <div className="border-t border-white/5 bg-[#0b0912] md:hidden">
+                    <nav className="flex flex-col px-4 py-3">
                         <Link
                             href="/search"
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                            className="rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10"
                         >
                             Search
                         </Link>
                         <Link
-                            href="/leaderboard"
+                            href="/party-calendar"
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                            className="rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10"
                         >
-                            Leaderboard
+                            Party Calendar
                         </Link>
+                        <Link
+                            href="/mission"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10"
+                        >
+                            Mission
+                        </Link>
+                        <SubmitEventButton
+                            label="Add event"
+                            className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-white/80 hover:bg-white/10"
+                        />
                         {session ? (
                             <>
-                                <Link
-                                    href="/profile"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap inline-flex items-center gap-2"                                >
-<span>{username ?? 'Profile'}</span>
-                                    </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsMobileMenuOpen(false); handleFeedbackClick(); }}
+                                    className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-white/80 hover:bg-white/10"
+                                >
+                                    Feedback
+                                </button>
+                                <Link href='/profile' onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10" aria-label="Open profile">
+                                    <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-300 text-sm font-bold text-[#191323]">
+                                        {profilePicture ? <span className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profilePicture})` }} /> : (username?.[0] ?? 'D').toUpperCase()}
+                                    </span>
+                                    <span className="max-w-20 truncate">{username ?? 'Profile'}</span>
+                                </Link>
                                 <button
                                     type="button"
                                     onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
-                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-red-300 hover:bg-white/10"
                                 >
                                     Logout
                                 </button>
@@ -413,14 +464,14 @@ className="rounded-md px-3 py-2.5 text-sm font-medium text-text hover:bg-slate-1
                                 <Link
                                     href="/auth/login"
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"
+                                    className="rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10"
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     href="/auth/signup"
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="btn-highlighted rounded-md px-3 py-2.5 text-sm font-semibold whitespace-nowrap"
+                                    className="btn-highlighted rounded-md px-3 py-2.5 text-sm font-semibold"
                                 >
                                     Sign Up
                                 </Link>

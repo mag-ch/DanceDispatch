@@ -21,16 +21,16 @@ export default function SearchBar() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex min-h-16 overflow-hidden rounded-[1.6rem] border border-white/15 bg-[#08070d]/80 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md">
       <input
         type="text"
         name="query"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search events, organizers, or hosts..."
-        className="flex-grow p-3 rounded-md border border-default bg-surface/80 backdrop-blur-sm placeholder:text-white/60 text-white focus:outline-none focus:ring-2 focus:ring-accent transition"
+        placeholder="Search parties, venues, and DJs by name..."
+        className="min-w-0 flex-grow bg-transparent px-4 text-base text-white placeholder:text-white/55 focus:outline-none sm:text-lg"
       />
-      <button type="submit" className="btn-highlighted px-4 py-3 bg-accent rounded-md">
+     <button type="submit" className="btn-highlighted shrink-0 rounded-[1.2rem] px-5 py-3 text-sm font-bold text-black sm:px-8 sm:text-base">
         Search
       </button>
     </form>

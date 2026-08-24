@@ -33,42 +33,51 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   return (    
     <main className="min-h-screen bg-bg text-text">
       <section
-        className="relative py-24 text-center shadow-sm"
+        className="relative min-h-[610px] overflow-hidden py-28 text-left shadow-sm sm:min-h-[660px] sm:py-32"
         style={{
-          backgroundImage: "url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
+          backgroundImage: "linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.93) 100%), url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-black/60" />
-        <div className="relative z-10">
-          <h1 className="text-4xl font-bold mb-4 text-white">
-            Are you ready to dance?
-          </h1>
-          <p className="text-lg text-white/70 mb-8">
-            Dispatching dancers to the club, one party at a time.
-          </p>
-          <div className="max-w-2xl mx-auto">
-            <SearchBar />
-            <div className="mt-4 flex justify-center gap-3">
-              <Link
-                href="/party-calendar"
-                className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
-              >
-                Party Calendar
-              </Link>
-        
-              <SubmitEventButton />
+        <div className="relative z-10 mx-auto max-w-7xl px-6">
+          <div className="max-w-5xl">
+            {/* <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-lime-400/60 bg-black/30 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.12)]">
+              <span className="h-2 w-2 rounded-full bg-lime-300 shadow-[0_0_8px_rgba(190,242,100,0.9)]" />
+              24 parties tonight in Brooklyn
+            </div> */}
+            <h1 className="max-w-4xl font-[Impact,_Haettenschweiler,sans-serif] text-[clamp(2.25rem,8vw,5rem)] font-normal uppercase leading-[0.86] tracking-[0.015em] text-white">
+              Dispatching Dancers to the Club
+              <span className="inline-block bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent bg-[length:100%_auto]">
+                One party at a time
+              </span>
+            </h1>
+            <p className="mt-8 max-w-2xl text-base leading-7 text-white/75 sm:text-xl sm:leading-8">
+              Search by the things you actually care about - sound, room, price, crowd. Then log the night and tell everyone how it went.
+            </p>
+            <div className="mt-9 max-w-5xl">
+              <SearchBar />
             </div>
-            <div className="mt-6 text-sm text-white/70">
-                  <Link
-                href="/mission"
-                className="rounded-md border border-default bg-surface/90 px-5 py-2.5 text-sm font-semibold text-text hover-bg-accent-soft"
-              >
-                What is our mission?
-              </Link>
-            </div>
+            {/* <p className="mt-4 text-sm text-cyan-200/80 sm:text-base">
+              <span className="mr-2 text-lg text-cyan-300">✧</span>
+              Tuned to Brooklyn · house, salsa &amp; disco - from what you saved last month
+            </p> */}
           </div>
+          {/* <div className="mt-7 flex flex-wrap justify-start gap-3">
+            <Link
+              href="/party-calendar"
+              className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
+            >
+              Party Calendar
+            </Link>
+            <SubmitEventButton />
+            <Link
+              href="/mission"
+              className="rounded-md border border-white/30 bg-black/25 px-5 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/10"
+            >
+              What is our mission?
+            </Link>
+          </div> */}
         </div>
       </section>
 {/* 
@@ -76,21 +85,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
       </section> */}
 
-      <section className="container mx-auto mb-8 px-6 mt-10">
-        <div className="relative overflow-hidden rounded-3xl border border-cyan-400/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-6 shadow-[0_18px_50px_rgba(8,145,178,0.18)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl"
-          />
-        <LandingAnnouncementSection />   
-
-          
-        </div>
-      </section>
+      <LandingAnnouncementSection />
 
       <div className="container mx-auto px-2 py-2 justify-center items-center flex">
         <EventRankingModalTrigger />
@@ -212,6 +207,44 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       
     </main>
   );
+}
+
+const CITY_OPTIONS = ['New York City', 'Los Angeles', 'Chicago', 'Miami', 'Atlanta'];
+
+async function CityPicker() {
+    let city = (CITY_OPTIONS[0]);
+
+    const savedCity = window.localStorage.getItem('dance-dispatch-city');
+        if (savedCity && CITY_OPTIONS.includes(savedCity)) {
+            city = savedCity;
+        }
+
+        
+
+    const handleCityChange = (nextCity: string) => {
+        city = nextCity;
+        window.localStorage.setItem('dance-dispatch-city', nextCity);
+    };
+
+    return (
+        <div className="border-b border-border bg-surface/80">
+            <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-2">
+                <label htmlFor="city-picker" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                    Choose your city
+                </label>
+                <select
+                    id="city-picker"
+                    value={city}
+                    onChange={(event) => handleCityChange(event.target.value)}
+                    className="rounded-md border border-default bg-bg px-3 py-1.5 text-sm font-medium text-text focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                    {CITY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
 }
 
 async function getRecentActivityFeed(viewerUserId?: string): Promise<RecentActivityItem[]> {

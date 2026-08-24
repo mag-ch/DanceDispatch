@@ -4,11 +4,16 @@ import { useState } from 'react';
 import type { Event } from "@/lib/utils";
 import { ParseEventFromLink } from './ParseEventFromLink';
 import { SubmitEventModal } from './SubmitEventModal';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
 type SubmitMode = 'choice' | 'link' | 'manual';
 
-export function SubmitEventButton() {
+type SubmitEventButtonProps = {
+    label?: string;
+    className?: string;
+};
+
+export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold' }: SubmitEventButtonProps) {
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<SubmitMode>('choice');
     const [parsedData, setParsedData] = useState<Event | null>(null);
@@ -30,9 +35,10 @@ export function SubmitEventButton() {
                 type="button"
                 onClick={() => {setMode('manual'); setOpen(true);}}
                 // onClick={() => setOpen(true)}
-                className="btn-highlighted rounded-md px-5 py-2.5 text-sm font-semibold"
+                className={className}
             >
-                Submit an Event
+                <Plus className="h-4 w-4" />
+                {label}
             </button>
 
             {/* Choice Modal */}

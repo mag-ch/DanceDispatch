@@ -9,6 +9,7 @@ import VenueRefreshButton from '@/app/components/VenueRefreshButton';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { openInMaps } from '@/lib/utils_supabase';
 import OpenInMapsButton from '@/app/components/OpenInMapsButton';
+import { geocodeAddress } from '@/lib/geocoding';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -28,6 +29,8 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
 
     const venue = venues.find(v => v.id === venueId);
     if (!venue) return notFound();
+
+    const venueCoordinates = venue.address ? await geocodeAddress(venue.address) : null;
 
     const now = new Date();
     const pastEvents = allEvents
@@ -80,25 +83,12 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
 
                         {/* Address & Map */}
                         <section className="mb-4 bg-surface p-6 rounded-lg">
-                            <section className="mb-4 bg-surface p-6 rounded-lg">
-                                <OpenInMapsButton address={venue.address} />
-                                {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                                    <iframe
-                                    width="100%"
-                                    height="300"
-                                    src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(venue.address)}`}
-                                    className="rounded"
-                                    loading="lazy"
-                                    />
-                                ) : (
-                                    <p className="text-sm text-text">Map not available</p>
-                                )}
-                                </section>
-                            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                            <OpenInMapsButton address={venue.address} />
+                            {venueCoordinates ? (
                                 <iframe
                                     width="100%"
                                     height="300"
-                                    src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(venue.address)}`}
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${venueCoordinates.lng - 0.005}%2C${venueCoordinates.lat - 0.005}%2C${venueCoordinates.lng + 0.005}%2C${venueCoordinates.lat + 0.005}&layer=mapnik&marker=${venueCoordinates.lat}%2C${venueCoordinates.lng}`}
                                     className="rounded"
                                     loading="lazy"
                                 />

@@ -391,11 +391,6 @@ export function Header() {
                             <Link href="/auth/signup" className="hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 md:block">Sign up</Link>
                             </>
                         )}
-                        {session && (
-                            <Link href="/profile" className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-300 text-sm font-bold text-[#191323] md:hidden" aria-label="Open profile">
-                                {profilePicture ? <span className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profilePicture})` }} /> : (username?.[0] ?? 'D').toUpperCase()}
-                            </Link>
-                        )}
                         <button
                             type="button"
                             onClick={() => setIsMobileMenuOpen((prev) => !prev)}

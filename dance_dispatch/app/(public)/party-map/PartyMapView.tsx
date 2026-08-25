@@ -157,7 +157,7 @@ export default function PartyMapView({
       )}
       {events.map((event) => (
         <Marker
-          key={event.id}
+          key={event.id + "-mapview"}
           position={[event.lat, event.lng]}
           icon={createEventPinIcon(event, event.id === selectedEventId)}
           opacity={opacityForEventDate(event)}

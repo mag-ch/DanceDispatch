@@ -151,7 +151,7 @@ function EventListPanel({
     <div className="space-y-2">
       {events.map((event) => (
         <EventListItem
-          key={event.id}
+          key={event.id + "-listview"}
           event={event}
           isSelected={event.id === selectedEventId}
           onSelect={onSelectEvent}
@@ -239,6 +239,14 @@ export default function PartyMapClient({ events, pendingVenues, savedEventIds }:
   }, [pendingVenues]);
 
   const allEvents = useMemo(() => [...events, ...geocodedEvents], [events, geocodedEvents]);
+  console.log('All events:', allEvents.length, '\nEvents:', events.length, '\nGeocoded events:', geocodedEvents.length);
+  events.map((event) => {
+    console.log('\nEvent:', event.title, 'Lat:', event.lat, 'Lng:', event.lng);
+  });
+  geocodedEvents.map((event) => {
+    console.log('\nGeocoded Event:', event.title, 'Lat:', event.lat, 'Lng:', event.lng);
+  });
+ 
 
   const savedEventIdSet = useMemo(() => new Set(savedEventIds.map((id) => String(id))), [savedEventIds]);
 

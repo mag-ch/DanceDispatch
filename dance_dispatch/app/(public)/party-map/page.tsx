@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PartyMapPage() {
   const [events, venues, userId] = await Promise.all([
-    getCachedEvents(false),
+    getCachedEvents(true),
     getCachedVenues(),
     getCurrentUserId(),
   ]);

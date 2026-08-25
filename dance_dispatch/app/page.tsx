@@ -203,7 +203,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   );
 }
 
-const CITY_OPTIONS = ['New York City', 'Los Angeles', 'Chicago', 'Miami', 'Atlanta'];
+const CITY_OPTIONS = ['New York City', 'New Jersey'];
 
 async function CityPicker() {
     let city = (CITY_OPTIONS[0]);

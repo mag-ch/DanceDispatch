@@ -3,7 +3,7 @@ import 'server-only';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { getCachedEvents, getCachedVenues } from '@/lib/utils_supabase_server';
-import { geocodeAddress } from '@/lib/geocoding';
+import { getVenueCoordinates } from '@/lib/venue-geo';
 import { sendPushToUser } from '@/lib/push-notifications';
 import type { Event } from '@/lib/utils';
 
@@ -58,43 +58,6 @@ function getEventWindow(event: Event): { start: Date; end: Date } {
   const graceMs = EVENT_WINDOW_GRACE_MINUTES * 60 * 1000;
 
   return { start: new Date(start.getTime() - graceMs), end: new Date(end.getTime() + graceMs) };
-}
-
-async function getVenueCoordinates(
-  venueId: string,
-  address: string
-): Promise<{ lat: number; lng: number } | null> {
-  const supabase = getServiceRoleClient();
-  const { data, error } = await supabase
-    .from('Venues')
-    .select('latitude,longitude')
-    .eq('id', Number(venueId))
-    .maybeSingle();
-
-  if (error) {
-    console.error('Failed to load venue coordinates:', error);
-  }
-
-  if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-    return { lat: data.latitude, lng: data.longitude };
-  }
-
-  const geocoded = await geocodeAddress(address);
-  if (!geocoded) {
-    return null;
-  }
-
-  // Cache the geocoded coordinates so future checks skip the geocoding API call.
-  const { error: updateError } = await supabase
-    .from('Venues')
-    .update({ latitude: geocoded.lat, longitude: geocoded.lng })
-    .eq('id', Number(venueId));
-
-  if (updateError) {
-    console.error('Failed to cache geocoded venue coordinates:', updateError);
-  }
-
-  return geocoded;
 }
 
 export type LocationConfirmationResult = {

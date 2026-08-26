@@ -18,14 +18,20 @@ export function ParseEventFromLink({ onParsed, onBack, onClose }: ParseEventFrom
         e.preventDefault();
         if (!url.trim()) return;
 
+        const match = url.match(/ra\.co\/events\/(\d+)/i);
+        const eventId = match ? match[1] : null;
+        if (!eventId) {
+            setError('Invalid event URL');
+            return;
+        }
+
+
         setLoading(true);
         setError(null);
 
         try {
-            const response = await fetch('/api/parse-event', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url.trim() }),
+            const response = await fetch(`/api/parse-event?eventId=${eventId}`, {
+                method: 'GET'
             });
 
             const data = await response.json();
@@ -34,6 +40,7 @@ export function ParseEventFromLink({ onParsed, onBack, onClose }: ParseEventFrom
                 throw new Error(data.error || 'Failed to parse event');
             }
 
+            console.log('Parsed event data:', data);
             onParsed(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -71,10 +78,10 @@ export function ParseEventFromLink({ onParsed, onBack, onClose }: ParseEventFrom
 
                 <div className="p-6 pt-12">
                     <h2 className="mb-1 text-center text-2xl font-bold text-text">
-                        Parse from Link
+                        Parse from RA Link
                     </h2>
                     <p className="mb-6 text-center text-sm text-muted">
-                        Paste an event URL and we'll extract the details
+                        Paste an RA event URL and we'll extract the details
                     </p>
 
                     <form onSubmit={handleParse} className="flex flex-col gap-4">
@@ -83,7 +90,7 @@ export function ParseEventFromLink({ onParsed, onBack, onClose }: ParseEventFrom
                                 type="url"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
-                                placeholder="https://example.com/event"
+                                placeholder="https://ra.co/events/123456"
                                 required
                                 disabled={loading}
                                 className="w-full rounded-lg border border-default bg-bg px-3 py-2.5 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"

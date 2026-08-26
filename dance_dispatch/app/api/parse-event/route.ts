@@ -1,171 +1,127 @@
-import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
-import type { Event } from "@/lib/utils";
+import { getCachedHosts, getCachedVenues } from "@/lib/utils_supabase_server";
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = (searchParams.get('eventId') ?? '').trim();
 
-export async function POST(request: NextRequest) {
-    const { url } = await request.json();
+    if (!id) {
+      return Response.json({ error: 'Missing eventId' }, { status: 400 });
+    }
+    const res = await fetch(
+      `https://api.parse.bot/scraper/b89b7fc2-7fcb-49f4-8b0d-8ba592c967cc/get_event_detail?event_id=${id}`,
+      {
+        method: 'GET',
+        headers: { 'X-API-Key': process.env.PARSE_BOT ?? '' },
+      }
+    );
 
-    if (!url || typeof url !== 'string') {
-        return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('parse.bot error:', res.status, errText);
+      return Response.json(
+        { error: `Upstream API returned ${res.status}` },
+        { status: 502 }
+      );
     }
 
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0',
-            },
-        });
+    const data = (await res.json()).data;
 
-        if (!response.ok) {
-            return NextResponse.json(
-                { error: `Failed to fetch: ${response.status}` },
-                { status: 502 }
-            );
-        }
+    console.log('Raw event data:', data);
+    const { date: startdate, time: starttime } = splitDateTime(data.start_time);
+    const { date: enddate, time: endtime } = splitDateTime(data.end_time);
 
-        const html = await response.text();
+    const [venues, hosts] = await Promise.all([
+      getCachedVenues(),
+      getCachedHosts(),
+    ]);
+    const hostByName = new Map(hosts.map((host: any) => [String(host.name), host]));
 
-        console.log(`Fetched HTML for ${url}: ${html.length} characters`);
-        const $ = cheerio.load(html);
+    let venueId: string | null = null;
+    let newVenueName = '';
+    let newVenueAddress = '';
 
-        const result: Event = {
-            id: "",
-            title: "",
-            description: "",
-            imageurl: "",
-            startdate: "",
-            enddate: "",
-            starttime: "",
-            endtime: "",
-            location: "",
-            locationid: "",
-            price: undefined,
-            externallink: response.url,
-        };
+    if (data.venue && data.venue.name) {
+      const matchedVenues = venues.filter(
+        (venue: any) => normalize(venue.name) === normalize(data.venue.name)
+      );
 
-        // Open Graph
-        const getOg = (property: string): string | null =>
-            $(`meta[property="og:${property}"]`).attr('content')?.trim() || null;
-
-        result.title = getOg('title') ?? "";
-        result.description = getOg('description') ?? "";
-        result.imageurl = getOg('image') ?? "";
-
-        // Meta fallbacks
-        if (!result.title) result.title = $('title').text().trim() || "";
-        if (!result.description) {
-            result.description = $('meta[name="description"]').attr('content')?.trim() || "";
-        }
-
-        // Schema.org JSON-LD
-        const jsonLdScripts = $('script[type="application/ld+json"]');
-        let schemaEvent: Record<string, unknown> | null = null;
-
-        for (let i = 0; i < jsonLdScripts.length; i++) {
-            try {
-                const raw = jsonLdScripts.eq(i).html();
-                if (!raw) continue;
-                const data = JSON.parse(raw.trim());
-                const items = Array.isArray(data['@graph']) ? data['@graph'] : [data];
-
-                for (const item of items) {
-                    const type = item['@type'];
-                    const types = Array.isArray(type) ? type : [type];
-                    if (types.some((t) => t === 'Event')) {
-                        schemaEvent = item;
-                        break;
-                    }
-                }
-                if (schemaEvent) break;
-            } catch {
-                // ignore malformed JSON
-            }
-        }
-
-        if (schemaEvent) {
-            result.title = (schemaEvent.name as string) || result.title;
-            result.description = (schemaEvent.description as string) || result.description;
-            result.imageurl = extractImageFromSchema(schemaEvent) || result.imageurl;
-            result.externallink = (schemaEvent.url as string) || result.externallink;
-
-            const start = schemaEvent.startDate as string;
-            const end = schemaEvent.endDate as string;
-
-            if (start) {
-                const { date, time } = splitDateTime(start);
-                result.startdate = date;
-                result.starttime = time ?? "";
-            }
-            if (end) {
-                const { date, time } = splitDateTime(end);
-                result.enddate = date;
-                result.endtime = time ?? "";
-            }
-
-            const loc = schemaEvent.location as Record<string, unknown> | undefined;
-            if (loc) {
-                result.location =  loc.name as string || "";
-            }
-
-            const offers = schemaEvent.offers as Record<string, unknown> | undefined;
-            if (offers) {
-                const price = offers.price as string | number | undefined;
-                const priceCurrency = offers.priceCurrency as string | undefined;
-                if (price !== undefined) {
-                    result.price = Number(price);
-                }
-            }
-        }
-
-        return NextResponse.json(result);
-    } catch (err) {
-        return NextResponse.json(
-            { error: err instanceof Error ? err.message : 'Unknown error' },
-            { status: 500 }
+      if (matchedVenues.length === 1) {
+        venueId = matchedVenues[0].id;
+      } else if (matchedVenues.length > 1 && data.venue.address) {
+        const venue = matchedVenues.find((venue: any) =>
+          matchPostalCode(venue.address, data.venue.address)
         );
+        if (venue) venueId = venue.id;
+      }
+
+      if (!venueId) {
+        newVenueName = data.venue.name;
+        newVenueAddress = data.venue.address ?? '';
+      }
     }
+    console.log('Parsed event data:', {
+      title: data.title ?? '',
+      description: data.description ?? '',
+      startdate,
+      starttime,
+      enddate,
+      endtime,
+      locationid: venueId,
+      newVenueName,
+      newVenueAddress,
+      price: data.cost !== undefined && data.cost !== '' ? String(data.cost) : '',
+      imageurl: data.flyer_url ?? '',
+      externallink: data.content_url ?? '',
+      hostids: data.artists
+        ?.map((artist: any) => hostByName.get(artist.name)?.id)
+        .filter(Boolean) ?? [],
+      hostnames: data.artists?.map((artist: any) => artist.name).filter(Boolean) ?? [],
+    });
+
+
+    return Response.json(
+      {
+        title: data.title ?? '',
+        description: data.description ?? '',
+        startdate,
+        starttime,
+        enddate,
+        endtime,
+        locationid: venueId,
+        newVenueName,
+        newVenueAddress,
+        price: data.cost !== undefined && data.cost !== '' ? String(data.cost) : '',
+        imageurl: data.flyer_url ?? '',
+        externallink: data.content_url ?? '',
+        hostids: data.artists
+          ?.map((artist: any) => hostByName.get(artist.name)?.id)
+          .filter(Boolean) ?? [],
+        hostnames: data.artists?.map((artist: any) => artist.name).filter(Boolean) ?? [],
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    console.error('parse-event failed:', err);
+    return Response.json(
+      { error: 'Scrape failed', details: err.message },
+      { status: 500 }
+    );
+  }
 }
 
-function splitDateTime(isoString: string): { date: string; time: string | null } {
-    try {
-        const d = new Date(isoString);
-        if (isNaN(d.getTime())) {
-            const [datePart, timePart] = isoString.split('T');
-            return { date: datePart || isoString, time: timePart ? timePart.slice(0, 5) : null };
-        }
-        return { date: d.toISOString().split('T')[0], time: d.toTimeString().slice(0, 5) };
-    } catch {
-        return { date: isoString, time: null };
-    }
-}
+function splitDateTime(isoString: string | undefined): { date: string; time: string } {
+  if (!isoString) return { date: '', time: '' };
 
-function extractImageFromSchema(schema: Record<string, unknown>): string | null {
-    const image = schema.image;
-    if (typeof image === 'string') return image;
-    if (Array.isArray(image) && image.length > 0) {
-        const first = image[0];
-        return typeof first === 'string' ? first : (first?.url as string) || null;
-    }
-    if (image && typeof image === 'object') {
-        return (image as Record<string, unknown>).url as string | null;
-    }
-    return null;
-}
+  const [datePart, timePart] = isoString.split('T');
+  const time = timePart ? timePart.replace(/\.\d+$/, '') : ''; // strip milliseconds
 
-function extractAddress(loc: Record<string, unknown>): string | null {
-    const addr = loc.address as Record<string, unknown> | string | undefined;
-    if (typeof addr === 'string') return addr;
-    if (addr) {
-        const parts = [
-            addr.streetAddress,
-            addr.addressLocality,
-            addr.addressRegion,
-            addr.postalCode,
-            addr.addressCountry,
-        ]
-            .filter(Boolean)
-            .join(', ');
-        return parts || null;
-    }
-    return null;
+  return { date: datePart ?? '', time };
+}
+function normalize(input: string): string {
+  return input.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+function matchPostalCode(addressA: string, addressB: string): boolean {
+  const postalA = addressA.match(/\b\d{4,5}\b/)?.[0];
+  const postalB = addressB.match(/\b\d{4,5}\b/)?.[0];
+  return Boolean(postalA && postalB && postalA === postalB);
 }

@@ -33,8 +33,8 @@ export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-
         <>
             <button
                 type="button"
-                onClick={() => {setMode('manual'); setOpen(true);}}
-                // onClick={() => setOpen(true)}
+                // onClick={() => {setMode('manual'); setOpen(true);}}
+                onClick={() => setOpen(true)}
                 className={className}
             >
                 <Plus className="h-4 w-4" />
@@ -63,13 +63,12 @@ export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-
                                 <button
                                     onClick={() => setMode('link')}
                                     className="flex items-center gap-4 rounded-lg border-2 border-default p-4 transition-colors hover:border-blue-500 hover:bg-blue-500/5"
-                                    disabled={true}
                                 >
                                     <span className="text-3xl">🔗</span>
                                     <div className="text-left">
-                                        <div className="font-semibold text-text">Parse from Link</div>
+                                        <div className="font-semibold text-text">Parse from RA Link</div>
                                         <div className="text-sm text-muted">
-                                            Paste a URL and we'll auto-fill the details
+                                            Paste a URL from RA and we'll auto-fill the details
                                         </div>
                                     </div>
                                 </button>

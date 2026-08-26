@@ -3,6 +3,7 @@ import 'server-only';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from './supabase/client';
 
 type GoogleOAuthTokenResponse = {
   access_token: string;
@@ -276,23 +277,6 @@ export function isValidGoogleChannelToken(headers: Headers): boolean {
   return headers.get('x-goog-channel-token') === expectedToken;
 }
 
-function getSupabaseServerClient(): SupabaseClient {
-  const url = getRequiredEnv('NEXT_PUBLIC_SUPABASE_URL');
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
-
-  if (!key) {
-    throw new Error('Missing required env var: SUPABASE_SERVICE_ROLE_KEY');
-  }
-
-  return createSupabaseClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
 
 function parseHostNamesFromTitle(title: string): string[] {
   const match = title.match(/\((.*?)\)/);
@@ -525,7 +509,7 @@ async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarFetched
 }
 
 export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalendarSyncSummary> {
-  const supabase = getSupabaseServerClient();
+  const supabase = createClient();
   const fetched = await fetchGoogleCalendarEventsForSync();
   const events = fetched.items;
 

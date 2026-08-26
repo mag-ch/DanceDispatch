@@ -19,11 +19,11 @@ export async function POST(request: Request) {
   try {
     await requireAuth();
 
-    const body = (await request.json()) as { googleCalId?: string };
-    const googleCalId = String(body?.googleCalId || '').trim();
+    const body = (await request.json()) as { eventId?: string };
+    const eventId = String(body?.eventId || '').trim();
 
-    if (!googleCalId) {
-      return NextResponse.json({ error: 'googleCalId is required' }, { status: 400 });
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
     }
 
     const supabase = getSupabaseClient();
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
     // Upsert a pending_events row with exclude=true so future syncs skip this event.
     const { error } = await supabase.from('pending_events').upsert(
       {
-        google_cal_id: googleCalId,
+        event_id: eventId,
         exclude: true,
       },
       {
-        onConflict: 'google_cal_id',
+        onConflict: 'event_id',
         ignoreDuplicates: false,
       }
     );
@@ -44,32 +44,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const pendingEventLookup = await supabase
-      .from('pending_events')
-      .select('event_id')
-      .eq('google_cal_id', googleCalId)
-      .limit(1);
+    
 
-
-    if (pendingEventLookup.error) {
-      return NextResponse.json({ error: pendingEventLookup.error.message }, { status: 500 });
-    }
-
-    const rawEventId = pendingEventLookup.data?.[0]?.event_id;
-    const eventId = Number(rawEventId);
-
-    if (!Number.isFinite(eventId) || eventId <= 0) {
-      console.warn('Exclude event: no valid event_id found, skipping deleteEvent call', {
-        googleCalId,
-        rawEventId,
-      });
-      return NextResponse.json(
-        { ok: true, googleCalId, deleted: false, reason: 'no_valid_event_id' },
-        { status: 200 }
-      );
-    }
-
-    return NextResponse.json({ ok: true, googleCalId }, { status: 200 });
+    return NextResponse.json({ ok: true, eventId }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to exclude event';
     const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
@@ -81,11 +58,11 @@ export async function DELETE(request: Request) {
   try {
     await requireAuth();
 
-    const body = (await request.json()) as { googleCalId?: string };
-    const googleCalId = String(body?.googleCalId || '').trim();
+    const body = (await request.json()) as { eventId?: string };
+    const eventId = String(body?.eventId || '').trim();
 
-    if (!googleCalId) {
-      return NextResponse.json({ error: 'googleCalId is required' }, { status: 400 });
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
     }
 
     const supabase = getSupabaseClient();
@@ -94,13 +71,13 @@ export async function DELETE(request: Request) {
     const { error } = await supabase
       .from('pending_events')
       .update({ exclude: false })
-      .eq('google_cal_id', googleCalId);
+      .eq('event_id', eventId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, googleCalId }, { status: 200 });
+    return NextResponse.json({ ok: true, eventId }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to remove exclusion';
     const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;

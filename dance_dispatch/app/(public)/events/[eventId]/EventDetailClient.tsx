@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Star, MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
-import { Event, EventReview, Host, resolveImageUrl } from '@/lib/utils';
+import { Event, EventReview, Host, resolveImageUrl, resolveServerImageUrl } from '@/lib/utils';
 import { DisplayEventReview, EventMediaGallery, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
@@ -269,8 +269,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const [eventImageSrc, setEventImageUrl] = useState('/images/default_events.jpg');
 
     useEffect(() => {
-        resolveImageUrl(event.imageurl, '/images/default_events.jpg').then(setEventImageUrl);
-    }, [event.imageurl]);
+        const fetchImageUrl = async () => {
+            const url = await resolveServerImageUrl(event.imageurl, '/images/default_events.jpg');
+            setEventImageUrl(url);
+        };
+        void fetchImageUrl();
+    }, []);
 
     const canEditHosts = !authLoading && Boolean(session);
     const normalizedHostSearchQuery = hostSearchQuery.trim();
@@ -1284,9 +1288,10 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             <div className="bg-surface rounded-lg p-6">
                                 <h2 className="text-2xl text-text font-bold mb-4">Related Events</h2>
                                 <div className="space-y-4">
-                                    {relatedEvents.map((relEvent) => (
+                                    Coming soon... Building algorithm for related events.
+                                    {/* {relatedEvents.map((relEvent) => (
                                         <RelatedEventCard key={relEvent.id} event={relEvent} />
-                                    ))}
+                                    ))} */}
                                 </div>
                             </div>
                         </div>

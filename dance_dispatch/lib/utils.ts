@@ -173,8 +173,8 @@ export async function resolveServerImageUrl(
 
   try {
     const response = await fetch(imageUrl, {
-      method: 'GET',
-      cache: 'no-store',
+      method: 'HEAD',
+      cache: 'force-cache',
     });
     return response.status === 200 ? imageUrl : fallback;
   } catch {

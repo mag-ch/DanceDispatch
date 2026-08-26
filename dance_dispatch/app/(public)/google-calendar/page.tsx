@@ -157,23 +157,27 @@ export default function GoogleCalendarAdminPage() {
     }
   }, [activeExpirationMs, nowMs]);
 
-const approvePendingReviewEvent = async (eventId: string, googleCalId: string | null) => {
-    if (!eventId || !googleCalId || pendingApproveId || pendingDeleteId) return;
+const approvePendingReviewEvent = async (eventId: string) => {
+    if (!eventId || pendingApproveId || pendingDeleteId) return;
 
     setPendingApproveId(eventId);
     setPendingReviewError(null);
 
     try {
-      const response = await fetch('/api/google-calendar/exclude-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ googleCalId }),
-      });
+      if (eventId){
 
-      const payload = (await response.json()) as { ok?: boolean; error?: string };
-      if (!response.ok) {
-        setPendingReviewError(payload.error || 'Failed to approve pending event');
-        return;
+        
+        const response = await fetch('/api/google-calendar/exclude-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId }),
+        });
+
+        const payload = (await response.json()) as { ok?: boolean; error?: string };
+        if (!response.ok) {
+          setPendingReviewError(payload.error || 'Failed to approve pending event');
+          return;
+        }
       }
 
       setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
@@ -184,36 +188,42 @@ const approvePendingReviewEvent = async (eventId: string, googleCalId: string | 
     }
   };
 
-  const deletePendingReviewEvent = async (eventId: string, googleCalId: string | null) => {
-    if (!eventId || !googleCalId || pendingDeleteId || pendingApproveId) return;
+  const deletePendingReviewEvent = async (eventId: string) => {
+    if (!eventId || pendingDeleteId || pendingApproveId) return;
 
     setPendingDeleteId(eventId);
     setPendingReviewError(null);
 
     try {
-      // Step 1: same as Approve (exclude from pending review)
-      const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ googleCalId }),
-      });
+      // Step 1:  delete the event
 
-      const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
-      if (!excludeResponse.ok) {
-        setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
-        return;
-      }
-
-      // Step 2: delete the event
-      const deleteResponse = await fetch(`/api/event/${eventId}`, {
+      
+      const deleteResponse = await fetch(`/api/events/${eventId}`, {
         method: 'DELETE',
       });
-
+      
       const deletePayload = (await deleteResponse.json().catch(() => ({}))) as { error?: string };
       if (!deleteResponse.ok) {
         setPendingReviewError(deletePayload.error || 'Failed to delete event');
         return;
       }
+      
+      // Step 2:same as Approve (exclude from pending review)
+
+      if (deleteResponse.ok) {
+        const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId }),
+        });
+        const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
+        if (!excludeResponse.ok) {
+          setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
+          return;
+        }
+      }
+      
+
 
       setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
     } catch {
@@ -353,22 +363,22 @@ const approvePendingReviewEvent = async (eventId: string, googleCalId: string | 
                   <button
                     type="button"
                     onClick={() => {
-                      void deletePendingReviewEvent(item.eventId, item.googleCalId);
+                      void deletePendingReviewEvent(item.eventId);
                     }}
-                    disabled={pendingDeleteId === item.eventId || !item.googleCalId}
+                    disabled={pendingDeleteId === item.eventId}
                     className="shrink-0 rounded-md border border-default px-3 py-2 text-xs font-medium text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {pendingDeleteId === item.eventId ? 'Deleting...' : item.googleCalId ? 'Delete' : 'No Google ID'}
+                    {pendingDeleteId === item.eventId ? 'Deleting...' : 'Delete'}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      void approvePendingReviewEvent(item.eventId, item.googleCalId);
+                      void approvePendingReviewEvent(item.eventId);
                     }}
-                    disabled={pendingApproveId === item.eventId || !item.googleCalId}
+                    disabled={pendingApproveId === item.eventId}
                     className="shrink-0 rounded-md border border-default px-3 py-2 text-xs font-medium text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {pendingApproveId === item.eventId ? 'Approving...' : item.googleCalId ? 'Approve' : 'No Google ID'}
+                    {pendingApproveId === item.eventId ? 'Approving...' : 'Approve'}
                   </button>
                 </li>
               ))}

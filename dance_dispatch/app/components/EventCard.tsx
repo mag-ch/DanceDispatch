@@ -1,5 +1,5 @@
 import React from 'react';
-import { processUrl } from '@/lib/utils'
+import { processUrl, resolveServerImageUrl } from '@/lib/utils'
 import type { Event } from '@/lib/utils'
 import { formatDateOnly } from '@/lib/date-utils';
 import { SaveEventButton } from './SaveEventButton';
@@ -92,7 +92,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({
             <CustomLink href={route || '#'} className={styles.searchLink}>
                 <div className={styles.avatarWrap}>
                     <img
-                        src={img || '/images/default_event.jpg'}
+                        src={img || `/images/default_${entity}.jpg`}
                         alt={header}
                         className={styles.avatarImg}
                     />
@@ -117,8 +117,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({
 
 
 
-export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
-    const defaultThumbnail = (event.imageurl == "" || !event.imageurl) ? '/images/default_event.jpg' : event.imageurl;
+export const RelatedEventCard: React.FC<EventCardProps> = async ({ event }) => {
+    const defaultThumbnail = await resolveServerImageUrl(event.imageurl, `/images/default_events.jpg`);
     return (
 
         <CustomLink href={`/events/${event.id}`} className={styles.card}>
@@ -134,10 +134,10 @@ export const RelatedEventCard: React.FC<EventCardProps> = ({ event }) => {
 }
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
-    const defaultThumbnail = (event.imageurl == "" || !event.imageurl) ? '/images/default_event.jpg' : event.imageurl;
+    const defaultThumbnail = await resolveServerImageUrl(event.imageurl, `/images/default_events.jpg`);
     const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
 
-    const extLink = event.externallink ? await processUrl(event.externallink) : undefined;
+    const extLink = event.externallink ?? undefined;
     const hostGenres = Array.from(new Set((event.hostGenres ?? []).map((genre) => String(genre).trim()).filter(Boolean)));
 
     const truncateDescription = (text: string, maxLength: number = 100) => {
@@ -159,7 +159,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                         </div>
                     )}
                     <div className={styles.saveOverlay}>
-                        <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
+                        <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
                     </div>
                 </div>
                 <div className={styles.content}>

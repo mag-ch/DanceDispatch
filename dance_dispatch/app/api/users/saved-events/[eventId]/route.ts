@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth-helpers';
 import { userSaveEvent } from '@/lib/utils_supabase_server';
 import { awardPoints, POINTS } from '@/lib/points';
 
+
 export async function GET(
     _request: Request,
     { params }: { params: Promise<{ eventId: string }> }

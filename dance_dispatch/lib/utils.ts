@@ -1,5 +1,6 @@
 'use server';
 
+
 export interface Event {
     id: string;
     title: string;
@@ -124,4 +125,59 @@ export async function processUrl(url: string): Promise<string> {
 
 export async function prettifyCase(str: string): Promise<string> {
     return str.slice(0,1).toUpperCase() + str.replace("_", " ").slice(1);
+}
+
+export async function resolveImageUrl(
+  imageUrl: string | undefined,
+  fallbackUrl: string,
+  timeoutMs = 5000
+): Promise<string> {
+    if (!imageUrl) {
+        return fallbackUrl;
+    }
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      resolve(fallbackUrl);
+    }, timeoutMs);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      img.onload = null;
+      img.onerror = null;
+    };
+
+    img.onload = () => {
+      cleanup();
+      resolve(imageUrl);
+    };
+
+    img.onerror = () => {
+      cleanup();
+      resolve(fallbackUrl);
+    };
+
+    img.src = imageUrl;
+  });
+}
+
+export async function resolveServerImageUrl(
+  imageUrl?: string | null,
+  fallback = '/images/default_events.jpg'
+): Promise<string> {
+  if (!imageUrl?.trim()) {
+    return fallback;
+  }
+
+  try {
+    const response = await fetch(imageUrl, {
+      method: 'GET',
+      cache: 'no-store',
+    });
+    return response.status === 200 ? imageUrl : fallback;
+  } catch {
+    return fallback;
+  }
 }

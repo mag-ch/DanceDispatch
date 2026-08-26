@@ -34,7 +34,7 @@ export default function UserProfileClient({
   const [activeFollowModal, setActiveFollowModal] = useState<"venues" | "hosts" | "users" | null>(null);
 
   const displayName = user.username || "User";
-  const profilePicture = user.profile_picture || "/images/default_event.jpg";
+  const profilePicture = user.profile_picture || "/images/default_users.jpg";
 
   const modalConfig = useMemo(() => {
     if (activeFollowModal === "venues") {

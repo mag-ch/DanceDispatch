@@ -59,25 +59,6 @@ export async function GET(request: Request) {
         newVenueAddress = data.venue.address ?? '';
       }
     }
-    console.log('Parsed event data:', {
-      title: data.title ?? '',
-      description: data.description ?? '',
-      startdate,
-      starttime,
-      enddate,
-      endtime,
-      locationid: venueId,
-      newVenueName,
-      newVenueAddress,
-      price: data.cost !== undefined && data.cost !== '' ? String(data.cost) : '',
-      imageurl: data.flyer_url ?? '',
-      externallink: data.content_url ?? '',
-      hostids: data.artists
-        ?.map((artist: any) => hostByName.get(artist.name)?.id)
-        .filter(Boolean) ?? [],
-      hostnames: data.artists?.map((artist: any) => artist.name).filter(Boolean) ?? [],
-    });
-
 
     return Response.json(
       {

@@ -112,7 +112,7 @@ const SELECTED_PIN_SIZE = 56;
 // Renders the pin as a circular thumbnail of the event's own image instead of a generic marker.
 function createEventPinIcon(event: MapPartyEvent, isSelected: boolean): L.DivIcon {
   const size = isSelected ? SELECTED_PIN_SIZE : PIN_SIZE;
-  const imageUrl = (event.imageurl || '/images/default_event.jpg').replace(/'/g, '%27');
+  const imageUrl = (event.imageurl || '/images/default_events.jpg').replace(/'/g, '%27');
 
   return L.divIcon({
     html: `<div class="dd-party-pin-photo" style="background-image:url('${imageUrl}')"></div>`,

@@ -40,7 +40,6 @@ export function ParseEventFromLink({ onParsed, onBack, onClose }: ParseEventFrom
                 throw new Error(data.error || 'Failed to parse event');
             }
 
-            console.log('Parsed event data:', data);
             onParsed(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong');

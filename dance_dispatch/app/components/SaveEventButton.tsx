@@ -6,6 +6,11 @@ import { useAuth } from '@/app/providers/AuthContext';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 
 interface SaveEventButtonProps {
+    eventId: string | number;
+    initialSaved?: boolean;
+    isDisabled?: boolean;
+}
+interface SaveEntityButtonProps {
     entity: string;
     entityId: string | number;
     initialSaved?: boolean;
@@ -33,7 +38,7 @@ const getFollowedEntityLabel = (entity: string) => {
     return 'entity';
 };
 
-export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
+export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initialSaved, isDisabled }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
@@ -86,7 +91,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         }
 
         setIsLoading(true);
-        fetch(`/api/users/saved-${entity}/${entityId}`)
+        fetch(`/api/users/saved-events/${eventId}`)
             .then((res) => res.json())
             .then((data) => {
                 if (isMounted) {
@@ -102,7 +107,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         return () => {
             isMounted = false;
         };
-    }, [entityId, entity, initialSaved, session, authLoading]);
+    }, [eventId, initialSaved, session, authLoading]);
 
     const handleClick = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -123,7 +128,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
         isSubmittingRef.current = true;
         const newSavedState = !isSaved;
         try {
-            const response = await fetch(`/api/users/saved-${entity}/${entityId}`, {
+            const response = await fetch(`/api/users/saved-event/${eventId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saveToggle: newSavedState })
@@ -172,7 +177,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ entity, entity
     );
 };
 
-export const FollowEntityButton: React.FC<SaveEventButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
+export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);

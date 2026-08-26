@@ -114,7 +114,7 @@ function EventListItem({
       }`}
     >
       <img
-        src={event.imageurl || '/images/default_event.jpg'}
+        src={event.imageurl || '/images/default_events.jpg'}
         alt={event.title}
         className="h-14 w-14 flex-shrink-0 rounded object-cover"
       />

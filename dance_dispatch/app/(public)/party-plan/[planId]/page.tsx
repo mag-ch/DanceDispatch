@@ -31,7 +31,7 @@ function formatEventDate(startdate?: string | null, starttime?: string | null): 
 }
 
 function getEventImageSrc(event: Event): string {
-  return event.imageurl && event.imageurl.trim() ? event.imageurl : '/images/default_event.jpg';
+  return event.imageurl && event.imageurl.trim() ? event.imageurl : '/images/default_events.jpg';
 }
 
 export default async function PartyPlanPage({ params }: { params: Promise<{ planId: string }> }) {

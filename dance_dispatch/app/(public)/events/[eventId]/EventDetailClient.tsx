@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Star, MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
-import { Event, EventReview, Host } from '@/lib/utils';
+import { Event, EventReview, Host, resolveImageUrl } from '@/lib/utils';
 import { DisplayEventReview, EventMediaGallery, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
@@ -127,7 +127,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 }
                 const group = groups.get(review.eventName);
                 if (group) {
-                    const sourceLabel = `Venue: ${venueAddress}`;
+                    const sourceLabel = `Venue: ${event.location}`;
                     if (!group.sourceReviews.has(sourceLabel)) {
                         group.sourceReviews.set(sourceLabel, []);
                     }
@@ -266,7 +266,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         }
     };
 
-    const eventImageSrc = event.imageurl ? event.imageurl : '/images/default_event.jpg';
+    const [eventImageSrc, setEventImageUrl] = useState('/images/default_events.jpg');
+
+    useEffect(() => {
+        resolveImageUrl(event.imageurl, '/images/default_events.jpg').then(setEventImageUrl);
+    }, [event.imageurl]);
+
     const canEditHosts = !authLoading && Boolean(session);
     const normalizedHostSearchQuery = hostSearchQuery.trim();
     const filteredHosts = allHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery.toLowerCase()));
@@ -801,7 +806,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold mb-4 text-text">{event.title}</h1>
                             <div className="flex gap-4">
-                                <SaveEventButton entity='events' entityId={event.id} isDisabled={isPastEvent} />
+                                <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
                                 <button className="p-2 hover:bg-accent" onClick={() => setShowShareModal(true)} type="button">
                                     <Share2 className="text-gray-600"/>
                                 </button>

@@ -352,7 +352,7 @@ export default function PartyCalendarClient({ events, savedEventIds }: PartyCale
 
               <div className="space-y-2">
                 {dayEvents.map((event) => {
-                  const image = event.imageurl || "/images/default_event.jpg";
+                  const image = event.imageurl || "/images/default_events.jpg";
                   const showExpandedPreview = viewMode !== "month";
                   return (
                     <Link

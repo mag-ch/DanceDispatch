@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const DEFAULT_PROFILE_IMAGE = '/images/default_event.jpg';
+const DEFAULT_PROFILE_IMAGE = '/images/default_users.jpg';
 
 type ProfilePictureEditorProps = {
   initialImageUrl?: string | null;

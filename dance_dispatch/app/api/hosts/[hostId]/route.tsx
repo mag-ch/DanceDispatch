@@ -1,6 +1,6 @@
 import { getHostById } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth-helpers';
+import { requireAdmin } from '@/lib/admin';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -34,7 +34,7 @@ export async function GET(
         { params }: { params: Promise<{ hostId: string }> }
     ) {
         try {
-            await requireAuth();
+            await requireAdmin();
             const { hostId } = await params;
             const body = await request.json();
                 const { name, bio, tags, genres, photoUrl } = body;

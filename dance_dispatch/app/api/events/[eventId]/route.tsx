@@ -1,4 +1,4 @@
-import { requireAuth } from '@/lib/auth-helpers';
+import { requireAdmin } from '@/lib/admin';
 import { addHostsToEvent, deleteEvent, getEventById, setHostsForEvent, updateEvent } from '@/lib/utils_supabase_server';
 
 export async function GET(
@@ -33,10 +33,10 @@ export async function PATCH(
     { params }: { params: Promise<{ eventId: string }> }
 ) {
     try {
+        await requireAdmin();
         const { eventId } = await params;
         const body = await request.json();
         if (Array.isArray(body?.hostIds)) {
-            await requireAuth();
             const nextHostIds = await setHostsForEvent(eventId, body.hostIds);
 
             return new Response(JSON.stringify({ success: true, hostIds: nextHostIds }), {
@@ -46,7 +46,6 @@ export async function PATCH(
         }
 
         if (Array.isArray(body?.hostIdsToAdd)) {
-            await requireAuth();
             const addedHostIds = await addHostsToEvent(eventId, body.hostIdsToAdd);
 
             return new Response(JSON.stringify({ success: true, hostIds: addedHostIds }), {
@@ -91,7 +90,7 @@ export async function DELETE(
     { params }: { params: Promise<{ eventId: string }> }
 ) {
     try {
-        await requireAuth();
+        await requireAdmin();
         const { eventId } = await params;
         const deleted = await deleteEvent(eventId);
 

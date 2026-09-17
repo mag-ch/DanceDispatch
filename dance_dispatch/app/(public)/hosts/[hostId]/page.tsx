@@ -9,7 +9,6 @@ import { Host } from '@/lib/utils';
 import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
-import { canEditDetails } from '@/lib/supabase/client';
 
 const chipPalette = [
     'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
@@ -47,8 +46,8 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [hostMedia, setHostMedia] = useState<any[]>([]);
     const [hostComments, setHostComments] = useState<any[]>([]);
 
-    const { session } = useAuth();
-    const isAuthenticated = !!session && canEditDetails(session?.user?.id);
+    const { session, isAdmin } = useAuth();
+    const isAuthenticated = !!session && isAdmin;
 
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState('');
@@ -182,7 +181,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     };
 
     const deleteHostMedia = async (mediaId: number) => {
-        if (!canEditDetails(session?.user?.id)) {
+        if (!isAuthenticated) {
             return;
         }
 

@@ -1,6 +1,7 @@
 import { Event } from '@/lib/utils';
 import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions, getUserReviews } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
+import { isAdmin } from '@/lib/admin';
 import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
 import UserBadgesInline from '@/app/components/UserBadgesInline';
@@ -12,11 +13,12 @@ import ExpandableList from '@/app/components/ExpandableList';
 import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
 import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
 import MakePartyPlanButton from './MakePartyPlanButton';
+import AdminInviteCodePanel from './AdminInviteCodePanel';
 
 
 export default async function ProfilePage() {
     const user = await requireAuth();
-
+    const userIsAdmin = await isAdmin(user.id);
     // Fetch all necessary data in parallel from public.profiles
     const userdata = await getUserById(user.id);
     const displayName = userdata?.full_name || userdata?.username || user.email || 'User';
@@ -183,6 +185,12 @@ export default async function ProfilePage() {
                     <h2 className="text-2xl font-semibold mb-4 text-text">Achievements</h2>
                     <ExplorerBadgeModal missionStatus={missionStatus} />
                 </section>
+            )}
+
+            {userIsAdmin && (
+                <div className="mb-8">
+                    <AdminInviteCodePanel />
+                </div>
             )}
 
             <section className="mb-8">

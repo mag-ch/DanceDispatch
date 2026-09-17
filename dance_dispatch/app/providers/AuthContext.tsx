@@ -6,12 +6,14 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 interface AuthContextType {
     session: Session | null;
     loading: boolean;
+    isAdmin: boolean;
     logout: () => Promise<void>;
 }
 
 const fallbackAuthContext: AuthContextType = {
     session: null,
     loading: false,
+    isAdmin: false,
     logout: async () => {
         // no-op fallback when auth context is unavailable
     },
@@ -78,6 +80,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthContextProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         let unsubscribe: (() => void) | null = null;
@@ -115,14 +118,37 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
+    useEffect(() => {
+        const userId = session?.user?.id;
+        if (!userId) {
+            setIsAdmin(false);
+            return;
+        }
+
+        let isMounted = true;
+        fetch('/api/admin/me')
+            .then((response) => response.json())
+            .then((data) => {
+                if (isMounted) setIsAdmin(Boolean(data?.isAdmin));
+            })
+            .catch(() => {
+                if (isMounted) setIsAdmin(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [session?.user?.id]);
+
     const logout = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
         setSession(null);
+        setIsAdmin(false);
     };
 
     return (
-        <AuthContext.Provider value={{ session, loading, logout }}>
+        <AuthContext.Provider value={{ session, loading, isAdmin, logout }}>
             {children}
         </AuthContext.Provider>
     );

@@ -41,19 +41,6 @@ export const createClient = () => {
     return getBrowserClient();
 };
 
-export const APPROVED_USER_IDS = [
-    'ba398812-06a0-4c48-9f15-0660d3af0047',
-    'f2694e1c-5457-45b0-b299-c3a03a77d8c5',
-    'e8191ca7-7856-4e81-9140-b93a944ec711'
-];
-
-
-
-
-export const canEditDetails = (userId?: string | null) => Boolean(userId && APPROVED_USER_IDS.includes(userId));
-
-
-
 export function normalizeEventIds(rawValues: unknown): number[] {
   const values = Array.isArray(rawValues) ? rawValues : [];
   return [...new Set(values.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))];

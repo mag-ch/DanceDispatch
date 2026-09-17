@@ -8,7 +8,6 @@ export async function getUsernameFromId(userId: string | number): Promise<string
       .eq('id', userId)
       .single();
 
-
     if (error) {
       console.error('Error fetching username:', error.message);
       return null;

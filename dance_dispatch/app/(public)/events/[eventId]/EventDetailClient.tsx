@@ -12,7 +12,6 @@ import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
-import { canEditDetails } from '@/lib/supabase/client';
 
 interface EventDetailClientProps {
     event: Event;
@@ -66,7 +65,7 @@ function renderDescriptionWithLineBreaks(text: string) {
 }
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
-    const { session, loading: authLoading } = useAuth();
+    const { session, loading: authLoading, isAdmin } = useAuth();
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSavedEvent, setIsSavedEvent] = useState<boolean | null>(null);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -822,7 +821,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 >
                                     {event.price != undefined ? (event.price == 0 ? 'Free RSVP' : `Buy Tickets - From $${event.price}`) : 'Buy Tickets'}
                                 </a>}
-                                {canEditDetails(session?.user?.id) && (
+                                {isAdmin && (
                                     <button
                                         type="button"
                                         className="px-4 py-2 rounded-lg font-semibold text-text border border-default hover:bg-accent transition"

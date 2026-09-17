@@ -1,8 +1,7 @@
 import { getHostMedia } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth-helpers';
+import { requireAdmin } from '@/lib/admin';
 import { NextResponse } from 'next/server';
-import { canEditDetails } from '@/lib/supabase/client';
 
 export async function GET(
     request: Request,
@@ -36,7 +35,7 @@ export async function POST(
     { params }: { params: Promise<{ hostId: string }> }
 ) {
     try {
-        await requireAuth();
+        await requireAdmin();
         const { hostId } = await params;
         const body = await request.json();
 
@@ -84,10 +83,7 @@ export async function DELETE(
     { params }: { params: Promise<{ hostId: string }> }
 ) {
     try {
-        const user = await requireAuth();
-        if (!canEditDetails(user.id)) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-        }
+        await requireAdmin();
 
         const { hostId } = await params;
         const parsedHostId = Number(hostId);

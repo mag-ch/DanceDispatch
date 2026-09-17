@@ -14,6 +14,7 @@ export default function SignUp() {
     const [error, setError] = useState<string | null>(null);
     const [returnPath, setReturnPath] = useState('/');
     const [referrerId, setReferrerId] = useState<string | null>(null);
+    const [adminInviteCode, setAdminInviteCode] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -44,6 +45,8 @@ export default function SignUp() {
         if (typeof window === 'undefined') return;
         const ref = new URLSearchParams(window.location.search).get('ref');
         if (ref) setReferrerId(ref);
+        const adminInvite = new URLSearchParams(window.location.search).get('admin_invite');
+        if (adminInvite) setAdminInviteCode(adminInvite);
     }, []);
 
     const handleSignUp = async (e: React.FormEvent) => {
@@ -104,6 +107,14 @@ export default function SignUp() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ referrerId }),
+                }).catch(() => { /* non-critical - do not block sign-up */ });
+            }
+
+            if (adminInviteCode) {
+                await fetch('/api/admin/invite-code/redeem', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: adminInviteCode }),
                 }).catch(() => { /* non-critical - do not block sign-up */ });
             }
 

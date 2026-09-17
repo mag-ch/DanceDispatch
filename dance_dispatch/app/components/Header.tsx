@@ -382,6 +382,13 @@ export function Header() {
                                     </span>
                                     <span className=" max-w-20 truncate text-sm font-semibold text-text">{username ?? 'Profile'}</span>
                                 </Link>
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    className="hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 md:block"
+                                >
+                                    Logout
+                                </button>
                             </>
                         )}
                        

@@ -12,6 +12,7 @@ import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
+import { HostSelector } from '@/app/components/HostSelector';
 
 interface EventDetailClientProps {
     event: Event;
@@ -142,10 +143,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
         return Array.from(groups.values());
     })();
-    const [allHosts, setAllHosts] = useState<Host[]>([]);
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
-    const [hostSearchQuery, setHostSearchQuery] = useState('');
-    const [isLoadingHostOptions, setIsLoadingHostOptions] = useState(false);
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -275,25 +273,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         void fetchImageUrl();
     }, []);
 
-    const canEditHosts = !authLoading && Boolean(session);
-    const normalizedHostSearchQuery = hostSearchQuery.trim();
-    const filteredHosts = allHosts.filter((host) => host.name.toLowerCase().includes(normalizedHostSearchQuery.toLowerCase()));
-    const selectedHostTokens = selectedHostIds
-        .map((hostId) => {
-            const selectedHost = allHosts.find((host) => String(host.id) === hostId);
-            if (selectedHost) {
-                return { id: String(selectedHost.id), name: selectedHost.name };
-            }
-
-            const fallbackHost = eventHosts.find((host) => host.id === hostId);
-            if (fallbackHost) {
-                return fallbackHost;
-            }
-
-            return null;
-        })
-        .filter((host): host is { id: string; name: string } => Boolean(host));
-
     useEffect(() => {
         setEventHosts(
             (event.hostNames ?? []).map((name, index) => ({
@@ -316,33 +295,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             price: event.price?.toString() ?? '',
         });
     }, [event.description, event.enddate, event.endtime, event.externallink, event.id, event.location, event.price, event.startdate, event.starttime, event.title]);
-
-    useEffect(() => {
-        if ((!isEditingHosts && !isEditingEventDetails) || !session || allHosts.length > 0) {
-            return;
-        }
-
-        const loadHosts = async () => {
-            try {
-                setIsLoadingHostOptions(true);
-                setHostEditorError(null);
-                const response = await fetch('/api/hosts');
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data?.error ?? 'Failed to load hosts');
-                }
-
-                setAllHosts(Array.isArray(data) ? data : []);
-            } catch (error) {
-                setHostEditorError(error instanceof Error ? error.message : 'Failed to load hosts');
-            } finally {
-                setIsLoadingHostOptions(false);
-            }
-        };
-
-        loadHosts();
-    }, [allHosts.length, isEditingEventDetails, isEditingHosts, session]);
 
     const formatEventDate = (dateStr?: string) => {
         if (!dateStr) return 'Date TBD';
@@ -384,7 +336,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             price: event.price?.toString() ?? '',
         });
         setSelectedHostIds(eventHosts.map((host) => host.id));
-        setHostSearchQuery('');
         setIsEditingEventDetails(true);
     };
 
@@ -442,23 +393,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         }
     };
 
-    const toggleSelectedHost = (hostId: string) => {
-        setSelectedHostIds((current) => (
-            current.includes(hostId)
-                ? current.filter((id) => id !== hostId)
-                : [...current, hostId]
-        ));
-    };
-
     const handleHostEditorToggle = async () => {
-        if (!canEditHosts) {
+        if (!isAdmin) {
             return;
         }
 
         if (!isEditingHosts) {
             setHostEditorError(null);
             setSelectedHostIds(eventHosts.map((host) => host.id));
-            setHostSearchQuery('');
             setIsEditingHosts(true);
             return;
         }
@@ -473,7 +415,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 || selectedHostIds.some((hostId) => !currentHostIds.includes(hostId));
 
             if (!hasChangedSelection) {
-                setHostSearchQuery('');
                 setIsEditingHosts(false);
                 return;
             }
@@ -489,59 +430,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 throw new Error(data?.error ?? 'Failed to update hosts');
             }
 
-            const nextHosts = selectedHostIds
-                .map((hostId) => {
-                    const selectedHost = allHosts.find((host) => String(host.id) === hostId);
-                    if (selectedHost) {
-                        return { id: String(selectedHost.id), name: selectedHost.name };
-                    }
-
-                    const existingHost = eventHosts.find((host) => host.id === hostId);
-                    return existingHost ?? null;
-                })
-                .filter((host): host is { id: string; name: string } => Boolean(host));
-
-            setEventHosts(nextHosts);
             setSelectedHostIds([]);
-            setHostSearchQuery('');
             setIsEditingHosts(false);
         } catch (error) {
             setHostEditorError(error instanceof Error ? error.message : 'Failed to update hosts');
         } finally {
             setIsSavingHosts(false);
-        }
-    };
-
-    const [isCreatingNewHost, setIsCreatingNewHost] = useState(false);
-    const [newHostTags, setNewHostTags] = useState('');
-    const [hostCreationError, setHostCreationError] = useState<string | null>(null);
-
-    const handleCreateNewHost = async () => {
-        if (!normalizedHostSearchQuery.trim()) {
-            setHostCreationError('Host name cannot be empty');
-            return;
-        }
-
-        try {
-            setHostCreationError(null);
-            const response = await fetch('/api/hosts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: normalizedHostSearchQuery.trim(), tags: newHostTags.trim() }),
-            });
-            const data = await response.json().catch(() => null);
-
-            if (!response.ok) {
-                throw new Error(data?.error ?? 'Failed to create host');
-            }
-
-            const createdHost = data;
-            setAllHosts([...allHosts, createdHost]);
-            toggleSelectedHost(String(createdHost.id));
-            setNewHostTags('');
-            setIsCreatingNewHost(false);
-        } catch (error) {
-            setHostCreationError(error instanceof Error ? error.message : 'Failed to create host');
         }
     };
 
@@ -724,59 +618,17 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     />
                                 </div>
                             </div>
-                            <div className="rounded-lg border border-default p-4">
+                            <div>
                                 <div className="mb-3 flex items-center justify-between gap-3">
                                     <h3 className="text-lg font-semibold text-text">Hosts</h3>
                                     <span className="text-sm text-muted">Select the hosts attached to this event</span>
                                 </div>
-                                <div className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2">
-                                    <div className="mb-2 flex flex-wrap gap-2">
-                                        {selectedHostTokens.map((host) => (
-                                            <button
-                                                key={host.id}
-                                                type="button"
-                                                onClick={() => toggleSelectedHost(host.id)}
-                                                className="rounded bg-accent px-2 py-1 text-xs font-semibold text-text transition hover:bg-accent-soft"
-                                            >
-                                                {host.name} x
-                                            </button>
-                                        ))}
-                                        {selectedHostTokens.length === 0 && (
-                                            <span className="text-xs text-muted">No hosts selected yet.</span>
-                                        )}
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={hostSearchQuery}
-                                        onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
-                                        placeholder="Search hosts by name"
-                                        className="w-full bg-transparent text-sm text-text outline-none"
-                                    />
-                                </div>
-                                {isLoadingHostOptions && <p className="text-sm text-muted">Loading hosts...</p>}
-                                {filteredHosts.length > 0 && (
-                                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
-                                        {filteredHosts.map((host) => {
-                                            const hostId = String(host.id);
-                                            const isSelected = selectedHostIds.includes(hostId);
-
-                                            return (
-                                                <label key={hostId} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-accent-soft">
-                                                    <span className="text-sm font-medium text-text">{host.name}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => toggleSelectedHost(hostId)}
-                                                        className="h-4 w-4"
-                                                    />
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                {normalizedHostSearchQuery && filteredHosts.length === 0 && (
-                                    <p className="mt-3 text-sm text-muted">No hosts match your search.</p>
-                                )}
+                                <HostSelector
+                                    selectedHostIds={selectedHostIds}
+                                    onSelectedHostIdsChange={setSelectedHostIds}
+                                    existingHosts={eventHosts}
+                                    maxHeightClassName="max-h-48"
+                                />
                             </div>
                             {eventDetailEditError && <p className="text-sm text-red-500">{eventDetailEditError}</p>}
                         </div>
@@ -938,11 +790,11 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         )}
                       
                         {/* Hosts */}
-                        {(eventHosts.length > 0 || canEditHosts) &&
+                        {(eventHosts.length > 0 || isAdmin) &&
                         ( <div className="bg-surface rounded-lg p-4 mb-6"> 
                             <div className="mb-4 flex items-center justify-between gap-4">
                                 <h2 className="text-2xl font-bold text-text">Hosted By</h2>
-                                {canEditHosts && (
+                                {isAdmin && (
                                     <button
                                         type="button"
                                         className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-text transition hover-bg-accent-soft disabled:opacity-60"
@@ -954,101 +806,13 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 )}
                             </div>
                             {isEditingHosts ? (
-                                <div className="rounded-lg border border-default p-4">
+                                <div>
                                     <p className="mb-3 text-sm text-muted">Choose additional hosts to attach to this event.</p>
-                                    <div className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2">
-                                        <div className="mb-2 flex flex-wrap gap-2">
-                                            {selectedHostTokens.map((host) => (
-                                                <button
-                                                    key={host.id}
-                                                    type="button"
-                                                    onClick={() => toggleSelectedHost(host.id)}
-                                                    className="rounded bg-accent px-2 py-1 text-xs font-semibold text-text transition hover-bg-accent-soft"
-                                                >
-                                                    {host.name} x
-                                                </button>
-                                            ))}
-                                            {selectedHostTokens.length === 0 && (
-                                                <span className="text-xs text-muted">No hosts selected yet.</span>
-                                            )}
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={hostSearchQuery}
-                                            onChange={(searchEvent) => setHostSearchQuery(searchEvent.target.value)}
-                                            placeholder="Search hosts by name"
-                                            className="w-full bg-transparent text-sm text-text outline-none"
-                                        />
-                                    </div>
-                                    {isLoadingHostOptions && (
-                                        <p className="text-sm text-muted">Loading hosts...</p>
-                                    )}
-                                    {filteredHosts.length > 0 && (
-                                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-default p-3">
-                                            {filteredHosts.map((host) => {
-                                                const hostId = String(host.id);
-                                                const isSelected = selectedHostIds.includes(hostId);
-
-                                                return (
-                                                    <label key={hostId} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 hover-bg-accent-soft">
-                                                        <span className="text-sm font-medium text-text">{host.name}</span>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={() => toggleSelectedHost(hostId)}
-                                                            className="h-4 w-4"
-                                                        />
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    {normalizedHostSearchQuery && filteredHosts.length === 0 && (
-                                        <div className="space-y-3">
-                                            <p className="text-sm text-muted">No hosts match your search.</p>
-                                            {!isCreatingNewHost ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsCreatingNewHost(true)}
-                                                    className="w-full text-sm px-3 py-2 rounded-lg border border-default text-text hover:bg-accent-soft transition font-semibold"
-                                                >
-                                                    + Create New Host
-                                                </button>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    <input
-                                                        type="text"
-                                                        value={newHostTags}
-                                                        onChange={(e) => setNewHostTags(e.target.value)}
-                                                        placeholder="Enter host tags, comma separated"
-                                                        className="w-full text-sm px-3 py-2 rounded-lg border border-default bg-bg text-text outline-none"
-                                                        autoFocus
-                                                    />
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleCreateNewHost}
-                                                            className="flex-1 text-sm px-3 py-2 rounded-lg bg-accent text-text font-semibold hover:bg-accent-soft transition"
-                                                        >
-                                                            Create
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setIsCreatingNewHost(false);
-                                                                setNewHostTags('');
-                                                                setHostCreationError(null);
-                                                            }}
-                                                            className="flex-1 text-sm px-3 py-2 rounded-lg border border-default text-text hover:bg-accent-soft transition"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                    {hostCreationError && <p className="text-sm text-red-500">{hostCreationError}</p>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <HostSelector
+                                        selectedHostIds={selectedHostIds}
+                                        onSelectedHostIdsChange={setSelectedHostIds}
+                                        existingHosts={eventHosts}
+                                    />
                                     {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
                                 </div>
                             ) : eventHosts.length > 0 ? eventHosts.map((host) => (

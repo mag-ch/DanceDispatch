@@ -73,7 +73,7 @@ function formatRelativeTime(dateValue: string): string {
 }
 
 export function Header() {
-    const { session, loading, logout } = useAuth();
+    const { session, loading, isAdmin, logout } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -354,10 +354,12 @@ export function Header() {
                         <Link href="/mission" className="px-4 py-2 transition ">Mission</Link>
                         <Link href="/party-calendar" className="px-4 py-2 transition">Calendar</Link>
                         <Link href="/party-map" className="px-4 py-2 transition">Map</Link>
-                     <SubmitEventButton
-                            label="Add event"
-                            className="hidden items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
-                        />
+                        {isAdmin && (
+                            <SubmitEventButton
+                                label="Add event"
+                                className="hidden items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
+                            />
+                        )}
                     </nav>
                     <nav className="ml-auto flex items-center gap-2 text-white/70">
                         <CityPicker />
@@ -442,10 +444,12 @@ export function Header() {
                         >
                             Mission
                         </Link>
-                        <SubmitEventButton
-                            label="Add event"
-                            className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-white/80 hover:bg-white/10"
-                        />
+                        {isAdmin && (
+                            <SubmitEventButton
+                                label="Add event"
+                                className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-white/80 hover:bg-white/10"
+                            />
+                        )}
                         {session ? (
                             <>
                                 <button

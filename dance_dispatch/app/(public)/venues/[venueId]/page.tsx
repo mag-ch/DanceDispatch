@@ -10,6 +10,7 @@ import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { openInMaps } from '@/lib/utils_supabase';
 import OpenInMapsButton from '@/app/components/OpenInMapsButton';
 import { geocodeAddress } from '@/lib/geocoding';
+import VenueDetailsEditor from './VenueDetailsEditor';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -56,7 +57,10 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                                     <h2 className="text-sm text-text uppercase">{venue.type}</h2>
                                     <h1 className="text-4xl text-text font-bold mt-2">{venue.name}</h1>
                                 </div>
-                                <FollowEntityButton entity="venues" entityId={venue.id} />
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <FollowEntityButton entity="venues" entityId={venue.id} />
+                                    <VenueDetailsEditor venue={venue} />
+                                </div>
                             </div>
                         </section>
                         {/* External Link */}

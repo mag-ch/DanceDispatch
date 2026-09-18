@@ -1,4 +1,5 @@
 import { getHosts , createHost} from '@/lib/utils_supabase_server';
+import { requireAdmin } from '@/lib/admin';
 
 function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase();
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requireAdmin();
     const body = await request.json();
     const { name, tags } = body;
 

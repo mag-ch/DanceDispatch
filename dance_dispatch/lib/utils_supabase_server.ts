@@ -3,7 +3,7 @@ import 'server-only';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
-import { Event, EventReview, Host, HostExternalLink, Venue } from '@/lib/utils';
+import { Event, EventReview, Host, HostExternalLink, ReviewReply, Venue } from '@/lib/utils';
 import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
 import { revalidatePath } from 'next/cache';
@@ -449,6 +449,7 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
 
       if (!reviewsByKey.has(key)) {
         reviewsByKey.set(key, {
+          id: String(row.id),
           eventName,
           eventId: String(row.event_id),
           username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
@@ -550,6 +551,7 @@ export async function getUserReviews(userId: string, includeAnon: boolean): Prom
       const username = await getUserById(userId);
       if (!reviewsByKey.has(key)) {
         reviewsByKey.set(key, {
+          id: String(row.id),
           eventName: eventMap.get(String(row.event_id))??"Unknown Event",
           eventId: String(row.event_id),
           userId: row.user_id,
@@ -587,6 +589,167 @@ export async function getUserReviews(userId: string, includeAnon: boolean): Prom
     return Array.from(reviewsByKey.values());
   } catch (error) {
     console.error('Error fetching event reviews from Supabase:', error);
+    return [];
+  }
+}
+
+/** Public review feed across all events, excluding private reviews (anonymous ones keep the username hidden). */
+export async function getPublicReviewFeed(limit: number = 60): Promise<EventReview[]> {
+  try {
+    const supabase = await createServerClient();
+    // Over-fetch rows since venue/host sub-reviews get grouped into fewer event-level cards.
+    const { data, error } = await supabase
+      .from('Reviews')
+      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
+      .neq('privacy_level', 'private')
+      .order('created_at', { ascending: false })
+      .limit(limit * 4);
+
+    if (error) throw error;
+
+    const venues = await getCachedVenues();
+    const venueMap = new Map(venues.map((venue) => [String(venue.id), venue.name]));
+
+    const hosts = await getCachedHosts();
+    const hostMap = new Map(hosts.map((host) => [String(host.id), host.name]));
+
+    const events = await getCachedEvents(false);
+    const eventMap = new Map(events.map((event) => [String(event.id), event.title]));
+    const eventImageMap = new Map(events.map((event) => [String(event.id), event.imageurl]));
+
+    const rows = data ?? [];
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    let usernameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+      usernameById = new Map(
+        (profiles ?? []).map((profile: any) => [String(profile.id), String(profile.username ?? 'Someone')])
+      );
+    }
+
+    // Group rows by user + event + 1-minute bucket, same convention as getEventReviews.
+    const getGroupKey = (row: any): string => {
+      const ms = new Date(row.created_at).getTime();
+      const minuteBucket = Math.floor(ms / 60_000);
+      return `${row.user_id}-${row.event_id}-${minuteBucket}`;
+    };
+
+    const reviewsByKey = new Map<string, EventReview>();
+    const ordered = [
+      ...rows.filter((r: any) => r.entity_type === 'event'),
+      ...rows.filter((r: any) => r.entity_type === 'venue'),
+      ...rows.filter((r: any) => r.entity_type === 'host'),
+    ];
+
+    for (const row of ordered) {
+      const key = getGroupKey(row);
+      const mediaPaths: string[] = (row.ReviewMedia ?? []).map((m: any) => m.storage_path);
+
+      if (!reviewsByKey.has(key)) {
+        reviewsByKey.set(key, {
+          id: String(row.id),
+          eventName: eventMap.get(String(row.event_id)) ?? 'Unknown Event',
+          eventId: String(row.event_id),
+          eventImageUrl: eventImageMap.get(String(row.event_id)) || undefined,
+          userId: row.user_id,
+          username: row.privacy_level === 'anonymous' ? 'Anonymous' : (usernameById.get(String(row.user_id)) ?? 'Someone'),
+          dateSubmitted: row.created_at,
+          privacyLevel: row.privacy_level,
+          mainComment: '',
+          mediaPaths: [],
+          venueReview: undefined,
+          djReviews: [],
+        });
+      }
+
+      const review = reviewsByKey.get(key)!;
+
+      if (row.entity_type === 'event') {
+        review.mainComment = row.comment;
+        review.mediaPaths = mediaPaths;
+      } else if (row.entity_type === 'venue') {
+        review.venueReview = {
+          venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
+          rating: row.rating,
+          comments: row.comment,
+        };
+      } else if (row.entity_type === 'host') {
+        review.djReviews?.push({
+          djName: hostMap.get(String(row.entity_id)) ?? 'Unknown Host',
+          rating: row.rating,
+          comments: row.comment,
+        });
+      }
+    }
+
+    return Array.from(reviewsByKey.values())
+      .sort((a, b) => Date.parse(b.dateSubmitted) - Date.parse(a.dateSubmitted))
+      .slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching public review feed from Supabase:', error);
+    return [];
+  }
+}
+
+/** Replies for a single review, threaded via parent_reply_id and grouped the same way review rows are (nested tree keyed by minute-batch of insertion). */
+export async function getReviewReplies(reviewId: string): Promise<ReviewReply[]> {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from('review_replies')
+      .select('id, review_id, parent_reply_id, user_id, comment, created_at')
+      .eq('review_id', Number(reviewId))
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const rows = data ?? [];
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    let usernameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+      usernameById = new Map(
+        (profiles ?? []).map((profile: any) => [String(profile.id), String(profile.username ?? 'Someone')])
+      );
+    }
+
+    const byId = new Map<string, ReviewReply>();
+    for (const row of rows) {
+      byId.set(String(row.id), {
+        id: String(row.id),
+        reviewId: String(row.review_id),
+        parentReplyId: row.parent_reply_id != null ? String(row.parent_reply_id) : null,
+        userId: row.user_id,
+        username: usernameById.get(String(row.user_id)) ?? 'Someone',
+        comment: row.comment,
+        createdAt: row.created_at,
+        replies: [],
+      });
+    }
+
+    // Nest each reply under its parent, mirroring how review rows are grouped into a tree.
+    const roots: ReviewReply[] = [];
+    for (const reply of byId.values()) {
+      if (reply.parentReplyId && byId.has(reply.parentReplyId)) {
+        byId.get(reply.parentReplyId)!.replies.push(reply);
+      } else {
+        roots.push(reply);
+      }
+    }
+
+    return roots;
+  } catch (error) {
+    console.error('Error fetching review replies from Supabase:', error);
     return [];
   }
 }

@@ -4,6 +4,7 @@ import { Event, EventReview } from '@/lib/utils';
 import { Rat, Star, X, Trash2, Globe, Lock, UserX, Clock, ThumbsDown, ThumbsUp  } from "lucide-react";
 import React from "react";
 import EventMediaUpload, { MediaFile } from "./EventMediaUpload";
+import ReviewReplies from "./ReviewReplies";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers/AuthContext";
 import Link from 'next/link';
@@ -279,7 +280,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
         private:   'bg-gray-200 text-gray-600 hover:bg-gray-300',
     };
 
-    const { session, loading: authLoading, isAdmin } = useAuth();
+    const { session, loading: authLoading } = useAuth();
 
     // Don't render owner controls until auth is resolved
 
@@ -354,7 +355,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
         }
         setIsDeleting(true);
         try {
-            if (!isOwner && isAdmin && review.userId) {
+            if (isOwner && review.userId) {
                 const response = await fetch(`/api/reviews/${review.eventId}?userId=${encodeURIComponent(review.userId)}`, {
                     method: 'DELETE',
                 });
@@ -437,8 +438,8 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                         </span>
                     )}
 
-                    {/* Delete button — owner or admin moderation */}
-                    {(isOwner || (isAdmin && review.userId)) && (
+                    {/* Delete button — owner only */}
+                    {isOwner && (
                         confirmDelete ? (
                             <div className="flex items-center gap-1">
                                 <button
@@ -461,7 +462,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                             <button
                                 type="button"
                                 onClick={handleDelete}
-                                title={isOwner ? 'Delete review' : 'Moderate: remove review'}
+                                title="Delete review"
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
                             >
                                 <Trash2 size={15} />
@@ -540,6 +541,8 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                     </div>
                 </div>
             )}
+
+            {review.id && <ReviewReplies reviewId={review.id} />}
         </div>
     );
 };

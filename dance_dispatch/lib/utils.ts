@@ -93,8 +93,10 @@ export async function formatDateOnly(dateStr: string, timeStr?: string) {
 };
 
 export interface EventReview {
+    id?: string;
     eventName: string;
     eventId: string;
+    eventImageUrl?: string;
     username:string;
     dateSubmitted: string;
      userId?: string;
@@ -113,6 +115,17 @@ export interface EventReview {
     privacyLevel: 'public' | 'private' | 'anonymous';
     mediaPaths?: string[];
 
+}
+
+export interface ReviewReply {
+    id: string;
+    reviewId: string;
+    parentReplyId: string | null;
+    userId: string;
+    username: string;
+    comment: string;
+    createdAt: string;
+    replies: ReviewReply[];
 }
 
 

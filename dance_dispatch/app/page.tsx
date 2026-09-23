@@ -59,9 +59,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             <div className="mt-9 max-w-5xl">
               <SearchBar />
             </div>
-     
           </div>
-         
         </div>
       </section>
 {/* 
@@ -93,7 +91,15 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-cyan-700 dark:text-cyan-300">Social Feed</p>
               <h2 className="mt-1 text-2xl font-extrabold text-text sm:text-3xl">Recent Activity</h2>
             </div>
-            <p className="max-w-md text-sm text-muted">Latest reviews across all users plus your network activity.</p>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <p className="max-w-md text-sm text-muted">Latest reviews across all users plus your network activity.</p>
+              <Link
+                href="/review-feed"
+                className="rounded-full border border-cyan-400/40 px-4 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-400/10 dark:text-cyan-300"
+              >
+                View all reviews
+              </Link>
+            </div>
           </div>
 
           {recentActivity.length === 0 ? (

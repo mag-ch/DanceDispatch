@@ -13,12 +13,12 @@ interface CollapsedSectionModalProps {
     children: ReactNode;
 }
 
-// SearchResult (and similar cards) expose their display name via a `header` prop —
-// pull it out so the modal's search box can filter without needing raw data separately.
+// SearchResult (and similar cards) expose their display name/subtitle via `header`/`subheader`
+// props — combine them so the modal's search box can match either one.
 function getSearchableLabel(child: ReactNode): string {
     if (!isValidElement(child)) return '';
     const props = child.props as Record<string, unknown>;
-    return String(props?.header ?? props?.subheader ?? '').toLowerCase();
+    return `${String(props?.header ?? '')} ${String(props?.subheader ?? '')}`.toLowerCase();
 }
 
 export default function CollapsedSectionModal({

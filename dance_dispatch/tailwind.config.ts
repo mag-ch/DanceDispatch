@@ -8,10 +8,10 @@ const config = {
   theme: {
     extend: {
       colors: {
-        bg: "rgb(var(--bg))",
-        surface: "rgb(var(--surface))",
-        text: "rgb(var(--text))",
-        muted: "rgb(var(--muted))",
+        bg: "rgb(var(--bg) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        text: "rgb(var(--text) / <alpha-value>)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
       },
     },
   },

@@ -78,7 +78,7 @@ export function LocationCheckIn() {
 
   return (
     // Floating prompt, similar to the push notification prompt, offered as a separate opt-in.
-    <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/95 p-4 shadow-2xl backdrop-blur-md">
+    <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/40 dark:bg-surface/40 p-4 shadow-2xl backdrop-blur-md">
       <div className="flex items-start gap-3">
         <div className="rounded-full bg-accent-soft p-2 text-text">
           <MapPin className="h-5 w-5" />

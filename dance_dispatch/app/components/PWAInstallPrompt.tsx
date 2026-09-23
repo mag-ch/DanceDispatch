@@ -205,7 +205,7 @@ export function PWAInstallPrompt() {
   if (hidden || isStandalone) return null;
 
   return (
-    <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/95 backdrop-blur-md p-4 shadow-2xl">
+    <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/40 dark:bg-surface/40 backdrop-blur-md p-4 shadow-2xl">
       <p className="text-sm font-semibold text-text">{title}</p>
       <p className="mt-1 text-sm text-muted">{body}</p>
 

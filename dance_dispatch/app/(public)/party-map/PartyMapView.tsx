@@ -3,7 +3,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { MapPartyEvent } from './PartyMapClient';
 
 
@@ -95,6 +95,54 @@ function MapBoundsWatcher({ onBoundsChange }: { onBoundsChange?: (bounds: MapBou
   return null;
 }
 
+function MapInteractionWatcher({ onInteraction }: { onInteraction?: () => void }) {
+  const map = useMap();
+  const dragStartCenter = useRef<L.LatLng | null>(null);
+  const zoomStartLevel = useRef<number | null>(null);
+
+  // Ignore small nudges — only a real downward drag should hide the drawer.
+  const SWIPE_DOWN_THRESHOLD_PX = 60;
+
+  useMapEvents(
+    onInteraction
+      ? {
+          dragstart: () => {
+            dragStartCenter.current = map.getCenter();
+          },
+          dragend: () => {
+            const startCenter = dragStartCenter.current;
+            dragStartCenter.current = null;
+            if (!startCenter) return;
+
+            // Where the pre-drag center point now sits on screen, vs. the container's
+            // vertical midpoint (where it sat before the drag), gives the actual
+            // on-screen pan direction and distance.
+            const size = map.getSize();
+            const nowAt = map.latLngToContainerPoint(startCenter);
+            const verticalDelta = nowAt.y - size.y / 2;
+
+            if (verticalDelta > SWIPE_DOWN_THRESHOLD_PX) {
+              onInteraction();
+            }
+          },
+          zoomstart: () => {
+            zoomStartLevel.current = map.getZoom();
+          },
+          zoomend: () => {
+            const startZoom = zoomStartLevel.current;
+            zoomStartLevel.current = null;
+            if (startZoom === null) return;
+            if (map.getZoom() < startZoom) {
+              onInteraction();
+            }
+          },
+        }
+      : {}
+  );
+
+  return null;
+}
+
 // Fades markers out the farther their event date is from today (in either direction).
 const MAX_FADE_DAYS = 30;
 const MIN_MARKER_OPACITY = 0.35;
@@ -128,20 +176,22 @@ export default function PartyMapView({
   selectedEventId = null,
   onSelectEvent,
   onBoundsChange,
+  onInteraction,
 }: {
   events: MapPartyEvent[];
   userLocation?: UserLocation | null;
   selectedEventId?: string | null;
   onSelectEvent?: (eventId: string) => void;
   onBoundsChange?: (bounds: MapBoundsBox) => void;
+  onInteraction?: () => void;
 }) {
   return (
     <MapContainer
       center={DEFAULT_CENTER}
       zoom={12}
       scrollWheelZoom
-      style={{ height: '600px', width: '100%' }}
-      className="dd-party-map z-0 rounded-lg"
+      style={{ height: '100%', width: '100%' }}
+      className="dd-party-map z-0 rounded-none md:rounded-lg"
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -150,6 +200,7 @@ export default function PartyMapView({
       <FitToEvents events={events} userLocation={userLocation ?? null} />
       <FlyToSelectedEvent events={events} selectedEventId={selectedEventId} />
       <MapBoundsWatcher onBoundsChange={onBoundsChange} />
+      <MapInteractionWatcher onInteraction={onInteraction} />
       {userLocation && (
         <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon}>
           <Popup>You are here</Popup>

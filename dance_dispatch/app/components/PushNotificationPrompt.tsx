@@ -90,7 +90,7 @@ export function PushNotificationPrompt() {
 
   return (
     // Floating prompt stays visible so users can opt in/out without leaving their current page.
-    <aside className="fixed bottom-4 left-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/95 p-4 shadow-2xl backdrop-blur-md">
+    <aside className="fixed bottom-4 left-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/40 dark:bg-surface/40 p-4 shadow-2xl backdrop-blur-md">
       {/* Horizontal layout: status icon on the left, explanatory text and actions on the right. */}
       <div className="flex items-start gap-3">
         {/* Status icon gives immediate visual feedback about current subscription state. */}

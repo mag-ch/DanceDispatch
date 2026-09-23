@@ -12,6 +12,7 @@ import { User } from '@supabase/supabase-js';
 // near-simultaneous requests so we don't trip Supabase's auth rate limit.
 const USER_VERIFICATION_TTL_MS = 10_000;
 const userVerificationCache = new Map<string, { user: User | null; expiresAt: number }>();
+const userVerificationInFlight = new Map<string, Promise<User | null>>();
 
 async function getSessionCacheKey(): Promise<string | null> {
     const cookieStore = await cookies();
@@ -28,22 +29,31 @@ async function getSessionCacheKey(): Promise<string | null> {
  */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
     const cacheKey = await getSessionCacheKey();
+    if (!cacheKey) {
+        return null;
+    }
+
     const cached = cacheKey ? userVerificationCache.get(cacheKey) : undefined;
     if (cached && cached.expiresAt > Date.now()) {
         return cached.user;
     }
 
-    const supabase = await createClient();
-    let result: User | null;
-    try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        // Stale/missing refresh token cookie - treat as signed out instead of throwing.
-        result = error ? null : user;
-    } catch {
-        result = null;
+    const inFlight = userVerificationInFlight.get(cacheKey);
+    if (inFlight) {
+        return inFlight;
     }
 
-    if (cacheKey) {
+    const verification = (async () => {
+        const supabase = await createClient();
+        let result: User | null;
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            // Stale, missing, or rate-limited auth requests are treated as signed out.
+            result = error ? null : user;
+        } catch {
+            result = null;
+        }
+
         if (userVerificationCache.size > 1000) {
             const now = Date.now();
             for (const [key, entry] of userVerificationCache) {
@@ -51,9 +61,15 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
             }
         }
         userVerificationCache.set(cacheKey, { user: result, expiresAt: Date.now() + USER_VERIFICATION_TTL_MS });
-    }
+        return result;
+    })();
 
-    return result;
+    userVerificationInFlight.set(cacheKey, verification);
+    try {
+        return await verification;
+    } finally {
+        userVerificationInFlight.delete(cacheKey);
+    }
 });
 
 /**

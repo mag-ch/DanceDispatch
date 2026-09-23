@@ -90,18 +90,20 @@ export default async function PartyMapPage() {
     (a, b) => nearestEventDistanceMs(a) - nearestEventDistanceMs(b)
   );
 
-  return (
-    <main className="min-h-screen bg-bg text-text">
-      <section className="container mx-auto px-6 py-12 md:py-16">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold">Party Map</h1>
-          <p className="mt-2 text-muted max-w-2xl">
+    return (
+    <main className="h-[calc(100dvh-4rem)] overflow-hidden bg-bg text-text lg:h-auto lg:min-h-screen lg:overflow-visible">
+      <section className="container mx-auto flex h-full flex-col px-0 py-2 md:px-6 lg:h-auto lg:py-16">
+        <div className="mb-8 hidden px-4 lg:block lg:px-0">
+          <h1 className="text-3xl font-bold md:text-4xl">Party Map</h1>
+          <p className="mt-2 max-w-2xl text-muted">
             Explore upcoming parties on the map. Filter by date range or day/week/month, and toggle to only
             see events you&apos;ve RSVP&apos;ed to.
           </p>
         </div>
 
-        <PartyMapClient events={mapEvents} pendingVenues={pendingVenues} savedEventIds={savedEventIds} />
+        <div className="min-h-0 flex-1 px-2 lg:px-0">
+          <PartyMapClient events={mapEvents} pendingVenues={pendingVenues} savedEventIds={savedEventIds} />
+        </div>
       </section>
     </main>
   );

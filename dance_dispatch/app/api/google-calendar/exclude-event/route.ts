@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { requireAuth } from '@/lib/auth-helpers';
+import { isAdmin } from '@/lib/admin';
 import { deleteEvent } from '@/lib/utils_supabase_server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -19,8 +20,9 @@ export async function POST(request: Request) {
   try {
     await requireAuth();
 
-    const body = (await request.json()) as { eventId?: string };
+    const body = (await request.json()) as { eventId?: string; createdBy?: string };
     const eventId = String(body?.eventId || '').trim();
+    const createdBy = String(body?.createdBy || '').trim();
 
     if (!eventId) {
       return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
@@ -44,7 +46,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    
+    // Approving an admin-created event credits one use to that admin's invite code.
+    if (createdBy && (await isAdmin(createdBy))) {
+      await supabase.rpc('increment_admin_invite_code_usage', { p_owner_user_id: createdBy });
+    }
 
     return NextResponse.json({ ok: true, eventId }, { status: 200 });
   } catch (error) {

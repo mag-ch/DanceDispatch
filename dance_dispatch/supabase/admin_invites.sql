@@ -138,3 +138,26 @@ values
   ('f2694e1c-5457-45b0-b299-c3a03a77d8c5', 'seed'),
   ('e8191ca7-7856-4e81-9140-b93a944ec711', 'seed')
 on conflict (user_id) do nothing;
+
+-- Credits an admin's own invite code with one use when a Google Calendar event
+-- they created is approved during manual review.
+create or replace function public.increment_admin_invite_code_usage(p_owner_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code_id bigint;
+begin
+  update public.admin_invite_codes
+  set uses_count = uses_count + 1
+  where owner_user_id = p_owner_user_id
+    and not revoked
+  returning id into v_code_id;
+
+  return v_code_id is not null;
+end;
+$$;
+
+grant execute on function public.increment_admin_invite_code_usage(uuid) to authenticated, service_role;

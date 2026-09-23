@@ -99,13 +99,15 @@ export default function ReviewReplies({ reviewId }: ReviewRepliesProps) {
         if (!session?.user?.id || !comment.trim()) return;
         setIsSubmitting(true);
         try {
-            const { error } = await supabase.from('review_replies').insert({
-                review_id: Number(reviewId),
-                parent_reply_id: parentReplyId ? Number(parentReplyId) : null,
-                user_id: session.user.id,
-                comment: comment.trim(),
+            const response = await fetch('/api/review-replies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reviewId, parentReplyId, comment: comment.trim() }),
             });
-            if (error) throw error;
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload?.error || 'Failed to post reply');
+            }
             await loadReplies();
         } catch (err) {
             console.error('Failed to post reply:', err);

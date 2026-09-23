@@ -328,3 +328,103 @@ export async function sendReviewPushToFollowers(
 
   return { followers: followerIds.length, notified, removed };
 }
+
+/** Notifies the parent reply's author (or the review owner, for a top-level reply) about a new reply. */
+export async function sendReviewReplyNotification({
+  replierUserId,
+  reviewId,
+  parentReplyId,
+  comment,
+}: {
+  replierUserId: string;
+  reviewId: string;
+  parentReplyId: string | null;
+  comment: string;
+}): Promise<{ notified: boolean }> {
+  const supabase = getServiceRoleClient();
+
+  let recipientUserId: string | null = null;
+
+  if (parentReplyId) {
+    const { data: parentReply } = await supabase
+      .from('review_replies')
+      .select('user_id')
+      .eq('id', Number(parentReplyId))
+      .maybeSingle();
+    recipientUserId = String((parentReply as { user_id?: unknown } | null)?.user_id ?? '').trim() || null;
+  }
+
+  const { data: reviewRow } = await supabase
+    .from('Reviews')
+    .select('user_id, event_id')
+    .eq('id', Number(reviewId))
+    .maybeSingle();
+
+  const reviewOwnerId = String((reviewRow as { user_id?: unknown } | null)?.user_id ?? '').trim() || null;
+  const eventId = String((reviewRow as { event_id?: unknown } | null)?.event_id ?? '').trim() || null;
+
+  // Fall back to the review owner when replying at the top level, or when the parent reply lookup failed.
+  if (!recipientUserId) {
+    recipientUserId = reviewOwnerId;
+  }
+
+  if (!recipientUserId || recipientUserId === replierUserId) {
+    return { notified: false };
+  }
+
+  let replierName = 'Someone';
+  const { data: replierProfile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', replierUserId)
+    .maybeSingle();
+  const loadedName = String((replierProfile as { username?: unknown } | null)?.username ?? '').trim();
+  if (loadedName) {
+    replierName = loadedName;
+  }
+
+  let eventName = 'an event';
+  if (eventId) {
+    const event = await getEventById(eventId);
+    const loadedEventName = String(event?.title ?? '').trim();
+    if (loadedEventName) {
+      eventName = loadedEventName;
+    }
+  }
+
+  const commentPreview = comment.length > 80 ? `${comment.slice(0, 77)}...` : comment;
+  const payload: PushPayload = {
+    title: `${replierName} replied to your comment`,
+    body: commentPreview || `${replierName} replied on ${eventName}`,
+    href: eventId ? `/events/${encodeURIComponent(eventId)}` : '/notifications',
+    tag: `review-reply-${reviewId}`,
+  };
+
+  const { error: insertError } = await supabase.from('user_notifications').insert({
+    user_id: recipientUserId,
+    actor_user_id: replierUserId,
+    type: 'review_reply',
+    title: payload.title,
+    body: payload.body,
+    href: payload.href ?? '/notifications',
+    metadata: {
+      replierId: replierUserId,
+      replierName,
+      reviewId,
+      eventId,
+      eventName,
+    },
+  });
+
+  if (insertError) {
+    console.error('Failed to persist review reply notification:', insertError);
+  }
+
+  try {
+    const result = await sendPushToUser(recipientUserId, payload);
+    return { notified: result.sent > 0 };
+  } catch (error) {
+    console.error(`Failed to send review reply push notification to ${recipientUserId}:`, error);
+    return { notified: false };
+  }
+}

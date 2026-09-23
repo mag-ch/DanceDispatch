@@ -166,11 +166,12 @@ const approvePendingReviewEvent = async (eventId: string) => {
     try {
       if (eventId){
 
-        
+        const createdBy = pendingReviewItems.find((item) => item.eventId === eventId)?.createdBy;
+
         const response = await fetch('/api/google-calendar/exclude-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventId }),
+          body: JSON.stringify({ eventId, createdBy }),
         });
 
         const payload = (await response.json()) as { ok?: boolean; error?: string };
@@ -357,7 +358,7 @@ const approvePendingReviewEvent = async (eventId: string) => {
                     <div className="mt-1 text-xs text-muted">
                       Event #{item.eventId}
                       {item.start ? ` • ${new Date(item.start).toLocaleString()}` : ''}
-                      {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : ''}
+                      {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : item.createdBy ? ` • Created by: ${item.createdBy}` : ''}
                     </div>
                   </div>
                   <button

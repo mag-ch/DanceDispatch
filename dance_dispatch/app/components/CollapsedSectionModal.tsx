@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useEffect, useMemo, useState, ReactNode, Children, isValidElement } from 'react';
 import Link from 'next/link';
 
 interface CollapsedSectionModalProps {
@@ -9,10 +9,16 @@ interface CollapsedSectionModalProps {
     emptyMessage: string;
     discoverHref: string;
     discoverLabel: string;
-    /** Grid of already-rendered items (e.g. <SearchResult /> elements) */
+    /** Already-rendered items (e.g. <SearchResult /> elements) */
     children: ReactNode;
-    /** Optional grid column classes, defaults to the standard 1/2/3 col layout */
-    gridClassName?: string;
+}
+
+// SearchResult (and similar cards) expose their display name via a `header` prop —
+// pull it out so the modal's search box can filter without needing raw data separately.
+function getSearchableLabel(child: ReactNode): string {
+    if (!isValidElement(child)) return '';
+    const props = child.props as Record<string, unknown>;
+    return String(props?.header ?? props?.subheader ?? '').toLowerCase();
 }
 
 export default function CollapsedSectionModal({
@@ -22,9 +28,9 @@ export default function CollapsedSectionModal({
     discoverHref,
     discoverLabel,
     children,
-    gridClassName = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4',
 }: CollapsedSectionModalProps) {
     const [open, setOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Close on escape key
     useEffect(() => {
@@ -35,6 +41,18 @@ export default function CollapsedSectionModal({
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [open]);
+
+    // Reset the filter each time the modal is reopened
+    useEffect(() => {
+        if (!open) setSearchTerm('');
+    }, [open]);
+
+    const items = useMemo(() => Children.toArray(children), [children]);
+    const filteredItems = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        if (!term) return items;
+        return items.filter((item) => getSearchableLabel(item).includes(term));
+    }, [items, searchTerm]);
 
     return (
         <section className="mb-8">
@@ -52,7 +70,7 @@ export default function CollapsedSectionModal({
                 )}
             </div>
 
-            {count === 0 && (
+            {count === 0 ? (
                 <div>
                     <p className="text-text">{emptyMessage}</p>
                     <Link
@@ -61,6 +79,18 @@ export default function CollapsedSectionModal({
                     >
                         {discoverLabel}
                     </Link>
+                </div>
+            ) : (
+                // Horizontally scrolling preview strip, below the section header.
+                <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                    {items.map((item, index) => (
+                        <div
+                            key={index}
+                            className="w-[220px] shrink-0 snap-start overflow-hidden rounded-lg border border-default bg-surface p-1"
+                        >
+                            {item}
+                        </div>
+                    ))}
                 </div>
             )}
 
@@ -73,7 +103,7 @@ export default function CollapsedSectionModal({
                         className="bg-surface rounded-lg w-full max-w-[75vw] max-h-[75vh] overflow-y-auto p-6 shadow-xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between mb-4 sticky top-0 bg-surface">
+                        <div className="flex items-center justify-between mb-4 sticky top-0 bg-surface pb-3">
                             <h3 className="text-xl font-semibold text-text">
                                 {title} ({count})
                             </h3>
@@ -85,10 +115,26 @@ export default function CollapsedSectionModal({
                                 &times;
                             </button>
                         </div>
-                        <div className={gridClassName}>{children}</div>
+
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder={`Search ${title.toLowerCase()}...`}
+                            className="mb-4 w-full rounded-md border border-default bg-bg px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+
+                        <div className="flex flex-col gap-3">
+                            {filteredItems.length === 0 ? (
+                                <p className="text-sm text-muted">No matches found.</p>
+                            ) : (
+                                filteredItems
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
         </section>
     );
 }
+

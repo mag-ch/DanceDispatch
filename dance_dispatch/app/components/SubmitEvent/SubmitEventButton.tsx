@@ -33,8 +33,8 @@ export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-
         <>
             <button
                 type="button"
-                // onClick={() => {setMode('manual'); setOpen(true);}}
-                onClick={() => setOpen(true)}
+                onClick={() => {setMode('manual'); setOpen(true);}}
+                // onClick={() => setOpen(true)}
                 className={className}
             >
                 <Plus className="h-4 w-4" />
@@ -42,7 +42,7 @@ export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-
             </button>
 
             {/* Choice Modal */}
-            {open && mode === 'choice' && (
+            {/* {open && mode === 'choice' && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
                     <div className="relative w-full max-w-md rounded-xl bg-bg shadow-xl dark:bg-surface">
                         <button
@@ -89,16 +89,16 @@ export function SubmitEventButton({ label = 'Submit an Event', className = 'btn-
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
             {/* Link Parse Modal */}
-            {open && mode === 'link' && (
+            {/* {open && mode === 'link' && (
                 <ParseEventFromLink
                     onParsed={handleParsed}
                     onBack={() => setMode('choice')}
                     onClose={handleClose}
                 />
-            )}
+            )} */}
 
             {/* Manual Entry Modal */}
             {open && mode === 'manual' && (

@@ -6,7 +6,7 @@ import { useAuth } from '@/app/providers/AuthContext';
 import { useLocationCheckIn } from '@/app/hooks/useLocationCheckIn';
 
 const PROMPT_RESPONSE_KEY_PREFIX = 'dd_location_checkin_response_v1';
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const THREE_MONTHS_MS = 90 * 24 * 60 * 60 * 1000;
 
 type PromptResponseRecord = {
   respondedAt: string;
@@ -50,14 +50,15 @@ export function LocationCheckIn() {
     if (rawRecord) {
       try {
         const parsedRecord = JSON.parse(rawRecord) as PromptResponseRecord;
-        const respondedAtMs = new Date(parsedRecord.respondedAt).getTime();
-        const hasValidDate = Number.isFinite(respondedAtMs);
 
         if (parsedRecord.enabled) {
+          // Already enabled — nothing to re-prompt for.
           shouldShow = false;
           setIsEnabled(true);
-        } else if (hasValidDate) {
-          shouldShow = Date.now() - respondedAtMs >= THIRTY_DAYS_MS;
+        } else {
+          const respondedAtMs = new Date(parsedRecord.respondedAt).getTime();
+          const hasValidDate = Number.isFinite(respondedAtMs);
+          shouldShow = hasValidDate ? Date.now() - respondedAtMs >= THREE_MONTHS_MS : true;
         }
       } catch {
         // Ignore malformed localStorage data and fall back to showing the prompt.

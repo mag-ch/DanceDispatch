@@ -137,7 +137,8 @@ export async function processUrl(url: string): Promise<string> {
 
 
 export async function prettifyCase(str: string): Promise<string> {
-    return str.slice(0,1).toUpperCase() + str.replace("_", " ").slice(1);
+    const readable = str.replace(/_/g, ' ');
+    return readable.slice(0, 1).toUpperCase() + readable.slice(1);
 }
 
 export async function resolveImageUrl(

@@ -132,6 +132,22 @@ export async function getUniqueVenueAttributes(venueId: string) {
     return data;
 }
 
+export async function getVenueAttributes(venueId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('venue_attributes')
+        .select('id, attribute, value, data_type')
+        .eq('venue_id', venueId)
+        .order('id');
+
+    if (error) {
+        console.error('Error fetching venue attributes from Supabase:', error);
+        return [];
+    }
+
+    return data ?? [];
+}
+
 export async function getAllVenueAttributes() {
     const supabase = await createClient();
     const { data, error } = await supabase

@@ -1,5 +1,5 @@
 import { MapPin, Calendar, Star } from 'lucide-react';
-import { getUniqueVenueAttributes, getAggregatedVenueAttributes, getVenueComments } from '@/lib/server_utils';
+import { getUniqueVenueAttributes, getAggregatedVenueAttributes, getVenueAttributes, getVenueComments } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
 import { getCachedVenues, getCachedEvents } from '@/lib/utils_supabase_server';
 import { notFound } from 'next/navigation';
@@ -21,9 +21,10 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
         getCachedEvents(false, venueId),
     ]);
 
-    const [uniqueVenueAttributes, aggregatedVenueAttributes] = await Promise.all([
+    const [uniqueVenueAttributes, aggregatedVenueAttributes, venueAttributes] = await Promise.all([
         getUniqueVenueAttributes(venueId),
         getAggregatedVenueAttributes(venueId),
+        getVenueAttributes(venueId),
     ]);
 
     const venueComments = await getVenueComments(venueId);
@@ -52,17 +53,19 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                     <div className="lg:col-span-2">
                         {/* Header */}
                         <section className="mb-4 bg-surface p-6 rounded-lg">
-                            <div className="flex items-start justify-between gap-4 mb-2">
+                            <div className="flex flex-col gap-4 mb-2 md:flex-row md:items-start md:justify-between">
                                 <div>
                                     <h2 className="text-sm text-text uppercase">{venue.type}</h2>
                                     <h1 className="text-4xl text-text font-bold mt-2">{venue.name}</h1>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-2">
+                                <div className="flex w-full min-w-0 flex-col items-stretch gap-2 md:w-auto md:flex-row md:items-center">
                                     <FollowEntityButton entity="venues" entityId={venue.id} />
-                                    <VenueDetailsEditor venue={venue} />
                                 </div>
                             </div>
                         </section>
+                        <div className="mb-4">
+                            <VenueDetailsEditor venue={venue} attributes={venueAttributes} />
+                        </div>
                         {/* External Link */}
                         {venue.website && (
                             <section className="mb-4 bg-surface p-6 rounded-lg">

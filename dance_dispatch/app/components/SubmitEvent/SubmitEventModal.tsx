@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Venue } from '@/lib/utils';
-import { ArrowLeft, X } from 'lucide-react'; 
+import { ArrowLeft, Upload, X } from 'lucide-react'; 
 import type { Event } from "@/lib/utils";
 
 interface FormState {
@@ -78,6 +78,8 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [duplicateId, setDuplicateId] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [isUploadingFlyer, setIsUploadingFlyer] = useState(false);
+    const flyerInputRef = React.useRef<HTMLInputElement>(null);
     const isAddingNewVenue = form.locationid === '__new__';
 
     // Show auth modal if user opens this while not logged in
@@ -101,6 +103,33 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
         setError(null);
         setDuplicateId(null);
+    };
+
+    const handleFlyerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingFlyer(true);
+        setError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('/api/flyer-image', { method: 'POST', body: formData });
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                setError(result?.error || 'Failed to upload flyer image.');
+                return;
+            }
+
+            setForm((current) => ({ ...current, imageurl: result?.imageUrl || '' }));
+        } catch {
+            setError('Failed to upload flyer image.');
+        } finally {
+            setIsUploadingFlyer(false);
+            e.target.value = '';
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -366,11 +395,11 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-text mb-1">Flyer Image URL</label>
+                                <label className="block text-sm font-medium text-text mb-1">Tickets / RSVP Link</label>
                                 <input
                                     type="url"
-                                    name="imageurl"
-                                    value={form.imageurl}
+                                    name="externallink"
+                                    value={form.externallink}
                                     onChange={handleChange}
                                     className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
@@ -378,14 +407,33 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-text mb-1">Tickets / RSVP Link</label>
-                            <input
-                                type="url"
-                                name="externallink"
-                                value={form.externallink}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <label className="block text-sm font-medium text-text mb-1">Flyer Image URL</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="url"
+                                    name="imageurl"
+                                    value={form.imageurl}
+                                    onChange={handleChange}
+                                    className="min-w-0 flex-1 rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    ref={flyerInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    onChange={handleFlyerUpload}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => flyerInputRef.current?.click()}
+                                    disabled={isUploadingFlyer}
+                                    className="flex shrink-0 items-center justify-center rounded-lg border border-default px-3 text-text transition hover-bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                                    aria-label="Upload flyer image"
+                                    title="Upload flyer image"
+                                >
+                                    <Upload className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
 
                         <button

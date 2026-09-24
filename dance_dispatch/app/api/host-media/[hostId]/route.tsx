@@ -118,3 +118,50 @@ export async function DELETE(
         return NextResponse.json({ error: message }, { status });
     }
 }
+
+export async function PATCH(
+    request: Request,
+    { params }: { params: Promise<{ hostId: string }> }
+) {
+    try {
+        await requireAdmin();
+
+        const { hostId } = await params;
+        const parsedHostId = Number(hostId);
+        if (Number.isNaN(parsedHostId)) {
+            return NextResponse.json({ error: 'Invalid host id' }, { status: 400 });
+        }
+
+        const body = await request.json();
+        const mediaId = Number(body?.mediaId);
+        const link = typeof body?.link === 'string' ? body.link.trim() : '';
+        const embedCode = typeof body?.embed_code === 'string' ? body.embed_code.trim() : '';
+
+        if (!Number.isInteger(mediaId)) {
+            return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
+        }
+        if (!link && !embedCode) {
+            return NextResponse.json({ error: 'Either link or embed_code is required' }, { status: 400 });
+        }
+
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('host_media')
+            .update({ link: link || null, embed_code: embedCode || null })
+            .eq('id', mediaId)
+            .eq('host_id', parsedHostId)
+            .select('id,host_id,type,link,embed_code')
+            .single();
+
+        if (error) {
+            console.error('Error updating host media:', error);
+            return NextResponse.json({ error: 'Failed to update host media' }, { status: 500 });
+        }
+
+        return NextResponse.json(data, { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update host media';
+        const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
+        return NextResponse.json({ error: message }, { status });
+    }
+}

@@ -62,6 +62,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [mediaSaving, setMediaSaving] = useState(false);
     const [mediaError, setMediaError] = useState<string | null>(null);
     const [deletingMediaId, setDeletingMediaId] = useState<number | null>(null);
+    const [editingMediaId, setEditingMediaId] = useState<number | null>(null);
+    const [editMediaLink, setEditMediaLink] = useState('');
+    const [editMediaEmbedCode, setEditMediaEmbedCode] = useState('');
+    const [updatingMediaId, setUpdatingMediaId] = useState<number | null>(null);
 
     const startEditing = () => {
         if (!h) return;
@@ -78,6 +82,21 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         setSaveError(null); 
     };
 
+    const saveMediaChanges = async (mediaId: number, link: string, embedCode: string) => {
+        const response = await fetch(`/api/host-media/${hostId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mediaId, link, embed_code: embedCode }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(data?.error ?? 'Failed to update media');
+        }
+
+        setHostMedia((current) => current.map((media) => Number(media.id) === mediaId ? data : media));
+        return data;
+    };
+
     const saveEdits = async () => {
         if (!h) return;
         setSaving(true);
@@ -85,6 +104,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         try {
             const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
             const genres = editGenre.split(',').map((g) => g.trim()).filter(Boolean);
+            const pendingMediaLink = editMediaLink.trim();
+            const pendingMediaEmbedCode = editMediaEmbedCode.trim();
+
+            if (editingMediaId !== null && !pendingMediaLink && !pendingMediaEmbedCode) {
+                throw new Error('Enter either a link or embed code for the media item.');
+            }
+
             const res = await fetch(`/api/hosts/${hostId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -95,10 +121,16 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                 setSaveError(err.error ?? 'Failed to save' + err.error.message);
                 return;
             }
+
+            if (editingMediaId !== null) {
+                await saveMediaChanges(editingMediaId, pendingMediaLink, pendingMediaEmbedCode);
+                cancelEditingMedia();
+            }
+
             setHost({ ...h, name: editName, bio: editBio, tags: tags, genres: genres });
             setEditing(false);
-        } catch {
-            setSaveError('Failed to save');
+        } catch (error) {
+            setSaveError(error instanceof Error ? error.message : 'Failed to save');
         } finally {
             setSaving(false);
         }
@@ -148,7 +180,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         }
 
         if (!trimmedLink && !trimmedEmbedCode) {
-            setMediaError('Enter either a link or SoundCloud embed code.');
+            setMediaError('Enter either a link or embed code.');
             return;
         }
 
@@ -202,6 +234,39 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             setMediaError(error instanceof Error ? error.message : 'Failed to delete media');
         } finally {
             setDeletingMediaId(null);
+        }
+    };
+
+    const startEditingMedia = (media: any) => {
+        setEditingMediaId(Number(media.id));
+        setEditMediaLink(media.link ?? '');
+        setEditMediaEmbedCode(media.embed_code ?? '');
+        setMediaError(null);
+    };
+
+    const cancelEditingMedia = () => {
+        setEditingMediaId(null);
+        setEditMediaLink('');
+        setEditMediaEmbedCode('');
+    };
+
+    const updateHostMedia = async (mediaId: number) => {
+        const link = editMediaLink.trim();
+        const embedCode = editMediaEmbedCode.trim();
+        if (!link && !embedCode) {
+            setMediaError('Enter either a link or embed code.');
+            return;
+        }
+
+        setUpdatingMediaId(mediaId);
+        setMediaError(null);
+        try {
+            await saveMediaChanges(mediaId, link, embedCode);
+            cancelEditingMedia();
+        } catch (error) {
+            setMediaError(error instanceof Error ? error.message : 'Failed to update media');
+        } finally {
+            setUpdatingMediaId(null);
         }
     };
 
@@ -490,7 +555,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                     </div>
 
                                     <label className="flex flex-col gap-1">
-                                        <span className="text-xs text-muted">SoundCloud Embed Code (optional)</span>
+                                        <span className="text-xs text-muted">Embed Code (optional)</span>
                                         <textarea
                                             rows={3}
                                             className="bg-bg text-text border border-default rounded p-2 resize-y"
@@ -521,29 +586,78 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                             <div className="flex items-center justify-between gap-3">
                                                 <h3 className="text-base font-semibold capitalize">{media.type || 'Link'}</h3>
                                                 {editing && Number.isFinite(Number(media.id)) && (
-                                                    <button
-                                                        type="button"
-                                                        className="rounded-lg border border-red-500 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-60"
-                                                        onClick={() => {
-                                                            void deleteHostMedia(Number(media.id));
-                                                        }}
-                                                        disabled={deletingMediaId === Number(media.id)}
-                                                    >
-                                                        {deletingMediaId === Number(media.id) ? 'Deleting...' : 'Delete'}
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        {editingMediaId !== Number(media.id) && (
+                                                            <button
+                                                                type="button"
+                                                                className="rounded-lg border border-default px-3 py-1 text-xs font-semibold text-text transition hover:border-accent"
+                                                                onClick={() => startEditingMedia(media)}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg border border-red-500 px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-60"
+                                                            onClick={() => {
+                                                                void deleteHostMedia(Number(media.id));
+                                                            }}
+                                                            disabled={deletingMediaId === Number(media.id) || updatingMediaId === Number(media.id)}
+                                                        >
+                                                            {deletingMediaId === Number(media.id) ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
-                                            {media.link && (
-                                                <a
-                                                    href={media.link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-blue-400 underline break-all"
-                                                >
-                                                    {media.link}
-                                                </a>
+                                            {editingMediaId === Number(media.id) ? (
+                                                <div className="space-y-3">
+                                                    <label className="flex flex-col gap-1">
+                                                        <span className="text-xs text-muted">External Link</span>
+                                                        <input
+                                                            type="url"
+                                                            className="w-full bg-bg text-text border border-default rounded p-2"
+                                                            value={editMediaLink}
+                                                            onChange={(event) => setEditMediaLink(event.target.value)}
+                                                        />
+                                                    </label>
+                                                    <label className="flex flex-col gap-1">
+                                                        <span className="text-xs text-muted">Embed Code</span>
+                                                        <textarea
+                                                            rows={3}
+                                                            className="w-full bg-bg text-text border border-default rounded p-2 resize-y"
+                                                            value={editMediaEmbedCode}
+                                                            onChange={(event) => setEditMediaEmbedCode(event.target.value)}
+                                                        />
+                                                    </label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg border border-accent px-3 py-1 text-sm font-semibold text-text transition hover:bg-accent disabled:opacity-60"
+                                                            onClick={() => void updateHostMedia(Number(media.id))}
+                                                            disabled={updatingMediaId === Number(media.id)}
+                                                        >
+                                                            {updatingMediaId === Number(media.id) ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                        <button type="button" className="rounded-lg border border-default px-3 py-1 text-sm font-semibold text-text" onClick={cancelEditingMedia}>
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {media.link && (
+                                                        <a
+                                                            href={media.link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm text-blue-400 underline break-all"
+                                                        >
+                                                            {media.link}
+                                                        </a>
+                                                    )}
+                                                    {media.embed_code && <SoundcloudPlayer embedCode={media.embed_code} />}
+                                                </>
                                             )}
-                                            {media.embed_code && <SoundcloudPlayer embedCode={media.embed_code} />}
                                         </div>
                                     ))}
                                 </div>

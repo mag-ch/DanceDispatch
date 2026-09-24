@@ -152,10 +152,10 @@ export default function VenueDetailsEditor({ venue, attributes }: VenueDetailsEd
                 </div>
                 <div className="mt-3 grid gap-3">
                     {freeformAttributes.map((item, index) => (
-                        <div key={`freeform-${index}`} className="flex min-w-0 flex-col gap-2 sm:flex-row">
+                        <div key={`freeform-${index}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:flex">
                             <input value={item.attribute} onChange={(event) => setFreeformAttributes((attributes) => attributes.map((current, currentIndex) => currentIndex === index ? { ...current, attribute: event.target.value } : current))} placeholder="Attribute name" className="w-full min-w-0 rounded border border-default bg-surface px-3 py-2 text-text sm:flex-1" />
                             <input value={item.value} onChange={(event) => setFreeformAttributes((attributes) => attributes.map((current, currentIndex) => currentIndex === index ? { ...current, value: event.target.value } : current))} placeholder="Value" className="w-full min-w-0 rounded border border-default bg-surface px-3 py-2 text-text sm:flex-1" />
-                            <button type="button" onClick={() => removeAttribute(freeformAttributes, index, setFreeformAttributes)} aria-label="Remove freeform attribute" className="inline-flex w-full items-center justify-center rounded border border-default px-3 py-2 text-text transition hover:border-accent sm:w-auto">
+                            <button type="button" onClick={() => removeAttribute(freeformAttributes, index, setFreeformAttributes)} aria-label="Remove freeform attribute" className="inline-flex items-center justify-center rounded border border-default px-3 py-2 text-text transition hover:border-accent">
                                 <Trash2 className="h-4 w-4" />
                             </button>
                         </div>
@@ -173,16 +173,16 @@ export default function VenueDetailsEditor({ venue, attributes }: VenueDetailsEd
                 </div>
                 <div className="mt-3 grid gap-3">
                     {starAttributes.map((item, index) => (
-                        <div key={`star-${index}`} className="flex min-w-0 flex-col gap-2 rounded border border-default p-3 sm:flex-row sm:items-center">
+                        <div key={`star-${index}`} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded border border-default p-3 sm:flex">
                             <input value={item.attribute} onChange={(event) => setStarAttributes((attributes) => attributes.map((current, currentIndex) => currentIndex === index ? { ...current, attribute: event.target.value } : current))} placeholder="Rating name" className="w-full min-w-0 rounded border border-default bg-surface px-3 py-2 text-text sm:flex-1" />
-                            <div className="flex items-center justify-between gap-1" aria-label={`${item.value} out of 5 stars`}>
+                            <div className="flex items-center gap-0" aria-label={`${item.value} out of 5 stars`}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button key={star} type="button" onClick={() => setStarAttributes((attributes) => attributes.map((current, currentIndex) => currentIndex === index ? { ...current, value: star } : current))} aria-label={`${star} stars`} className="p-1 text-text transition hover:text-accent">
                                         <Star className="h-5 w-5" fill={star <= Number(item.value) ? 'currentColor' : 'none'} />
                                     </button>
                                 ))}
                             </div>
-                            <button type="button" onClick={() => removeAttribute(starAttributes, index, setStarAttributes)} aria-label="Remove star attribute" className="inline-flex w-full items-center justify-center rounded border border-default px-3 py-2 text-text transition hover:border-accent sm:w-auto">
+                            <button type="button" onClick={() => removeAttribute(starAttributes, index, setStarAttributes)} aria-label="Remove star attribute" className="inline-flex items-center justify-center rounded border border-default px-3 py-2 text-text transition hover:border-accent">
                                 <Trash2 className="h-4 w-4" />
                             </button>
                         </div>

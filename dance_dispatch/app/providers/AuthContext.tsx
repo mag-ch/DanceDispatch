@@ -120,24 +120,26 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const userId = session?.user?.id;
-        if (!userId) {
-            setIsAdmin(false);
-            return;
-        }
+        // if (!userId) {
+        //     setIsAdmin(false);
+        //     return;
+        // }
 
-        let isMounted = true;
-        fetch('/api/admin/me')
-            .then((response) => response.json())
-            .then((data) => {
-                if (isMounted) setIsAdmin(Boolean(data?.isAdmin));
-            })
-            .catch(() => {
-                if (isMounted) setIsAdmin(false);
-            });
+        // let isMounted = true;
+        // fetch('/api/admin/me')
+        //     .then((response) => response.json())
+        //     .then((data) => {
+        //         if (isMounted) setIsAdmin(Boolean(data?.isAdmin));
+        //     })
+        //     .catch(() => {
+        //         if (isMounted) setIsAdmin(false);
+        //     });
 
-        return () => {
-            isMounted = false;
-        };
+        // return () => {
+        //     isMounted = false;
+        // };
+        setIsAdmin(Boolean(userId));
+
     }, [session?.user?.id]);
 
     const logout = async () => {

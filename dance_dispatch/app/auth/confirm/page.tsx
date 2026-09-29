@@ -7,7 +7,6 @@ type ConfirmPageProps = {
     token_hash?: string;
     type?: string;
     next?: string;
-    admin_invite?: string;
   }>;
 };
 
@@ -33,7 +32,7 @@ function getSafeNextPath(next: string | undefined): string {
 }
 
 export default async function ConfirmEmailPage({ searchParams }: ConfirmPageProps) {
-  const { token_hash: tokenHash, type, next, admin_invite: adminInvite } = await searchParams;
+  const { token_hash: tokenHash, type, next } = await searchParams;
   const nextPath = getSafeNextPath(next);
 
   if (!tokenHash || !type || !OTP_TYPES.has(type as EmailOtpType)) {
@@ -64,38 +63,6 @@ export default async function ConfirmEmailPage({ searchParams }: ConfirmPageProp
   });
 
   if (!error) {
-    let inviteError: string | null = null;
-    if (adminInvite) {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      const user = userData.user;
-      if (userError || !user) {
-        inviteError = 'Your email is confirmed, but we could not verify your account to apply the admin invite.';
-      } else {
-        const { error: profileError } = await supabase.from('profiles').upsert(
-          {
-            id: user.id,
-            full_name: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : '',
-            username: typeof user.user_metadata?.username === 'string' ? user.user_metadata.username : '',
-            email: user.email ?? '',
-          },
-          { onConflict: 'id' }
-        );
-
-        if (profileError) {
-          inviteError = 'Your email is confirmed, but we could not finish setting up your profile.';
-        }
-      }
-
-      if (!inviteError) {
-      const { data: inviteRedeemed, error: redeemError } = await supabase.rpc('redeem_admin_invite_code', {
-        p_code: adminInvite.trim().toUpperCase(),
-      });
-      if (redeemError || !inviteRedeemed) {
-        inviteError = 'Your email is confirmed, but this admin invite could not be redeemed. Sign in and open the invite link again.';
-      }
-      }
-    }
-
     return (
       <main className="flex min-h-screen items-center justify-center px-4 py-12">
         <div className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-8 shadow-sm">
@@ -104,7 +71,6 @@ export default async function ConfirmEmailPage({ searchParams }: ConfirmPageProp
           <p className="mt-3 text-sm leading-6 text-text/70">
             Your email address has been verified successfully. You can continue into DanceDispatch now.
           </p>
-          {inviteError && <p className="mt-3 text-sm text-red-600">{inviteError}</p>}
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href={nextPath} className="rounded-full bg-text px-5 py-2 text-sm font-semibold text-bg">
               Continue

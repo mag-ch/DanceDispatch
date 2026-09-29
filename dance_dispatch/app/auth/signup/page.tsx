@@ -14,8 +14,7 @@ export default function SignUp() {
     const [error, setError] = useState<string | null>(null);
     const [returnPath, setReturnPath] = useState('/');
     const [referrerId, setReferrerId] = useState<string | null>(null);
-    const [adminInviteCode, setAdminInviteCode] = useState<string | null>(null);
-    const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
+    // const [adminInviteCode, setAdminInviteCode] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -46,8 +45,8 @@ export default function SignUp() {
         if (typeof window === 'undefined') return;
         const ref = new URLSearchParams(window.location.search).get('ref');
         if (ref) setReferrerId(ref);
-        const adminInvite = new URLSearchParams(window.location.search).get('admin_invite');
-        if (adminInvite) setAdminInviteCode(adminInvite);
+        // const adminInvite = new URLSearchParams(window.location.search).get('admin_invite');
+        // if (adminInvite) setAdminInviteCode(adminInvite);
     }, []);
 
     const handleSignUp = async (e: React.FormEvent) => {
@@ -59,17 +58,12 @@ export default function SignUp() {
             const normalizedEmail = email.trim().toLowerCase();
             const trimmedUsername = username.trim();
             const trimmedFullName = fullName.trim();
-            const confirmationUrl = new URL('/auth/confirm', window.location.origin);
-            confirmationUrl.searchParams.set('next', returnPath || '/');
-            if (adminInviteCode) {
-                confirmationUrl.searchParams.set('admin_invite', adminInviteCode);
-            }
 
             const { error, data } = await supabase.auth.signUp({
                 email: normalizedEmail,
                 password,
                 options: {
-                    emailRedirectTo: confirmationUrl.toString(),
+                    emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(returnPath || '/')}`,
                     data: {
                         full_name: trimmedFullName,
                         username: trimmedUsername,
@@ -80,20 +74,6 @@ export default function SignUp() {
             const uuid = data.user?.id;
             if (!uuid) {
                 throw new Error('Sign up succeeded but user id is missing');
-            }
-
-            if (!data.session) {
-                const { error: loginError } = await supabase.auth.signInWithPassword({
-                    email: normalizedEmail,
-                    password,
-                });
-                if (loginError) {
-                    if (adminInviteCode) {
-                        setAwaitingEmailConfirmation(true);
-                        return;
-                    }
-                    throw loginError;
-                }
             }
 
             const { error: profileError } = await supabase
@@ -112,6 +92,16 @@ export default function SignUp() {
                 throw profileError;
             }
 
+            if (!data.session) {
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: normalizedEmail,
+                    password,
+                });
+                if (loginError) {
+                    throw loginError;
+                }
+            }
+
             if (referrerId) {
                 await fetch('/api/referral', {
                     method: 'POST',
@@ -120,16 +110,14 @@ export default function SignUp() {
                 }).catch(() => { /* non-critical - do not block sign-up */ });
             }
 
-            if (adminInviteCode) {
-                const response = await fetch('/api/admin/invite-code/redeem', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: adminInviteCode }),
-                });
-                if (!response.ok) {
-                    throw new Error('Your account was created, but the invite could not be redeemed. Open the invite link again after signing in.');
-                }
-            }
+            // Invite-code redemption is temporarily disabled.
+            // if (adminInviteCode) {
+            //     await fetch('/api/admin/invite-code/redeem', {
+            //         method: 'POST',
+            //         headers: { 'Content-Type': 'application/json' },
+            //         body: JSON.stringify({ code: adminInviteCode }),
+            //     });
+            // }
 
             router.replace(returnPath || '/');
         } catch (err) {
@@ -142,13 +130,6 @@ export default function SignUp() {
     return (
         <div className="flex min-h-screen items-center justify-center">
             <form onSubmit={handleSignUp} className="w-full max-w-md space-y-4">
-                {awaitingEmailConfirmation ? (
-                    <>
-                        <h1 className="text-2xl font-bold">Check your email</h1>
-                        <p className="text-text">Confirm your email using the link we sent. Your admin invite will be applied after confirmation.</p>
-                    </>
-                ) : (
-                    <>
                 <h1 className="text-2xl font-bold">Sign Up</h1>
                 
                 {error && <p className="text-red-500">{error}</p>}
@@ -198,8 +179,6 @@ export default function SignUp() {
                 <a href="/auth/login" className="text-sm text-blue-600 hover:underline">
                     Already have an account? Log in
                 </a>
-                    </>
-                )}
             </form>
         </div>
     );

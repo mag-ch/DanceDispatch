@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+
+/* Disabled invite-code creation endpoint retained for later use.
 import { requireAdmin, getOrCreateInviteCode } from '@/lib/admin';
 
-// GET /api/admin/invite-code - returns (creating if needed) the caller's single invite code.
 export async function GET() {
     try {
         const user = await requireAdmin();
@@ -12,4 +13,9 @@ export async function GET() {
         const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
         return NextResponse.json({ error: message }, { status });
     }
+}
+*/
+
+export async function GET() {
+    return NextResponse.json({ error: 'Invite codes are temporarily disabled.' }, { status: 410 });
 }

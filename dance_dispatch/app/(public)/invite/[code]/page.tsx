@@ -10,13 +10,9 @@ export default async function AdminInvitePage({ params }: InvitePageProps) {
     const code = rawCode.trim().toUpperCase();
 
     const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('admin_invite_codes')
-        .select('max_uses, uses_count, revoked')
-        .eq('code', code)
-        .maybeSingle();
+    const { data, error } = await supabase.rpc('get_admin_invite_code_status', { p_code: code });
 
-    const isValid = !error && !!data && !data.revoked && data.uses_count < data.max_uses;
+    const isValid = !error && data?.[0]?.is_valid === true;
 
     return <InviteClient code={code} isValid={isValid} />;
 }

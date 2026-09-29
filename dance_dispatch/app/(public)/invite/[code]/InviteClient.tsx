@@ -15,10 +15,10 @@ export default function InviteClient({ code, isValid }: InviteClientProps) {
     const [redeemed, setRedeemed] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    if (!isValid) {
+    if (!isValid && !loading && session) {
         return (
             <main className="flex min-h-screen items-center justify-center px-4 py-12">
-                <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-8 text-center shadow-sm">
+                <div className="w-full max-w-md rounded-2xl border border-default bg-surface p-8 text-center text-text shadow-sm">
                     <h1 className="text-2xl font-semibold text-text">This code is no longer valid</h1>
                     <p className="mt-3 text-sm text-text/70">
                         This admin invite link has already reached its usage limit or has been revoked.
@@ -57,7 +57,7 @@ export default function InviteClient({ code, isValid }: InviteClientProps) {
 
     return (
         <main className="flex min-h-screen items-center justify-center px-4 py-12">
-            <div className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+            <div className="w-full max-w-md rounded-2xl border border-default bg-surface p-8 text-center text-text shadow-sm">
                 <h1 className="text-2xl font-semibold text-text">You're invited to be an admin</h1>
                 {loading ? (
                     <p className="mt-3 text-sm text-text/70">Checking your account...</p>

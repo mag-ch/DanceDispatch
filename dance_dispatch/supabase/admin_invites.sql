@@ -48,9 +48,11 @@ $$;
 
 grant execute on function public.get_admin_invite_code_status(text) to anon, authenticated;
 
--- Atomically checks the usage cap and increments it, so concurrent signups
--- can't both redeem a code once only one use remains.
-create or replace function public.redeem_admin_invite_code(p_code text, p_user_id uuid)
+-- Derive the redeemer from the authenticated JWT; never accept an account ID
+-- supplied by the caller. Locking the code row keeps concurrent redemptions safe.
+drop function if exists public.redeem_admin_invite_code(text, uuid);
+
+create or replace function public.redeem_admin_invite_code(p_code text)
 returns boolean
 language plpgsql
 security definer
@@ -59,28 +61,45 @@ as $$
 declare
   v_code_id bigint;
   v_owner uuid;
+  v_user_id uuid := auth.uid();
+  v_revoked boolean;
+  v_uses_count integer;
+  v_max_uses integer;
 begin
-  if p_code is null or length(trim(p_code)) = 0 then
+  if v_user_id is null or p_code is null or length(trim(p_code)) = 0 then
     return false;
   end if;
 
-  update public.admin_invite_codes
-  set uses_count = uses_count + 1
-  where code = p_code
-    and not revoked
-    and uses_count < max_uses
-  returning id, owner_user_id into v_code_id, v_owner;
+  select id, owner_user_id, revoked, uses_count, max_uses
+    into v_code_id, v_owner, v_revoked, v_uses_count, v_max_uses
+    from public.admin_invite_codes
+    where code = upper(trim(p_code))
+    for update;
 
   if v_code_id is null then
     return false;
   end if;
 
+  if exists (
+    select 1 from public.admin_invite_redemptions
+    where code_id = v_code_id and redeemed_by = v_user_id
+  ) then
+    return true;
+  end if;
+
+  if v_revoked or v_uses_count >= v_max_uses then
+    return false;
+  end if;
+
+  update public.admin_invite_codes
+  set uses_count = uses_count + 1
+  where id = v_code_id;
+
   insert into public.admin_invite_redemptions (code_id, redeemed_by)
-  values (v_code_id, p_user_id)
-  on conflict (redeemed_by) do nothing;
+  values (v_code_id, v_user_id);
 
   insert into public.admin_users (user_id, granted_by, source)
-  values (p_user_id, v_owner, 'invite')
+  values (v_user_id, v_owner, 'invite')
   on conflict (user_id) do nothing;
 
   return true;
@@ -93,7 +112,8 @@ alter table public.admin_invite_redemptions enable row level security;
 
 grant select on public.admin_users to authenticated;
 grant select, insert on public.admin_invite_codes to authenticated;
-grant execute on function public.redeem_admin_invite_code(text, uuid) to authenticated;
+revoke all on function public.redeem_admin_invite_code(text) from public, anon;
+grant execute on function public.redeem_admin_invite_code(text) to authenticated;
 
 drop policy if exists "Admins can read the admin list" on public.admin_users;
 create policy "Admins can read the admin list"

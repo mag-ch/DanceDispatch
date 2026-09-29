@@ -11,18 +11,10 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createServerClient();
-    const { data, error } = await supabase
-        .from('admin_invite_codes')
-        .select('max_uses, uses_count, revoked')
-        .eq('code', code)
-        .maybeSingle();
+    const { data, error } = await supabase.rpc('get_admin_invite_code_status', { p_code: code });
 
-    if (error || !data) {
+    if (error || !data?.[0]?.is_valid) {
         return NextResponse.json({ valid: false, reason: 'not_found' });
-    }
-
-    if (data.revoked || data.uses_count >= data.max_uses) {
-        return NextResponse.json({ valid: false, reason: 'exhausted' });
     }
 
     return NextResponse.json({ valid: true });

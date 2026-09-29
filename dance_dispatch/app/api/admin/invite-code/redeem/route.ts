@@ -5,7 +5,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server';
 // POST /api/admin/invite-code/redeem - body: { code }. Called right after signup.
 export async function POST(request: Request) {
     try {
-        const user = await requireAuth();
+        await requireAuth();
         const body = await request.json().catch(() => ({}));
         const code = typeof body?.code === 'string' ? body.code.trim().toUpperCase() : '';
 
@@ -16,7 +16,6 @@ export async function POST(request: Request) {
         const supabase = await createServerClient();
         const { data, error } = await supabase.rpc('redeem_admin_invite_code', {
             p_code: code,
-            p_user_id: user.id,
         });
 
         if (error) {

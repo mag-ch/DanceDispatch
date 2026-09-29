@@ -39,7 +39,7 @@ function CityPicker() {
     }, []);
 
     return (
-        <label className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-muted transition hover:border-accent-2 hover:text-text">
+        <label className="inline-flex min-w-0 items-center gap-1 rounded-full border border-border px-2 py-2 text-sm text-muted transition hover:border-accent-2 hover:text-text sm:gap-2 sm:px-3">
             <MapPin className="h-4 w-4 text-accent-2" />
             <span className="sr-only">Choose your city</span>
             <select
@@ -49,7 +49,7 @@ function CityPicker() {
                     setCity(event.target.value);
                     window.localStorage.setItem('dance-dispatch-city', event.target.value);
                 }}
-                className="max-w-[8.5rem] cursor-pointer appearance-none bg-transparent font-medium text-text outline-none"
+                className="w-16 min-w-0 truncate cursor-pointer appearance-none bg-transparent font-medium text-text outline-none sm:w-auto sm:max-w-[8.5rem]"
             >
                 {CITY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
@@ -342,7 +342,7 @@ export function Header() {
     return (
         <>
             <header className="site-header sticky top-0 z-50 border-b border-white/5 bg-bg text-white shadow-lg">
-                <div className="container mx-auto flex min-h-16 items-center gap-6 px-3 sm:px-4">
+                <div className="container mx-auto flex min-h-16 items-center gap-0 px-3 sm:gap-6 sm:px-4">
                     <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg px-1 py-1 text-xl font-bold tracking-tight hover:underline hover:underline-offset-4 sm:text-2xl">
                         <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full" aria-label="DanceDispatch logo">
                             <img src="/icons/icon_1.png" alt="" className="h-full w-full object-cover" />
@@ -362,7 +362,7 @@ export function Header() {
                             />
                         )}
                     </nav>
-                    <nav className="ml-auto flex items-center gap-2 text-white/70">
+                    <nav className="ml-auto flex items-center gap-1 text-white/70 sm:gap-2">
                         <CityPicker />
                         <Link href="/search" className="rounded-full p-2 transition hover:bg-white/10 hover:text-white" aria-label="Search">
                             <Search className="h-5 w-5" />

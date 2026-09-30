@@ -41,12 +41,16 @@ export async function getSavedEventsForUserServer(userId: string, mode: SavedEve
         .map((row: any) => eventById.get(String(row.event_id)))
         .filter((event): event is Event => !!event);
 
-    if (mode === 'all') {
-        return savedEvents;
+    const now = new Date();
+    if (mode === 'past') {
+        return savedEvents.sort((a, b) => new Date(b.startdate).getTime() - new Date(a.startdate).getTime()).filter((event) => !isUpcomingEvent(event, now));
     }
 
-    const now = new Date();
-    return savedEvents.filter((event) => (mode === 'upcoming' ? isUpcomingEvent(event, now) : !isUpcomingEvent(event, now)));
+    if (mode === 'upcoming') {
+        return savedEvents.filter((event) => isUpcomingEvent(event, now));
+    }
+
+    return savedEvents;
 }
 
 export async function getSavedEventsBucketsForUserServer(userId: string): Promise<SavedEventsBuckets> {

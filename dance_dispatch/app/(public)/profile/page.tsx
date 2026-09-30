@@ -15,6 +15,7 @@ import MakePartyPlanButton from './MakePartyPlanButton';
 // import AdminInviteCodePanel from './AdminInviteCodePanel';
 
 
+import { PUSH_TEST_USER_ID } from '@/lib/push-notification-constants';
 export default async function ProfilePage() {
     const user = await requireAuth();
     // Fetch all necessary data in parallel from public.profiles
@@ -176,6 +177,11 @@ export default async function ProfilePage() {
                     </div>
                     <NotificationSubscriptionToggle />
                 </section>
+                    {user.id === PUSH_TEST_USER_ID && (
+                        <Link href="/push-announcements" className="mt-4 inline-flex items-center gap-2 rounded border border-default px-3 py-2 text-sm font-semibold text-text transition hover:border-accent">
+                            Send push announcement
+                        </Link>
+                    )}
             </div>
 
             {/* Invite-code panel temporarily disabled.

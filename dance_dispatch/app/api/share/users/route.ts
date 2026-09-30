@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       .from('profiles')
       .select('id,username,full_name')
       .ilike('username', `%${rawQuery}%`)
-      .neq('id', user.id)
+      //.neq('id', user.id)
       .limit(8);
 
     if (error) {

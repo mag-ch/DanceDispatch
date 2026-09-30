@@ -233,6 +233,54 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   return { sent, removed: endpointsToDelete.length };
 }
 
+type BroadcastResult = {
+  users: number;
+  notified: number;
+  sent: number;
+  removed: number;
+  failed: number;
+};
+
+export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<BroadcastResult> {
+  const uniqueUserIds = [...new Set(userIds.map((id) => id.trim()).filter(Boolean))];
+
+  let notified = 0;
+  let sent = 0;
+  let removed = 0;
+  let failed = 0;
+
+  for (const userId of uniqueUserIds) {
+    try {
+      const result = await sendPushToUser(userId, payload);
+      sent += result.sent;
+      removed += result.removed;
+      if (result.sent > 0) notified += 1;
+    } catch (sendError) {
+      failed += 1;
+      console.error(`Failed to send broadcast push to ${userId}:`, sendError);
+    }
+  }
+
+  return { users: uniqueUserIds.length, notified, sent, removed, failed };
+}
+
+export async function sendPushToAllUsers(payload: PushPayload): Promise<BroadcastResult> {
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from(PUSH_SUBSCRIPTIONS_TABLE)
+    .select('user_id');
+
+  if (error) {
+    throw new Error(error.message || 'Failed to load push recipients');
+  }
+
+  const userIds = (data ?? [])
+    .map((row) => String((row as { user_id?: unknown }).user_id ?? '').trim())
+    .filter(Boolean);
+
+  return sendPushToUsers(userIds, payload);
+}
+
 export async function sendReviewPushToFollowers(
   reviewerUserId: string,
   eventId: string

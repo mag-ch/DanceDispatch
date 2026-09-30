@@ -27,16 +27,16 @@ async function getRsvpUserIds(eventId: string): Promise<string[]> {
 async function getFollowerUserIds(followedUserId: string): Promise<string[]> {
   const supabase = await createServerClient();
   const { data, error } = await supabase
-    .from('UserFollows')
-    .select('follower_user_id')
-    .eq('followed_user_id', followedUserId);
+    .from('UserFollowUsers')
+    .select('user_id')
+    .eq('followed_id', followedUserId);
 
   if (error) {
     throw new Error(error.message || 'Failed to load followers for this review.');
   }
 
   return (data ?? [])
-    .map((row) => String((row as { follower_user_id?: unknown }).follower_user_id ?? '').trim())
+    .map((row) => String((row as { user_id?: unknown }).user_id ?? '').trim())
     .filter((id) => Boolean(id) && id !== followedUserId);
 }
 

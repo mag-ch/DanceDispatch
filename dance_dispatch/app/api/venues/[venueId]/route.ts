@@ -48,35 +48,43 @@ export async function PATCH(
         if (typeof website === 'string') updates.external_url = website.trim();
         if (typeof photoUrl === 'string') updates.image_url = photoUrl.trim();
 
+        // New freeform attributes: only items WITHOUT an id
         const freeformRows = Array.isArray(freeformAttributes)
             ? freeformAttributes
                 .filter((item): item is { attribute: string; value: string } => (
+                    item?.id == null &&
                     typeof item?.attribute === 'string' && typeof item?.value === 'string'
                 ))
                 .map((item) => ({
                     venue_id: venueId,
                     attribute: item.attribute.trim(),
-                    value: item.value.trim(),
+                    value: item.value.trim() as string | number,
                     data_type: 'unique',
                 }))
                 .filter((item) => item.attribute && item.value)
             : [];
 
+        // New star ratings: only items WITHOUT an id
         const starRows = Array.isArray(starAttributes)
             ? starAttributes
                 .filter((item): item is { attribute: string; value: number } => (
+                    item?.id == null &&
                     typeof item?.attribute === 'string' && typeof item?.value === 'number'
                 ))
                 .map((item) => ({
                     venue_id: venueId,
                     attribute: item.attribute.trim(),
-                    value: item.value,
+                    value: item.value as string | number,
                     data_type: 'rating',
                 }))
-                .filter((item) => item.attribute && Number.isInteger(item.value) && item.value >= 1 && item.value <= 5)
+                .filter((item) => item.attribute && Number.isInteger(item.value) && (item.value as number) >= 1 && (item.value as number) <= 5)
             : [];
 
-        const attributeUpdates = [...freeformAttributes ?? [], ...starAttributes ?? []]
+        // Existing attributes (items WITH an id)
+        const attributeUpdates = [
+            ...(Array.isArray(freeformAttributes) ? freeformAttributes : []),
+            ...(Array.isArray(starAttributes) ? starAttributes : []),
+        ]
             .filter((item): item is { id: number; attribute: string; value: string | number } => (
                 Number.isInteger(item?.id) && typeof item?.attribute === 'string' && (
                     typeof item?.value === 'string' || typeof item?.value === 'number'
@@ -85,11 +93,11 @@ export async function PATCH(
             .map((item) => ({
                 id: item.id,
                 attribute: item.attribute.trim(),
-                value: item.value,
+                value: typeof item.value === 'string' ? item.value.trim() : item.value,
             }))
             .filter((item) => item.attribute && (
                 typeof item.value === 'string'
-                    ? item.value.trim()
+                    ? item.value
                     : Number.isInteger(item.value) && item.value >= 1 && item.value <= 5
             ));
 
@@ -97,11 +105,20 @@ export async function PATCH(
             ? deletedAttributeIds.filter((id): id is number => Number.isInteger(id))
             : [];
 
-        if (Object.keys(updates).length === 0 && freeformRows.length === 0 && starRows.length === 0 && attributeUpdates.length === 0 && attributeIdsToDelete.length === 0) {
+        const newRows = [...freeformRows, ...starRows];
+
+        if (
+            Object.keys(updates).length === 0 &&
+            newRows.length === 0 &&
+            attributeUpdates.length === 0 &&
+            attributeIdsToDelete.length === 0
+        ) {
             return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
         }
 
         const supabase = await createClient();
+
+        // 1. Venue fields
         if (Object.keys(updates).length > 0) {
             const { error } = await supabase.from('Venues').update(updates).eq('id', venueId);
             if (error) {
@@ -110,15 +127,42 @@ export async function PATCH(
             }
         }
 
-        const attributeRows = [...freeformRows, ...starRows];
-        if (attributeRows.length > 0) {
-            const { error } = await supabase.from('venue_attributes').insert(attributeRows);
-            if (error) {
-                console.error('Error adding venue attributes:', error);
-                return NextResponse.json({ error: 'Failed to add venue attributes' }, { status: 500 });
+        // 2. New attributes: if one already exists (same type + name), update it instead of inserting a duplicate
+        if (newRows.length > 0) {
+            const { data: existing, error: lookupError } = await supabase
+                .from('venue_attributes')
+                .select('id, attribute, data_type')
+                .eq('venue_id', venueId);
+            if (lookupError) {
+                console.error('Error looking up venue attributes:', lookupError);
+                return NextResponse.json({ error: 'Failed to check existing venue attributes' }, { status: 500 });
+            }
+
+            const keyOf = (dataType: string, attribute: string) => `${dataType}:${attribute.toLowerCase()}`;
+            const existingIds = new Map(
+                (existing ?? []).map((row) => [keyOf(row.data_type, row.attribute), row.id as number])
+            );
+
+            const rowsToInsert: typeof newRows = [];
+            for (const row of newRows) {
+                const existingId = existingIds.get(keyOf(row.data_type, row.attribute));
+                if (existingId !== undefined) {
+                    attributeUpdates.push({ id: existingId, attribute: row.attribute, value: row.value });
+                } else {
+                    rowsToInsert.push(row);
+                }
+            }
+
+            if (rowsToInsert.length > 0) {
+                const { error } = await supabase.from('venue_attributes').insert(rowsToInsert);
+                if (error) {
+                    console.error('Error adding venue attributes:', error);
+                    return NextResponse.json({ error: 'Failed to add venue attributes' }, { status: 500 });
+                }
             }
         }
 
+        // 3. Update existing attributes (including matches found above)
         for (const item of attributeUpdates) {
             const { error } = await supabase
                 .from('venue_attributes')
@@ -131,6 +175,7 @@ export async function PATCH(
             }
         }
 
+        // 4. Deletes
         if (attributeIdsToDelete.length > 0) {
             const { error } = await supabase
                 .from('venue_attributes')

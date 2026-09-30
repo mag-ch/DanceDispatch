@@ -24,6 +24,22 @@ async function getRsvpUserIds(eventId: string): Promise<string[]> {
     .filter(Boolean);
 }
 
+async function getFollowerUserIds(followedUserId: string): Promise<string[]> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from('UserFollows')
+    .select('follower_user_id')
+    .eq('followed_user_id', followedUserId);
+
+  if (error) {
+    throw new Error(error.message || 'Failed to load followers for this review.');
+  }
+
+  return (data ?? [])
+    .map((row) => String((row as { follower_user_id?: unknown }).follower_user_id ?? '').trim())
+    .filter((id) => Boolean(id) && id !== followedUserId);
+}
+
 export async function POST(request: Request) {
   try {
     const user = await requireAuth();
@@ -57,6 +73,42 @@ export async function POST(request: Request) {
       if (userIds.length > 0) {
         recipientUserIds = userIds;
       }
+    } else if (mode === 'new-review') {
+      const reviewId = typeof body?.reviewId === 'string' ? body.reviewId.trim() : '';
+      if (!reviewId) {
+        return NextResponse.json({ error: 'Select a review for this announcement.' }, { status: 400 });
+      }
+
+      const supabase = await createServerClient();
+      const { data: reviewRow, error: reviewError } = await supabase
+        .from('Reviews')
+        .select('id, event_id, user_id')
+        .eq('id', Number(reviewId))
+        .maybeSingle();
+
+      if (reviewError || !reviewRow) {
+        return NextResponse.json({ error: 'The selected review could not be found.' }, { status: 404 });
+      }
+
+      const reviewerId = String((reviewRow as { user_id?: unknown }).user_id ?? '').trim();
+      const eventIdForReview = String((reviewRow as { event_id?: unknown }).event_id ?? '').trim();
+      const event = eventIdForReview ? await getEventById(eventIdForReview) : null;
+      const eventName = event?.title.trim() || 'an event';
+
+      href = event ? `/events/${encodeURIComponent(event.id)}` : '/notifications';
+      tag = `broadcast-new-review-${reviewId}-${randomUUID()}`;
+      title = 'New review posted';
+      message = `A new review is available for ${eventName}.`;
+
+      if (body?.followersOnly === true) {
+        if (!reviewerId) {
+          return NextResponse.json({ error: 'This review has no identifiable author to filter followers by.' }, { status: 400 });
+        }
+        recipientUserIds = await getFollowerUserIds(reviewerId);
+        if (recipientUserIds.length === 0) {
+          return NextResponse.json({ error: 'This reviewer has no followers to notify.' }, { status: 400 });
+        }
+      }
     } else {
       const eventId = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
       if (!eventId) {
@@ -72,7 +124,7 @@ export async function POST(request: Request) {
       tag = `broadcast-${mode}-${event.id}-${randomUUID()}`;
 
       if (mode === 'review-request') {
-        title = 'Share your review';
+        title = 'Write a review';
         message = `Have you been to ${eventName}? Leave a review and share your experience.`;
         href = `/events/${encodeURIComponent(event.id)}?showReviewModal=true`;
 
@@ -82,12 +134,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No RSVP\'ed users were found for this event.' }, { status: 400 });
           }
         }
-      } else if (mode === 'new-review') {
-        title = 'New review posted';
-        message = `A new review is available for ${eventName}.`;
       } else {
         title = 'New event posted';
-        message = `${eventName} is now on DanceDispatch.`;
+        message = `${eventName} is now on DanceDispatch. Check it out!`;
       }
     }
 

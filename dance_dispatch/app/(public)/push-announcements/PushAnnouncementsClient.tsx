@@ -5,6 +5,7 @@ import { BellRing, Send, X } from 'lucide-react';
 
 type Mode = 'message' | 'review-request' | 'new-review' | 'new-event';
 type AnnouncementEvent = { id: string; title: string; startdate: string; location?: string };
+type AnnouncementReview = { id: string; eventName: string; username: string; userId: string; comment: string };
 type UserResult = { id: string; username: string; full_name: string | null };
 
 const modes: Array<{ id: Mode; label: string }> = [
@@ -14,12 +15,14 @@ const modes: Array<{ id: Mode; label: string }> = [
   { id: 'new-event', label: 'New event' },
 ];
 
-export default function PushAnnouncementsClient({ events }: { events: AnnouncementEvent[] }) {
+export default function PushAnnouncementsClient({ events, reviews }: { events: AnnouncementEvent[]; reviews: AnnouncementReview[] }) {
   const [mode, setMode] = useState<Mode>('message');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [eventId, setEventId] = useState('');
+  const [reviewId, setReviewId] = useState('');
   const [rsvpOnly, setRsvpOnly] = useState(false);
+  const [followersOnly, setFollowersOnly] = useState(false);
   const [userQuery, setUserQuery] = useState('');
   const [userResults, setUserResults] = useState<UserResult[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<UserResult[]>([]);
@@ -30,8 +33,12 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
   const [result, setResult] = useState<string | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const needsEvent = mode !== 'message';
+  const needsEvent = mode === 'review-request' || mode === 'new-event';
+  const needsReview = mode === 'new-review';
   const selectedEvent = events.find((event) => event.id === eventId);
+  const selectedReview = reviews.find((review) => review.id === reviewId);
+
+  const filteredEvents = mode === "review-request" ? events.filter((event) => new Date(event.startdate) < new Date()) : events.filter((event) => new Date(event.startdate) >= new Date()).sort((a, b) => new Date(a.startdate).getTime() - new Date(b.startdate).getTime());
 
   useEffect(() => {
     if (searchDebounceRef.current) {
@@ -85,8 +92,10 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
           title,
           message,
           eventId,
+          reviewId,
           userIds: selectedUsers.map((u) => u.id),
           rsvpOnly,
+          followersOnly,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -131,7 +140,7 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
         </div>
 
         <div className="mt-6 space-y-5">
-          {needsEvent ? (
+          {needsEvent && (
             <>
               <label className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-text">Event</span>
@@ -141,7 +150,7 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
                   className="w-full rounded border border-default bg-surface px-3 py-2.5 text-text"
                 >
                   <option value="">Choose an event</option>
-                  {events.map((event) => (
+                  {filteredEvents.map((event) => (
                     <option key={event.id} value={event.id}>{event.title} · {event.startdate}</option>
                   ))}
                 </select>
@@ -154,7 +163,34 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
                 </label>
               )}
             </>
-          ) : (
+          )}
+
+          {needsReview && (
+            <>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-text">Review</span>
+                <select
+                  value={reviewId}
+                  onChange={(event) => setReviewId(event.target.value)}
+                  className="w-full rounded border border-default bg-surface px-3 py-2.5 text-text"
+                >
+                  <option value="">Choose a review</option>
+                  {reviews.map((review) => (
+                    <option key={review.id} value={review.id}>
+                      {review.username} · {review.eventName}{review.comment ? ` — ${review.comment.slice(0, 40)}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-2 text-sm font-semibold text-text">
+                <input type="checkbox" checked={followersOnly} onChange={(event) => setFollowersOnly(event.target.checked)} className="h-4 w-4 rounded border-default" />
+                Only users that follow the review poster
+              </label>
+            </>
+          )}
+
+          {mode === 'message' && (
             <>
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="flex flex-col gap-2">
@@ -210,12 +246,27 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
             </>
           )}
 
+            {mode === 'new-event' && (
+            <>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-text">Message</span>
+                  <textarea value={message} maxLength={240} rows={3} onChange={(event) => message ? setMessage(event.target.value) : null} className="w-full resize-y rounded border border-default bg-surface px-3 py-2.5 text-text" placeholder="Write a short announcement" />
+                  <span className="text-right text-xs text-muted">{message.length}/240</span>
+                </label>
+              </div>
+            </>
+          )}
+
           {selectedEvent && needsEvent && (
             <p className="border-l-2 border-accent pl-3 text-sm text-muted">
               {mode === 'review-request' && 'Recipients will be taken directly to the review form.'}
-              {mode === 'new-review' && 'Recipients will be taken to this event to read the new review.'}
               {mode === 'new-event' && 'Recipients will be taken to this event.'}
             </p>
+          )}
+
+          {selectedReview && needsReview && (
+            <p className="border-l-2 border-accent pl-3 text-sm text-muted">Recipients will be taken to this event to read the new review.</p>
           )}
 
           {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
@@ -228,7 +279,9 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
                   ? `Send this push announcement to ${selectedUsers.length} selected user${selectedUsers.length === 1 ? '' : 's'}?`
                   : mode === 'review-request' && rsvpOnly
                     ? "Send this push announcement to users who RSVP'ed to this event?"
-                    : 'Send this push announcement to all subscribed users?'}
+                    : mode === 'new-review' && followersOnly
+                      ? 'Send this push announcement to followers of the review poster?'
+                      : 'Send this push announcement to all subscribed users?'}
               </p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setConfirming(false)} disabled={sending} className="rounded border border-default px-4 py-2 text-sm font-semibold text-text">Cancel</button>
@@ -242,7 +295,7 @@ export default function PushAnnouncementsClient({ events }: { events: Announceme
               <button
                 type="button"
                 onClick={() => { setError(null); setResult(null); setConfirming(true); }}
-                disabled={needsEvent ? !eventId : !title.trim() || !message.trim()}
+                disabled={needsEvent ? !eventId : needsReview ? !reviewId : !title.trim() || !message.trim()}
                 className="inline-flex items-center gap-2 rounded bg-accent px-4 py-2.5 text-sm font-semibold text-text transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />Review and send

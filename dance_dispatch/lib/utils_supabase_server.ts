@@ -202,7 +202,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     supabase
       .from('Events')
       .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id')
-      .order('start', { ascending: true }),
+      .order('start', { ascending: false }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
     supabase.from('Hosts').select('id,name,bio,image_url,tags,genres').order('name'),
     supabase.from('event_hosts').select('event_id,host_id'),

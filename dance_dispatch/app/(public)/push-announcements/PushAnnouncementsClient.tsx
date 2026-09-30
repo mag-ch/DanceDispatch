@@ -38,7 +38,7 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
   const selectedEvent = events.find((event) => event.id === eventId);
   const selectedReview = reviews.find((review) => review.id === reviewId);
 
-  const filteredEvents = mode === "review-request" ? events.filter((event) => new Date(event.startdate) < new Date()) : events.filter((event) => new Date(event.startdate) >= new Date()).sort((a, b) => new Date(a.startdate).getTime() - new Date(b.startdate).getTime());
+  const filteredEvents = mode === "review-request" ? events.filter((event) => new Date(event.startdate) < new Date()).sort((a, b) => new Date(b.startdate).getTime() - new Date(a.startdate).getTime()) : events.filter((event) => new Date(event.startdate) >= new Date()).sort((a, b) => new Date(a.startdate).getTime() - new Date(b.startdate).getTime());
 
   useEffect(() => {
     if (searchDebounceRef.current) {

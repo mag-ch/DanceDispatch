@@ -83,6 +83,7 @@ export function PWAInstallPrompt() {
 
   // Prevent double-tapping the install button.
   const [installing, setInstalling] = useState(false);
+  const [showManualSteps, setShowManualSteps] = useState(false);
 
   const isStandalone = useMemo(() => isRunningStandalone(), []);
   const ctx = useMemo(() => getInstallContext(), []);
@@ -95,9 +96,10 @@ export function PWAInstallPrompt() {
     if (!isDismissedInStorage()) setHidden(false);
 
     // ── Chromium / Samsung: capture the deferred prompt ──────────────────────
-    const onBeforeInstallPrompt = (e: Event) => {
+    const onBeforeInstallPrompt: EventListener = (e: Event) => {
       e.preventDefault(); // suppress the browser mini-infobar
       setInstallEvent(e as BeforeInstallPromptEvent);
+      setShowManualSteps(false);
       if (!isDismissedInStorage()) setHidden(false);
     };
 
@@ -148,11 +150,7 @@ export function PWAInstallPrompt() {
       return;
     }
 
-    // ── Paths 2-4: manual guidance (banner already shows the right copy) ──
-    // The banner copy (below) already contains the right instructions for each
-    // browser, so pressing "Install" when there is no installEvent just keeps
-    // the banner open long enough for the user to read them.
-    // We do nothing further here — the user follows the on-screen steps.
+    setShowManualSteps(true);
     setInstalling(false);
   };
 
@@ -170,27 +168,19 @@ export function PWAInstallPrompt() {
   const title = "Install DanceDispatch";
 
   let body: string;
-  let showInstallButton = true; // set false when there is truly nothing to tap
-
   if (installEvent) {
     // Chromium / Samsung — one-tap install available.
     body =
       "Add DanceDispatch to your home screen for faster launch and an app-like experience.";
   } else if (isIOS) {
     // iOS Safari — Share sheet method.
-    body =
-      'Tap the Share button (□↑) in Safari, then choose "Add to Home Screen" to install.';
-    showInstallButton = false; // nothing for the Install button to do; hide it
+    body = 'Install DanceDispatch on your iPhone or iPad home screen.';
   } else if (isFirefoxMobile) {
     // Firefox for Android — browser menu method.
-    body =
-      'Tap the menu (⋮) in Firefox, then select "Install" or "Add to Home Screen".';
-    showInstallButton = false;
+    body = 'Add DanceDispatch to your Android home screen from the Firefox menu.';
   } else {
     // Generic Android browser (Opera, Brave, Arc, etc.)
-    body =
-      'Open your browser menu and look for "Add to Home Screen" or "Install App".';
-    showInstallButton = false;
+    body = 'Add DanceDispatch to your device home screen from your browser menu.';
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -210,16 +200,15 @@ export function PWAInstallPrompt() {
       <p className="mt-1 text-sm text-muted">{body}</p>
 
       <div className="mt-3 flex items-center gap-2">
-        {showInstallButton && (
-          <button
-            type="button"
-            onClick={handleInstall}
-            disabled={installing}
-            className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
-          >
-            {installing ? "Installing…" : "Install"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleInstall}
+          disabled={installing}
+          aria-expanded={!installEvent && showManualSteps}
+          className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
+        >
+          {installing ? "Installing…" : "Install"}
+        </button>
 
         <button
           type="button"
@@ -229,6 +218,30 @@ export function PWAInstallPrompt() {
           Not now
         </button>
       </div>
+
+      {!installEvent && showManualSteps && (
+        <div className="mt-3 border-t border-default pt-3 text-sm text-text">
+          {isIOS ? (
+            <ol className="list-inside list-decimal space-y-1">
+              <li>Open this page in Safari.</li>
+              <li>Tap Share, then Add to Home Screen.</li>
+              <li>Tap Add to confirm.</li>
+            </ol>
+          ) : isFirefoxMobile ? (
+            <ol className="list-inside list-decimal space-y-1">
+              <li>Open the Firefox menu.</li>
+              <li>Tap Install or Add to Home screen.</li>
+              <li>Confirm the installation.</li>
+            </ol>
+          ) : (
+            <ol className="list-inside list-decimal space-y-1">
+              <li>Open your browser menu.</li>
+              <li>Choose Install app or Add to Home screen.</li>
+              <li>Confirm the installation.</li>
+            </ol>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

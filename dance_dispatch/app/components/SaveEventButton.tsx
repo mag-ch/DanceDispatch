@@ -126,7 +126,9 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
         if (isSubmittingRef.current) return;
         
         isSubmittingRef.current = true;
+        const previousSavedState = isSaved;
         const newSavedState = !isSaved;
+        setIsSaved(newSavedState);
         try {
             const response = await fetch(`/api/users/saved-events/${eventId}`, {
                 method: 'POST',
@@ -138,7 +140,6 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
                 throw new Error('Failed to update saved state');
             }
 
-            setIsSaved(newSavedState);
             if (newSavedState) {
                 showToast("RSVP'ed to event");
             }
@@ -147,6 +148,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
             }
         } catch (error) {
             console.error('Failed to save event:', error);
+            setIsSaved(previousSavedState);
         } finally {
             isSubmittingRef.current = false;
         }
@@ -265,7 +267,9 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
         if (isSubmittingRef.current) return;
         
         isSubmittingRef.current = true;
+        const previousSavedState = isSaved;
         const newSavedState = !isSaved;
+        setIsSaved(newSavedState);
         try {
             const response = await fetch(`/api/users/saved-${entity}/${entityId}`, {
                 method: 'POST',
@@ -277,7 +281,6 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
                 throw new Error('Failed to update follow state');
             }
 
-            setIsSaved(newSavedState);
             showToast(
                 newSavedState
                     ? `Now following this ${getFollowedEntityLabel(entity)}`
@@ -285,6 +288,7 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
             );
         } catch (error) {
             console.error('Failed to follow/unfollow user:', error);
+            setIsSaved(previousSavedState);
         } finally {
             isSubmittingRef.current = false;
         }

@@ -1,10 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 
 export const POINTS = {
   rsvp: 10,
   share: 5,      // per recipient
   review: 20,
   referral: 50,
+  submit_event: 50,
 } as const;
 
 export type PointsAction = keyof typeof POINTS;
@@ -23,7 +24,7 @@ export async function awardPoints(
   action: PointsAction,
   points: number,
   entityId?: string,
-): Promise<void> {
+): Promise<Error | null> {
   const supabase = await createClient();
   const { error } = await supabase.from('UserPoints').insert({
     user_id: userId,
@@ -35,5 +36,21 @@ export async function awardPoints(
   // Unique constraint violation means the user already earned these points — that's fine.
   if (error && error.code !== '23505') {
     console.error(`[awardPoints] Failed to award ${points} points (${action}) to ${userId}:`, error.message);
+    return error;
   }
+
+  const { error : rpcError } = await supabase.rpc("record_badge_activity", {
+    p_user_id: userId,
+    p_action_key: action,
+    p_points_delta: points,
+    p_source_table: 'UserPoints', // The table where the points were recorded
+    p_source_id: entityId ?? null,
+    // One award per action per entity, so retries and re-approvals are safe
+    p_dedupe_key: entityId ? `${action}:${entityId}` : null,
+  });
+  if (rpcError) {
+    console.error(`[awardPoints] Failed to record badge activity for ${userId}:`, rpcError);
+    return rpcError;
+  }
+  return null;
 }

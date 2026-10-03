@@ -48,7 +48,7 @@ export function BadgeChipsInline({ badges, maxBadges = 2, className, showNames =
 
   return (
     <span className={`inline-flex items-center gap-1 ${className ?? ''}`}>
-      {badges.slice(0, maxBadges).map((badge) => (
+      {badges.slice(0, 1).map((badge) => (
         <span
           key={badge.id}
           title={badge.name}
@@ -82,7 +82,7 @@ async function fetchUserBadges(userId: string, maxBadges: number): Promise<Badge
     .select('badge_id')
     .eq('user_id', userId)
     .order('unlocked_at', { ascending: false })
-    .limit(maxBadges * 3);
+    .limit(1);
 
   if (unlockedError || !unlockedRows || unlockedRows.length === 0) {
     return [];

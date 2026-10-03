@@ -19,6 +19,7 @@ const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   share:    { label: 'Shares',   icon: <Share2 className="h-3.5 w-3.5" /> },
   review:   { label: 'Reviews',  icon: <MessageSquare className="h-3.5 w-3.5" /> },
   referral: { label: 'Referrals',icon: <Users className="h-3.5 w-3.5" /> },
+  submit_event: { label: 'Submitted Events', icon: <Star className="h-3.5 w-3.5" /> },
 };
 
 const RANK_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];

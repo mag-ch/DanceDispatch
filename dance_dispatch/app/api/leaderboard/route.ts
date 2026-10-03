@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       }
       totals[row.user_id].total += row.points;
       totals[row.user_id].breakdown[row.action] =
-        (totals[row.user_id].breakdown[row.action] ?? 0) + row.points;
+        (totals[row.user_id].breakdown[row.action] ?? 0) + 1;
     }
 
     const sorted = Object.entries(totals)

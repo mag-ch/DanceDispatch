@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BellRing, Send, X } from 'lucide-react';
 
 type Mode = 'message' | 'review-request' | 'new-review' | 'new-event';
-type AnnouncementEvent = { id: string; title: string; startdate: string; location?: string };
+type AnnouncementEvent = { id: string; title: string; startdate: string; starttime: string; location?: string };
 type AnnouncementReview = { id: string; eventName: string; username: string; userId: string; comment: string };
 type UserResult = { id: string; username: string; full_name: string | null };
 
@@ -38,7 +38,14 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
   const selectedEvent = events.find((event) => event.id === eventId);
   const selectedReview = reviews.find((review) => review.id === reviewId);
 
-  const filteredEvents = mode === "review-request" ? events.filter((event) => new Date(event.startdate) < new Date()).sort((a, b) => new Date(b.startdate).getTime() - new Date(a.startdate).getTime()) : events.filter((event) => new Date(event.startdate) >= new Date()).sort((a, b) => new Date(a.startdate).getTime() - new Date(b.startdate).getTime());
+  const eventStartDateTime = (event: AnnouncementEvent) =>
+    new Date(`${event.startdate.split('T')[0]}T${event.starttime || '00:00:00'}`);
+  const now = new Date();
+  const filteredEvents = mode === 'review-request'
+    ? events.filter((event) => eventStartDateTime(event) < now)
+      .sort((a, b) => eventStartDateTime(b).getTime() - eventStartDateTime(a).getTime())
+    : events.filter((event) => eventStartDateTime(event) >= now)
+      .sort((a, b) => eventStartDateTime(a).getTime() - eventStartDateTime(b).getTime());
 
   useEffect(() => {
     if (searchDebounceRef.current) {
@@ -159,7 +166,7 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
               {mode === 'review-request' && (
                 <label className="flex items-center gap-2 text-sm font-semibold text-text">
                   <input type="checkbox" checked={rsvpOnly} onChange={(event) => setRsvpOnly(event.target.checked)} className="h-4 w-4 rounded border-default" />
-                  Only send to users who RSVP'ed to this event
+                  Only send to users who RSVP&apos;ed to this event
                 </label>
               )}
             </>
@@ -251,7 +258,7 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="flex flex-col gap-2">
                   <span className="text-sm font-semibold text-text">Message</span>
-                  <textarea value={message} maxLength={240} rows={3} onChange={(event) => message ? setMessage(event.target.value) : null} className="w-full resize-y rounded border border-default bg-surface px-3 py-2.5 text-text" placeholder="Write a short announcement" />
+                  <textarea value={message} maxLength={240} rows={3} onChange={(event) => setMessage(event.target.value)} className="w-full resize-y rounded border border-default bg-surface px-3 py-2.5 text-text" placeholder="Write a short announcement" />
                   <span className="text-right text-xs text-muted">{message.length}/240</span>
                 </label>
               </div>

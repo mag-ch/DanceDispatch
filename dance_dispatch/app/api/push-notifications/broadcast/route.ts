@@ -136,7 +136,11 @@ export async function POST(request: Request) {
         }
       } else {
         title = 'New event posted';
-        message = `${eventName} is now on DanceDispatch. Check it out!`;
+        const customMessage = typeof body?.message === 'string' ? body.message.trim() : '';
+        if (customMessage.length > 240) {
+          return NextResponse.json({ error: 'Message must be 240 characters or fewer.' }, { status: 400 });
+        }
+        message = customMessage || `${eventName} is now on DanceDispatch. Check it out!`;
       }
     }
 

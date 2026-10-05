@@ -57,6 +57,35 @@ export async function saveEventComparison(
 }
 
 
+export async function markEventNotAttended(
+  eventId: string
+): Promise<{ success: boolean; error?: string }> {
+  const user = await requireAuth();
+  if (!user) {
+    return { success: false, error: 'Not authenticated' };
+  }
+
+  const supabase = await createServerClient();
+  const numericId = Number(eventId);
+
+  const { error } = await supabase
+    .from('SavedEvents')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('event_id', numericId);
+  if (error) return { success: false, error: error.message };
+
+  const { error: compError } = await supabase
+    .from('event_comparisons')
+    .delete()
+    .eq('user_id', user.id)
+    .or(`event_a_id.eq.${numericId},event_b_id.eq.${numericId}`);
+  if (compError) return { success: false, error: compError.message };
+
+  revalidatePath('/');
+  return { success: true };
+}
+
 export async function updateEventComparison(
   comparisonId: string,
   winnerId: string,

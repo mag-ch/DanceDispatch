@@ -13,7 +13,7 @@ import {
   Star,
   Sparkles,
 } from 'lucide-react';
-import { saveEventComparison, updateEventComparison } from '@/lib/saveEventComparisons';
+import { saveEventComparison, updateEventComparison, markEventNotAttended } from '@/lib/saveEventComparisons';
 
 export type ModalEvent = {
   id: string;
@@ -143,6 +143,30 @@ export function EventRankingModal({
       setVoting(false);
     },
     [currentMatchup, voting]
+  );
+
+  const handleDidntGo = useCallback(
+    async (eventId: string) => {
+      if (voting) return;
+      setVoting(true);
+      const result = await markEventNotAttended(eventId);
+      if (result.success) {
+        const nextRemaining = remaining.filter(
+          (pair) => pair[0].id !== eventId && pair[1].id !== eventId
+        );
+        setRemaining(nextRemaining);
+        setComparisons((prev) =>
+          prev.filter((c) => c.eventA.id !== eventId && c.eventB.id !== eventId)
+        );
+        setCurrentMatchup(
+          nextRemaining.length > 0
+            ? nextRemaining[Math.floor(Math.random() * nextRemaining.length)]
+            : null
+        );
+      }
+      setVoting(false);
+    },
+    [remaining, voting]
   );
 
   const handleNextMatchup = useCallback(() => {
@@ -276,12 +300,12 @@ export function EventRankingModal({
                   </p>
                   <div className="flex items-stretch gap-3">
                     {[currentMatchup[0], currentMatchup[1]].map((event, idx) => (
+                      <div key={event.id} className="flex-1 flex flex-col gap-2">
                       <button
-                        key={event.id}
                         onClick={() => handleVote(event.id)}
                         disabled={voting}
                         className={`
-                          group relative flex-1 rounded-xl border transition-all duration-200 text-left
+                          group relative flex-1 w-full rounded-xl border transition-all duration-200 text-left
                           border-zinc-800 bg-zinc-900 hover:border-amber-500/40 hover:bg-zinc-800/60
                           ${voting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                         `}
@@ -313,6 +337,14 @@ export function EventRankingModal({
                           </span>
                         </div>
                       </button>
+                      <button
+                        onClick={() => handleDidntGo(event.id)}
+                        disabled={voting}
+                        className="w-full rounded-lg border border-zinc-800 px-2 py-1.5 text-xs font-medium text-zinc-400 hover:border-red-500/40 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        I didn't go
+                      </button>
+                      </div>
                     ))}
                   </div>
                   <div className="mt-4 flex items-center justify-center">

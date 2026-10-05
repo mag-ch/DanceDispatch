@@ -9,15 +9,9 @@ export const metadata = {
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <main className="bg-bg container mx-auto my-6 px-4">
+      <main className="bg-bg container mx-auto">
         {children} {/* Page content will render here */}
       </main>
-
-      <footer className="bg-bg shadow-inner mt-12 py-6">
-        <div className="container mx-auto text-center text-sm text-text">
-          © 2026 DanceDispatch
-        </div>
-      </footer>
     </>
   );
 }

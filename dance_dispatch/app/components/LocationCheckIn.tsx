@@ -1,125 +1,86 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { MapPin, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
-import { useLocationCheckIn } from '@/app/hooks/useLocationCheckIn';
+import {
+  LOCATION_ENABLED_EVENT,
+  LOCATION_PROMPT_KEY_PREFIX,
+  LocationConfirmation,
+  useLocationCheckIn,
+} from '@/app/hooks/useLocationCheckIn';
 
-const PROMPT_RESPONSE_KEY_PREFIX = 'dd_location_checkin_response_v1';
-const THREE_MONTHS_MS = 90 * 24 * 60 * 60 * 1000;
-
-type PromptResponseRecord = {
-  respondedAt: string;
-  enabled: boolean;
-};
+const TOAST_DURATION_MS = 8000;
 
 export function LocationCheckIn() {
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
-
-  const [canShowPrompt, setCanShowPrompt] = useState(false);
-  const [hasLoadedPromptState, setHasLoadedPromptState] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [confirmed, setConfirmed] = useState<LocationConfirmation | null>(null);
 
-  const { isSupported, isLoading, error, requestEnable } = useLocationCheckIn(isEnabled);
-
-  const responseStorageKey = useMemo(
-    () => (userId ? `${PROMPT_RESPONSE_KEY_PREFIX}:${userId}` : null),
+  const storageKey = useMemo(
+    () => (userId ? `${LOCATION_PROMPT_KEY_PREFIX}:${userId}` : null),
     [userId],
   );
 
-  const savePromptResponse = (enabled: boolean) => {
-    if (!responseStorageKey) {
-      return;
-    }
+  useEffect(() => {
+    const readEnabled = () => {
+      if (!storageKey) {
+        setIsEnabled(false);
+        return;
+      }
+      try {
+        const record = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+        setIsEnabled(record?.enabled === true);
+      } catch {
+        setIsEnabled(false);
+      }
+    };
 
-    const response: PromptResponseRecord = { respondedAt: new Date().toISOString(), enabled };
-    localStorage.setItem(responseStorageKey, JSON.stringify(response));
-  };
+    readEnabled();
+    window.addEventListener(LOCATION_ENABLED_EVENT, readEnabled);
+    return () => window.removeEventListener(LOCATION_ENABLED_EVENT, readEnabled);
+  }, [storageKey]);
+
+  const handleConfirmed = useCallback((confirmations: LocationConfirmation[]) => {
+    setConfirmed(confirmations[0]);
+  }, []);
+
+  useLocationCheckIn(isEnabled && !authLoading, handleConfirmed);
 
   useEffect(() => {
-    if (!responseStorageKey) {
-      setCanShowPrompt(false);
-      setHasLoadedPromptState(false);
-      return;
-    }
+    if (!confirmed) return;
+    const timer = setTimeout(() => setConfirmed(null), TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [confirmed]);
 
-    let shouldShow = true;
-    const rawRecord = localStorage.getItem(responseStorageKey);
-
-    if (rawRecord) {
-      try {
-        const parsedRecord = JSON.parse(rawRecord) as PromptResponseRecord;
-
-        if (parsedRecord.enabled) {
-          // Already enabled — nothing to re-prompt for.
-          shouldShow = false;
-          setIsEnabled(true);
-        } else {
-          const respondedAtMs = new Date(parsedRecord.respondedAt).getTime();
-          const hasValidDate = Number.isFinite(respondedAtMs);
-          shouldShow = hasValidDate ? Date.now() - respondedAtMs >= THREE_MONTHS_MS : true;
-        }
-      } catch {
-        // Ignore malformed localStorage data and fall back to showing the prompt.
-      }
-    }
-
-    setCanShowPrompt(shouldShow);
-    setHasLoadedPromptState(true);
-  }, [responseStorageKey]);
-
-  if (authLoading || !userId || !isSupported) {
-    return null;
-  }
-
-  if (isEnabled || !hasLoadedPromptState || !canShowPrompt) {
-    return null;
-  }
+  if (!confirmed) return null;
 
   return (
-    // Floating prompt, similar to the push notification prompt, offered as a separate opt-in.
     <aside className="fixed bottom-4 right-4 z-[70] max-w-sm rounded-xl border border-default bg-surface/40 dark:bg-surface/40 p-4 shadow-2xl backdrop-blur-md">
       <div className="flex items-start gap-3">
         <div className="rounded-full bg-accent-soft p-2 text-text">
           <MapPin className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-text">Location Check-In</p>
+          <p className="text-sm font-semibold text-text">You&apos;re checked in!</p>
           <p className="mt-1 text-sm text-muted">
-            Let DanceDispatch confirm you made it to events you RSVP&apos;d to and notify you when you arrive.
+            Location confirmed at{' '}
+            <Link href={`/events/${confirmed.eventId}`} className="underline">
+              {confirmed.eventTitle}
+            </Link>
+            . Have fun!
           </p>
-
-          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                const enabled = await requestEnable();
-                savePromptResponse(enabled);
-                setIsEnabled(enabled);
-                setCanShowPrompt(false);
-              }}
-              disabled={isLoading}
-              className="btn-highlighted rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-60"
-            >
-              {isLoading ? 'Enabling...' : 'Enable Check-In'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                savePromptResponse(false);
-                setCanShowPrompt(false);
-              }}
-              disabled={isLoading}
-              className="rounded-md border border-default px-4 py-2 text-sm font-semibold text-text hover-bg-accent-soft disabled:opacity-60"
-            >
-              Not now
-            </button>
-          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setConfirmed(null)}
+          className="p-1 text-muted hover:text-text"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </aside>
   );

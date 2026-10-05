@@ -10,6 +10,7 @@ import { PWARegister } from "./components/PWARegister";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { PushNotificationPrompt } from "./components/PushNotificationPrompt";
 import { LocationCheckIn } from "./components/LocationCheckIn";
+import { LocationEnablePrompt } from "./components/LocationEnablePrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,6 +63,7 @@ export default function RootLayout({
             <PWARegister />
             <PWAInstallPrompt />
             <PushNotificationPrompt />
+            <LocationEnablePrompt />
             <LocationCheckIn />
             <Suspense fallback={null}>
               <Header />

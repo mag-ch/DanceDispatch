@@ -198,7 +198,8 @@ export async function getRelatedEvents(eventId: string): Promise<Event[]> {
 async function fetchCatalogFromSupabase(): Promise<CatalogData> {
   const supabase = getCacheableSupabaseClient();
 
-  const [eventsRes, venuesRes, hostsRes, eventHostsRes] = await Promise.all([
+  const pendingEventsClient = getServiceRoleSupabaseClient() ?? supabase;
+  const [eventsRes, venuesRes, hostsRes, eventHostsRes, pendingEventsRes] = await Promise.all([
     supabase
       .from('Events')
       .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id')
@@ -206,16 +207,27 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
     supabase.from('Hosts').select('id,name,bio,image_url,tags,genres').order('name'),
     supabase.from('event_hosts').select('event_id,host_id'),
+    pendingEventsClient.from('pending_events').select('event_id,exclude'),
   ]);
 
   if (eventsRes.error) throw eventsRes.error;
   if (venuesRes.error) throw venuesRes.error;
   if (hostsRes.error) throw hostsRes.error;
   if (eventHostsRes.error) throw eventHostsRes.error;
+  if (pendingEventsRes.error) throw pendingEventsRes.error;
 
   const venueRows = venuesRes.data ?? [];
   const hostRows = hostsRes.data ?? [];
-  const eventRows = eventsRes.data ?? [];
+  const pendingRows = (pendingEventsRes.data ?? []) as Array<{
+    event_id: number | string | null;
+    exclude: boolean | null;
+  }>;
+  const pendingEventIds = new Set(
+    pendingRows
+      .filter((row) => row.exclude !== true && row.event_id != null)
+      .map((row) => String(row.event_id))
+  );
+  const eventRows = (eventsRes.data ?? []).filter((row) => !pendingEventIds.has(String(row.id)));
   const eventHostRows = eventHostsRes.data ?? [];
 
   const hostLinksByHostId = new Map<number, HostExternalLink[]>();

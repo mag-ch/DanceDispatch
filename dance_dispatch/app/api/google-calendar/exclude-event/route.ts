@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { requireAuth } from '@/lib/auth-helpers';
-import { deleteEvent } from '@/lib/utils_supabase_server';
+import { revalidateCatalogCache } from '@/lib/utils_supabase_server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -43,6 +43,8 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    revalidateCatalogCache();
 
     // Invite-code usage tracking is temporarily disabled.
     // if (createdBy && (await isAdmin(createdBy))) {

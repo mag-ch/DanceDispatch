@@ -216,20 +216,20 @@ const approvePendingReviewEvent = async (eventId: string) => {
         return;
       }
       
-      // Step 2:same as Approve (exclude from pending review)
+      // // Step 2:same as Approve (exclude from pending review)
 
-      if (deleteResponse.ok) {
-        const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventId }),
-        });
-        const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
-        if (!excludeResponse.ok) {
-          setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
-          return;
-        }
-      }
+      // if (deleteResponse.ok) {
+      //   const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({ eventId }),
+      //   });
+      //   const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
+      //   if (!excludeResponse.ok) {
+      //     setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
+      //     return;
+      //   }
+      // }
       
 
 

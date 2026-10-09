@@ -20,10 +20,42 @@ export function LocationEnablePrompt() {
     [userId],
   );
 
-  // Prompt once per user per device: any stored response suppresses it.
+  // Use the browser's durable permission grant if this PWA has lost its local preference.
   useEffect(() => {
-    setVisible(!!storageKey && localStorage.getItem(storageKey) === null);
-  }, [storageKey]);
+    if (!storageKey || authLoading || !isSupported) return;
+
+    let cancelled = false;
+    const readResponse = async () => {
+      try {
+        if (localStorage.getItem(storageKey) !== null) {
+          setVisible(false);
+          return;
+        }
+
+        const permission = await navigator.permissions?.query({ name: 'geolocation' });
+        if (cancelled) return;
+
+        if (permission?.state === 'granted') {
+          localStorage.setItem(
+            storageKey,
+            JSON.stringify({ respondedAt: new Date().toISOString(), enabled: true }),
+          );
+          window.dispatchEvent(new Event(LOCATION_ENABLED_EVENT));
+          setVisible(false);
+          return;
+        }
+
+        setVisible(true);
+      } catch {
+        if (!cancelled) setVisible(true);
+      }
+    };
+
+    void readResponse();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, isSupported, storageKey]);
 
   if (authLoading || !userId || !isSupported || !visible || !storageKey) {
     return null;

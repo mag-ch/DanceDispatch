@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { awardPoints } from '@/lib/points';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -346,18 +347,8 @@ const approvePendingReviewEvent = async (eventId: string) => {
                   key={item.eventId}
                   className="flex items-center gap-3 rounded border border-default/50 bg-surface/50 p-2"
                 >
-                  <div
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => {
-                      window.location.href = `/events/${item.eventId}`;
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        window.location.href = `/events/${item.eventId}`;
-                      }
-                    }}
+                  <Link
+                    href={`/events/${item.eventId}`}
                     className="min-w-0 flex-1 cursor-pointer rounded p-1 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/20"
                   >
                     <div className="text-sm font-medium text-text">{item.title}</div>
@@ -366,7 +357,7 @@ const approvePendingReviewEvent = async (eventId: string) => {
                       {item.start ? ` • ${new Date(item.start).toLocaleString()}` : ''}
                       {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : item.createdBy ? ` • Created by: ${item.createdBy}` : ''}
                     </div>
-                  </div>
+                  </Link>
                   <button
                     type="button"
                     onClick={() => {

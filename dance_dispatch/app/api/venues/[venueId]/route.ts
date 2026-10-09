@@ -2,6 +2,7 @@ import { getVenues } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 
 export async function GET(
     request: Request,
@@ -120,10 +121,16 @@ export async function PATCH(
 
         // 1. Venue fields
         if (Object.keys(updates).length > 0) {
-            const { error } = await supabase.from('Venues').update(updates).eq('id', venueId);
+            const { error, count } = await supabase
+                .from('Venues')
+                .update(updates, { count: 'exact' })
+                .eq('id', venueId);
             if (error) {
                 console.error('Error updating venue:', error);
                 return NextResponse.json({ error: 'Failed to update venue' }, { status: 500 });
+            }
+            if (count === 0) {
+                return NextResponse.json({ error: 'Venue not found or not updateable' }, { status: 404 });
             }
         }
 
@@ -188,6 +195,7 @@ export async function PATCH(
             }
         }
 
+        revalidateTag('catalog', { expire: 0 });
         return NextResponse.json({ success: true });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update venue';

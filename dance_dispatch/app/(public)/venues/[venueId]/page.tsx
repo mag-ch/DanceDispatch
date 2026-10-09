@@ -11,6 +11,7 @@ import { openInMaps } from '@/lib/utils_supabase';
 import OpenInMapsButton from '@/app/components/OpenInMapsButton';
 import { geocodeAddress } from '@/lib/geocoding';
 import VenueDetailsEditor from './VenueDetailsEditor';
+import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -84,8 +85,9 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                         {/* Bio */}
                         {venue.bio && <section className="mb-4 bg-surface p-6 rounded-lg">
                             <h2 className="font-semibold text-text text-lg mb-2">Bio</h2>
-                            <p className="text-text">{venue.bio}</p>
+                            <p className="text-text">{renderDescriptionWithLineBreaks(venue.bio)}</p>
                         </section>}
+
 
 
                         {/* Address & Map */}

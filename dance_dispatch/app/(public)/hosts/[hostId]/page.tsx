@@ -9,6 +9,7 @@ import { Host } from '@/lib/utils';
 import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
+import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 
 const chipPalette = [
     'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
@@ -475,7 +476,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         onChange={(e) => setEditBio(e.target.value)}
                                     />
                                 ) : (
-                                    <p className="text-muted">{h.bio}</p>
+                                    <p className="text-text">{renderDescriptionWithLineBreaks(h.bio)}</p>
                                 )}
                             
                             </section>

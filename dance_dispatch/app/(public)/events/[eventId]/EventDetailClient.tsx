@@ -13,6 +13,7 @@ import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
 import { HostSelector } from '@/app/components/HostSelector';
+import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 
 interface EventDetailClientProps {
     event: Event;
@@ -53,17 +54,6 @@ function formatCompactDate(value: string): string {
     });
 }
 
-function renderDescriptionWithLineBreaks(text: string) {
-    const normalized = text.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
-    const lines = normalized.split('\n');
-
-    return lines.map((line, index) => (
-        <span key={index}>
-            {line}
-            {index < lines.length - 1 && <br />}
-        </span>
-    ));
-}
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading, isAdmin } = useAuth();
@@ -263,7 +253,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         }
     };
 
-    const [eventImageSrc, setEventImageUrl] = useState('/images/default_events.jpg');
+    const [eventImageSrc, setEventImageUrl] = useState(event.imageurl?.trim() || '/images/default_events.jpg');
 
     useEffect(() => {
         const fetchImageUrl = async () => {
@@ -271,7 +261,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             setEventImageUrl(url);
         };
         void fetchImageUrl();
-    }, []);
+    }, [event.imageurl]);
 
     useEffect(() => {
         setEventHosts(

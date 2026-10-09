@@ -11,6 +11,7 @@
   "overrides": {
     "adm-zip": "^0.6.0"
   },
+  "type": "module",
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/auth-helpers-react": "^0.15.0",

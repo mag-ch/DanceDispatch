@@ -101,6 +101,7 @@ export interface EventReview {
     dateSubmitted: string;
      userId?: string;
     user_id?: string;
+    rating?: number;
     mainComment?: string;
     venueReview?: {
         venueName: string;
@@ -116,6 +117,26 @@ export interface EventReview {
     mediaPaths?: string[];
 
 }
+
+  export interface ReviewActivityPreview {
+    id: string;
+    eventId: string;
+    eventName: string;
+    username: string;
+    createdAt: string;
+    comment: string;
+    rating: number | null;
+  }
+
+  export interface ReviewActivityHighlight {
+    entityType: 'host' | 'venue';
+    entityId: string;
+    entityName: string;
+    reviewCount: number;
+    reviewsThisWeek: number;
+    reviewsThisMonth: number;
+    previews: ReviewActivityPreview[];
+  }
 
 export interface ReviewReply {
     id: string;

@@ -1,4 +1,4 @@
-import { getPublicReviewFeed } from '@/lib/utils_supabase_server';
+import { getPublicReviewFeed, getReviewActivityHighlights } from '@/lib/utils_supabase_server';
 import ReviewFeedClient from './ReviewFeedClient';
 
 export const metadata = {
@@ -7,8 +7,10 @@ export const metadata = {
 };
 
 export default async function ReviewFeedPage() {
-  const reviews = await getPublicReviewFeed(60);
-
+  const [reviews, highlights] = await Promise.all([
+    getPublicReviewFeed(60),
+    getReviewActivityHighlights(),
+  ]);
   return (
     <div className="-mx-4 px-2 py-4 sm:mx-auto sm:max-w-3xl sm:px-4 sm:py-8 lg:relative lg:left-1/2 lg:mx-0 lg:w-[75vw] lg:max-w-none lg:-translate-x-1/2 lg:px-6">
       <h1 className="text-xl font-bold text-text sm:text-2xl">Community Reviews</h1>
@@ -17,7 +19,7 @@ export default async function ReviewFeedPage() {
       </p>
 
       <div className="mt-6">
-        <ReviewFeedClient initialReviews={reviews} />
+        <ReviewFeedClient initialReviews={reviews} initialHighlights={highlights} />
       </div>
     </div>
   );

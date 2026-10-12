@@ -383,30 +383,27 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     if (privacyLevel === 'private' && !isOwner) return null;
     
     const config = PRIVACY_CONFIG[privacyLevel];
-    
-    // --- Dynamic module layout ---
-    // Count how many review "modules" we're rendering (main comment, venue, each DJ).
-    const moduleCount =
-    (review.mainComment ? 1 : 0) +
-    (review.venueReview ? 1 : 0) +
-    (review.djReviews?.length ?? 0);
+    const ratings = [
+        ...(Number(review.rating) > 0 ? [{ label: 'Party', rating: Number(review.rating) }] : []),
+        ...(Number(review.venueReview?.rating) > 0
+            ? [{ label: 'Venue', rating: Number(review.venueReview?.rating) }]
+            : []),
+        ...(review.djReviews ?? [])
+            .filter((djReview) => Number(djReview.rating) > 0)
+            .map((djReview) => ({ label: djReview.djName, rating: Number(djReview.rating) })),
+    ];
 
-    // With a small number of modules, let them split the available width evenly.
-    // Once there are enough that an even split would feel cramped, fall back to the
-    // fixed-width, horizontally-scrolling layout.
-    const DYNAMIC_WIDTH_THRESHOLD = 3;
-    const useDynamicWidth = moduleCount > 0 && moduleCount <= DYNAMIC_WIDTH_THRESHOLD;
-    
-    const containerClassName = 'flex gap-3 overflow-x-auto pb-3';
-
-    
-    const moduleClassName = useDynamicWidth
-    ? compact
-        ? 'flex-1 min-w-[140px]'
-        : 'flex-1 min-w-[180px]'
-    : compact
-        ? 'flex-shrink-0 min-w-[160px] max-w-[210px]'
-        : 'flex-shrink-0 min-w-[200px] max-w-[250px]';
+    const textSections = [
+        ...(review.mainComment?.trim()
+            ? [{ key: 'party', label: `Party: ${review.eventName}`, comment: review.mainComment }]
+            : []),
+        ...(review.venueReview?.comments?.trim()
+            ? [{ key: 'venue', label: `Venue: ${review.venueReview.venueName}`, comment: review.venueReview.comments }]
+            : []),
+        ...(review.djReviews ?? [])
+            .filter((djReview) => Boolean(djReview.comments?.trim()))
+            .map((djReview) => ({ key: `dj:${djReview.djName}`, label: `DJ: ${djReview.djName}`, comment: djReview.comments })),
+    ];
     
     return (
         <div className={`bg-surface rounded-lg shadow transition-opacity ${compact ? 'p-3' : 'p-4'} ${isDeleting ? 'opacity-50' : ''}`}>
@@ -472,48 +469,39 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                 </div>
             </div>
 
-            {/* Review content */}
-            <div className={containerClassName}>
-                {review.mainComment && (
-                    <div className={moduleClassName}>
-                        <Link
-                            href={`/events/${review.eventId}`}
-                            className="block truncate text-sm font-semibold text-text mb-2 hover:underline"
-                            title={review.eventName}
-                        >
-                            {review.eventName}
-                        </Link>
-                        {review.mainComment && <p className="text-sm text-text">{review.mainComment}</p> }
+            {ratings.length > 0 && (
+                <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                    <div className="flex w-max min-w-full items-center gap-4">
+                        {ratings.map(({ label, rating }) => (
+                            <div key={label} className="flex shrink-0 items-center gap-2">
+                                <span className="text-xs font-medium uppercase text-muted">{label}</span>
+                                <div className="flex gap-0.5" aria-label={`${label} rating ${rating} out of 5`}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star key={star} size={16} className={star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                )}
-                {review.venueReview && (
-                    <div className={moduleClassName}>
-                        <h4 className="text-sm font-semibold text-text mb-2 truncate">{review.venueReview.venueName}</h4>
-                        {review.venueReview.rating > 0 && (
-                        <div className="flex gap-1 mb-2">
-                            {[1,2,3,4,5].map((star) => (
-                                <Star key={star} size={16} className={star <= (review.venueReview?.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-                            ))}
-                        </div>
-                        )}
-                        {review.venueReview.comments && <p className="text-sm text-text">{review.venueReview.comments}</p>}
-                    </div>
-                )}
-                {review.djReviews?.map((djReview) => (
-                    <div key={djReview.djName} className={moduleClassName}>
-                        <h4 className="text-sm font-semibold text-text mb-2 truncate">{djReview.djName}</h4>
-                        {djReview.rating > 0 && (
-                            <div className="flex gap-1 mb-2">
-                            {[1,2,3,4,5].map((star) => (
-                                <Star key={star} size={16} className={star <= djReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-                            ))}
-                        </div>
-                        )}
+                </div>
+            )}
 
-                        {djReview.comments && <p className="text-sm text-text">{djReview.comments}</p>}
-                    </div>
-                ))}
-            </div>
+            {textSections.length > 0 && (
+                <div className="mt-3 rounded-md bg-bg/60 px-3 py-2.5">
+                    {textSections.map((section, index) => (
+                        <section key={section.key} className={`py-2 ${index > 0 ? 'border-t border-default' : ''}`}>
+                            <h4 className="mb-1 text-xs font-semibold uppercase text-muted">
+                                {section.key === 'party' ? (
+                                    <Link href={`/events/${review.eventId}`} className="hover:text-text hover:underline">
+                                        {section.label}
+                                    </Link>
+                                ) : section.label}
+                            </h4>
+                            <p className="whitespace-pre-wrap text-sm text-text">{section.comment}</p>
+                        </section>
+                    ))}
+                </div>
+            )}
 
             {review.mediaPaths && review.mediaPaths.length > 0 && (
                 <div className="mt border-t">

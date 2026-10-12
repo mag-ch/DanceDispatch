@@ -163,8 +163,21 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
         }
     };
     const handleDelete = async (path: string) => {
-        const { error } = await supabase.storage.from('event-media').remove([path]);
-        if (!error) await loadMedia();
+        setError(null);
+        try {
+            const response = await fetch(`/api/events/${eventId}/media`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path }),
+            });
+            const result = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(result?.error ?? 'Failed to delete media.');
+            }
+            window.location.reload();
+        } catch (deleteError) {
+            setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete media.');
+        }
     };
 
     const slotsRemaining = MAX_FILES_PER_USER - userMedia.length;
@@ -184,11 +197,11 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
             {/* Gallery */}
             {displayMedia.length > 0 && (
-                <div className={`grid gap-2 ${mode === 'inline' ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                <div className="flex gap-2 overflow-x-auto pb-2">
                     {displayMedia.map((item) => (
                         <div
                             key={item.path}
-                            className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100"
+                            className="relative group aspect-square w-32 shrink-0 rounded-lg overflow-hidden bg-gray-100 sm:w-40"
                         >
 
                             {item.type === 'video' ? (

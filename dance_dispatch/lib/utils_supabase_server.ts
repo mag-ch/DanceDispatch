@@ -3,7 +3,7 @@ import 'server-only';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
-import { Event, EventReview, Host, HostExternalLink, ReviewReply, Venue } from '@/lib/utils';
+import { Event, EventReview, Host, HostExternalLink, ReviewActivityHighlight, ReviewReply, Venue } from '@/lib/utils';
 import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
 import { revalidatePath } from 'next/cache';
@@ -477,6 +477,7 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
 
       if (row.entity_type === 'event') {
         review.mainComment = row.comment;
+        review.rating = Number(row.rating) || 0;
         // Media is attached to the event-level review row
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
@@ -580,6 +581,7 @@ export async function getUserReviews(userId: string, includeAnon: boolean): Prom
 
       if (row.entity_type === 'event') {
         review.mainComment = row.comment;
+        review.rating = Number(row.rating) || 0;
         // Media is attached to the event-level review row
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
@@ -682,6 +684,7 @@ export async function getPublicReviewFeed(limit: number = 60): Promise<EventRevi
 
       if (row.entity_type === 'event') {
         review.mainComment = row.comment;
+        review.rating = Number(row.rating) || 0;
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
         review.venueReview = {
@@ -703,6 +706,114 @@ export async function getPublicReviewFeed(limit: number = 60): Promise<EventRevi
       .slice(0, limit);
   } catch (error) {
     console.error('Error fetching public review feed from Supabase:', error);
+    return [];
+  }
+}
+
+export async function getReviewActivityHighlights(): Promise<ReviewActivityHighlight[]> {
+  try {
+    const supabase = await createServerClient();
+    const { count, error: countError } = await supabase
+      .from('Reviews')
+      .select('id', { count: 'exact', head: true })
+      .neq('privacy_level', 'private')
+      .in('entity_type', ['host', 'venue']);
+
+    if (countError) throw countError;
+    if (!count) return [];
+
+    const pageSize = 1000;
+    const pageOffsets = Array.from({ length: Math.ceil(count / pageSize) }, (_, index) => index * pageSize);
+    const pages = await Promise.all(pageOffsets.map((offset) =>
+      supabase
+        .from('Reviews')
+        .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment')
+        .neq('privacy_level', 'private')
+        .in('entity_type', ['host', 'venue'])
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1)
+    ));
+
+    const rows = pages.flatMap((page) => {
+      if (page.error) throw page.error;
+      return page.data ?? [];
+    });
+    const events = await getCachedEvents(false);
+    const hosts = await getCachedHosts();
+    const venues = await getCachedVenues();
+    const eventById = new Map(events.map((event) => [String(event.id), event]));
+    const hostNameById = new Map(hosts.map((host) => [String(host.id), host.name]));
+    const venueNameById = new Map(venues.map((venue) => [String(venue.id), venue.name]));
+    const weekCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const monthCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const aggregates = new Map<string, {
+      entityType: 'host' | 'venue';
+      entityId: string;
+      reviewCount: number;
+      reviewsThisWeek: number;
+      reviewsThisMonth: number;
+      previews: typeof rows;
+    }>();
+
+    for (const row of rows) {
+      const entityType = row.entity_type as 'host' | 'venue';
+      const entityId = String(row.entity_id ?? '');
+      if (!entityId) continue;
+
+      const key = `${entityType}:${entityId}`;
+      const aggregate = aggregates.get(key) ?? {
+        entityType,
+        entityId,
+        reviewCount: 0,
+        reviewsThisWeek: 0,
+        reviewsThisMonth: 0,
+        previews: [],
+      };
+      aggregate.reviewCount += 1;
+      const createdAt = Date.parse(String(row.created_at ?? ''));
+      if (Number.isFinite(createdAt) && createdAt >= weekCutoff) aggregate.reviewsThisWeek += 1;
+      if (Number.isFinite(createdAt) && createdAt >= monthCutoff) aggregate.reviewsThisMonth += 1;
+      if (aggregate.previews.length < 2) aggregate.previews.push(row);
+      aggregates.set(key, aggregate);
+    }
+
+    const previewUserIds = Array.from(new Set(
+      Array.from(aggregates.values()).flatMap((aggregate) => aggregate.previews.map((row) => String(row.user_id)))
+    ));
+    const { data: profiles, error: profilesError } = previewUserIds.length > 0
+      ? await supabase.from('profiles').select('id,username').in('id', previewUserIds)
+      : { data: [], error: null };
+    if (profilesError) throw profilesError;
+    const usernameById = new Map((profiles ?? []).map((profile: any) => [String(profile.id), String(profile.username ?? 'Someone')]));
+
+    return Array.from(aggregates.values())
+      .map((aggregate) => {
+        return {
+          entityType: aggregate.entityType,
+          entityId: aggregate.entityId,
+          entityName: aggregate.entityType === 'host'
+            ? hostNameById.get(aggregate.entityId) ?? 'DJ'
+            : venueNameById.get(aggregate.entityId) ?? 'Venue',
+          reviewCount: aggregate.reviewCount,
+          reviewsThisWeek: aggregate.reviewsThisWeek,
+          reviewsThisMonth: aggregate.reviewsThisMonth,
+          previews: aggregate.previews.map((row) => ({
+            id: String(row.id),
+            eventId: String(row.event_id),
+            eventName: eventById.get(String(row.event_id))?.title ?? 'Event',
+            username: row.privacy_level === 'anonymous'
+              ? 'Anonymous'
+              : usernameById.get(String(row.user_id)) ?? 'Someone',
+            createdAt: String(row.created_at),
+            comment: String(row.comment ?? '').trim(),
+            rating: row.rating == null ? null : Number(row.rating),
+          })),
+        };
+      })
+      .sort((first, second) => second.reviewCount - first.reviewCount)
+      .slice(0, 6);
+  } catch (error) {
+    console.error('Error fetching review activity highlights from Supabase:', error);
     return [];
   }
 }

@@ -161,6 +161,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             }
 
             setHost({ ...h, photoUrl: imageUrl });
+            window.location.reload();
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : 'Failed to update host image');
         }
@@ -364,10 +365,12 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         <div className="min-h-screen bg-bg text-text">
             <div className="relative h-96 bg-bg">
                 <Image
-                    src={h.photoUrl === "" ? '/images/default_host.jpg' : h.photoUrl}
+                    src={h.photoUrl?.trim() || '/images/default_hosts.jpg'}
                     alt={h.name}
                     fill
                     className="object-cover"
+                    loading="eager"
+                    priority
                 />
                 {isAuthenticated && (
                     <button

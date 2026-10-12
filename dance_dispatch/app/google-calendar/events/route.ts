@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { isValidGoogleChannelToken, syncGoogleCalendarEventsToSupabase } from '@/lib/google-calendar';
+import { revalidateCatalogCache } from '@/lib/utils_supabase_server';
 
 function parseWebhookEventType(resourceState: string): string {
   switch (resourceState) {
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
     }
 
     const summary = await syncGoogleCalendarEventsToSupabase();
+    revalidateCatalogCache();
     console.log('Google Calendar webhook changed events', {
       eventType,
       triggerDate,

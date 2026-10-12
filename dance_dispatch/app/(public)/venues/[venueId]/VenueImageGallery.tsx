@@ -15,9 +15,10 @@ export default function VenueImageGallery({ photourls, venueName }: Props) {
     return (
         <div className="relative h-96 bg-bg">
             <Image
-                src={photos[activeImageIndex] || '/images/default_venue.jpg'}
+                src={photos[activeImageIndex] == "" ? '/images/default_venues.jpg' : photos[activeImageIndex]}
                 alt={venueName}
                 fill
+                loading="eager"
                 className="object-cover"
             />
             <div className="absolute bottom-4 right-4 flex gap-2">

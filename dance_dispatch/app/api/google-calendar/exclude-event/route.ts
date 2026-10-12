@@ -82,6 +82,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    revalidateCatalogCache();
     return NextResponse.json({ ok: true, eventId }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to remove exclusion';

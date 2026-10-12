@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { getCachedEvents, getCachedHosts, getCachedVenues } from "@/lib/utils_supabase_server";
+import { getCachedEvents, getCachedHosts, getCachedVenues, getPendingReviewEventIds } from "@/lib/utils_supabase_server";
 import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
 import SearchBar from "./components/SearchBar";
@@ -629,13 +629,17 @@ async function TrendingEvents({ selectedFilter }: { selectedFilter?: string }) {
 }
 
 async function TrendingEventCards({ initialFilter }: { initialFilter: string }) {
-  const events = await getCachedEvents();
+  const [events, pendingReviewEventIds] = await Promise.all([
+    getCachedEvents(),
+    getPendingReviewEventIds(),
+  ]);
+  const visibleEvents = events.filter((event) => !pendingReviewEventIds.has(String(event.id)));
 
   return (
     <TrendingEventsClient
-      events={events}
+      events={visibleEvents}
       initialFilter={initialFilter}
-      cards={events.map((event) => <EventCard key={event.id} event={event} />)}
+      cards={visibleEvents.map((event) => <EventCard key={event.id} event={event} />)}
     />
   );
 }

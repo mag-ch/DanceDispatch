@@ -393,9 +393,9 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             if (!response.ok) {
                 throw new Error(data?.error ?? 'Failed to update hosts');
             }
-
             setSelectedHostIds([]);
             setIsEditingHosts(false);
+            window.location.reload();
         } catch (error) {
             setHostEditorError(error instanceof Error ? error.message : 'Failed to update hosts');
         } finally {

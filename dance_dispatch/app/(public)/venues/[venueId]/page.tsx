@@ -57,7 +57,7 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
     return (
         <div className="min-h-screen bg-bg text-text">
             {/* Image Gallery */}
-            {venue.photourls && <VenueImageGallery photourls={venue.photourls} venueName={venue.name} />}
+            {<VenueImageGallery photourls={venue.photourls} venueName={venue.name} />}
 
             <div className="max-w-6xl mx-auto px-4 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

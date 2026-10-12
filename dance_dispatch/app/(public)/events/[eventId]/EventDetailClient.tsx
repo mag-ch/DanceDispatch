@@ -21,8 +21,8 @@ interface EventDetailClientProps {
     relatedEvents: Event[];
     venueAddress: string;
     showReviewModal?: boolean;
-    hostPreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
-    venuePreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; comment: string }>>;
+    hostPreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; averageRating: number; comment: string; createdAt: string }>>;
+    venuePreviousReviewsMap?: Map<string, Array<{ eventId: string; eventName: string; username: string; rating: number; averageRating: number; comment: string; createdAt: string }>>;
     rsvpUsers?: Array<{
         userId: string;
         username: string;
@@ -73,62 +73,36 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     );
 
     const previousReviewGroups = (() => {
-        const groups = new Map<string, { eventId: string; eventName: string; sourceReviews: Map<string, Array<{username: string; rating: number; comment: string }>> }>();
+        type PreviousReview = { eventId: string; eventName: string; username: string; rating: number; comment: string; createdAt: string };
+        type PreviousReviewGroup = { key: string; sourceLabel: string; averageRating: number; ratingCount: number; textReviews: PreviousReview[] };
+        const groups = new Map<string, PreviousReviewGroup>();
 
+        const addSourceReviews = (
+            key: string,
+            sourceLabel: string,
+            reviews: PreviousReview[]
+        ) => {
+            const ratings = reviews.filter((review) => review.rating > 0).map((review) => review.rating);
+            if (ratings.length === 0) return;
 
-        // Process host reviews
+            groups.set(key, {
+                key,
+                sourceLabel,
+                averageRating: ratings.reduce((total, rating) => total + rating, 0) / ratings.length,
+                ratingCount: ratings.length,
+                textReviews: reviews
+                    .filter((review) => review.comment.trim())
+                    .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
+            });
+        };
+
         hostPreviousReviewsMap.forEach((reviews, hostId) => {
             const hostName = eventHosts.find((host) => host.id === hostId)?.name || 'Host';
-            const sourceLabel = `Host: ${hostName}`;
-            for (const review of reviews) {
-                if (!groups.has(review.eventName)) {
-                    groups.set(review.eventName, {
-                        eventId: review.eventId,
-                        eventName: review.eventName,
-                        sourceReviews: new Map(),
-                    });
-                }
-                const group = groups.get(review.eventName);
-                if (group) {
-                    if (!group.sourceReviews.has(sourceLabel)) {
-                        group.sourceReviews.set(sourceLabel, []);
-                    }
-                    group.sourceReviews.get(sourceLabel)?.push({
-                        username: review.username,
-                        rating: review.rating,
-                        comment: review.comment,
-                    });
-                }
-            }
-            // Note: We've lost individual eventId mapping with the simplified data
-            // For now, aggregate all reviews under a generic "previous events" group
-            // A better solution would be to preserve eventId in the server response
+            addSourceReviews(`host:${hostId}`, `DJ: ${hostName}`, reviews);
         });
 
-        // Process venue reviews  
-        venuePreviousReviewsMap.forEach((reviews) => {
-            for (const review of reviews) {
-                if (!groups.has(review.eventName)) {
-                    groups.set(review.eventName, {
-                        eventId: review.eventId,
-                        eventName: review.eventName,
-                        sourceReviews: new Map(),
-                    });
-                }
-                const group = groups.get(review.eventName);
-                if (group) {
-                    const sourceLabel = `Venue: ${event.location}`;
-                    if (!group.sourceReviews.has(sourceLabel)) {
-                        group.sourceReviews.set(sourceLabel, []);
-                    }
-                    group.sourceReviews.get(sourceLabel)?.push({
-                        username: review.username,
-                        rating: review.rating,
-                        comment: review.comment,
-                    });
-                }
-            }
-            // Similarly, we've lost eventId mapping for venue reviews
+        venuePreviousReviewsMap.forEach((reviews, venueId) => {
+            addSourceReviews(`venue:${venueId}`, `Venue: ${event.location}`, reviews);
         });
 
         return Array.from(groups.values());
@@ -942,47 +916,39 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
                         {/* Previous Event Review Groups */}
                         {previousReviewGroups.length > 0 && (
-                            <div className="space-y mt-6">
-                                <div className="bg-surface rounded-lg p-6">
-                                    <h2 className="text-2xl font-bold text-text">Previous Reviews for Hosts and Venue</h2>
-                                </div>
-                                {previousReviewGroups.map((group) => {
-                                    return (
-                                        <div key={group.eventId} className="bg-surface rounded-lg p-6">
-                                            <Link href={`/events/${group.eventId}`} className="text-lg font-semibold text-accent hover:underline block mb-4">
-                                                {group.eventName}
-                                            </Link>
-                                            <div className="space-y-4">
-                                                {Array.from(group.sourceReviews.entries()).map(([source, sourceReviews]) => (
-                                                    <div key={source}>
-                                                        <h4 className="font-semibold text-text mb-3">{source}</h4>
-                                                        <div className="space-y-2 pl-4">
-                                                            {sourceReviews.map((review, idx) => (
-                                                                <div key={idx} className="text-sm">
-                                                                    <div className="font-medium text-text mb-1">{review.username}</div>
-                                                                    {review.comment && (
-                                                                        <p className="text-text mb-2">{review.comment}</p>
-                                                                    )}
-                                                                    {review.rating && review.rating > 0 && (
-                                                                        <div className="flex gap-1 mb-2">
-                                                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                                                <Star
-                                                                                    key={star}
-                                                                                    size={14}
-                                                                                    className={star <= review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                                                                                />
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                            <div className="mt-6 space-y-4">
+                                <h2 className="text-2xl font-bold text-text">Previous Reviews for Hosts and Venue</h2>
+                                {previousReviewGroups.map((group) => (
+                                    <section key={group.key} className="bg-surface rounded-lg p-6">
+                                        <h3 className="mb-4 text-lg font-semibold text-text">{group.sourceLabel}</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2" aria-label={`Average rating ${group.averageRating.toFixed(1)} out of 5 from ${group.ratingCount} ratings`}>
+                                                <div className="flex gap-1">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <Star
+                                                            key={star}
+                                                            size={14}
+                                                            className={star <= Math.round(group.averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <span className="text-sm text-muted">{group.averageRating.toFixed(1)} / 5 average from {group.ratingCount} ratings</span>
                                             </div>
+                                            {group.textReviews.slice(0, 5).map((review, index) => (
+                                                <blockquote key={`${review.eventId}-${review.createdAt}-${index}`} className="border-t border-default pt-4 first:border-0 first:pt-0">
+                                                    <p className="text-text">&ldquo;{review.comment}&rdquo;</p>
+                                                    <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+                                                        <span>{review.username}</span>
+                                                        <span aria-hidden="true">&middot;</span>
+                                                        <Link href={`/events/${review.eventId}`} className="font-semibold text-accent hover:underline">
+                                                            {review.eventName}
+                                                        </Link>
+                                                    </footer>
+                                                </blockquote>
+                                            ))}
                                         </div>
-                                    );
-                                })}
+                                    </section>
+                                ))}
                             </div>
                         )}
                     </div>

@@ -267,11 +267,14 @@ export async function getVenueComments(venueId: string) {
 
     const users = await getUsers();
     const usernameById = new Map(users.map((user) => [String(user.id), user.username]));
+    const events = await getCachedEvents(false);
+    const eventNameById = new Map(events.map((event) => [String(event.id), event.title]));
 
     data.forEach((comment: any) => {
         comment.username = comment.privacy_level === 'anonymous'
             ? 'Anonymous'
             : usernameById.get(String(comment.user_id)) ?? 'Anon';
+        comment.eventName = eventNameById.get(String(comment.event_id)) ?? 'Past event';
         comment.mediaPaths = (comment.ReviewMedia ?? []).map((m: any) => m.storage_path);
         delete comment.user_id;
         delete comment.ReviewMedia;
@@ -296,9 +299,15 @@ export async function getHostComments(hostId:string) {
 
     const users = await getUsers();
     const usernameById = new Map(users.map((user) => [String(user.id), user.username]));
+    const events = await getCachedEvents(false);
+    const eventNameById = new Map(events.map((event) => [String(event.id), event.title]));
 
     data.forEach((comment: any) => {
-        comment.user_id = usernameById.get(String(comment.user_id)) || 'Anon';
+        comment.username = comment.privacy_level === 'anonymous'
+            ? 'Anonymous'
+            : usernameById.get(String(comment.user_id)) ?? 'Anon';
+        comment.eventName = eventNameById.get(String(comment.event_id)) ?? 'Past event';
+        delete comment.user_id;
     });
 
     return data;

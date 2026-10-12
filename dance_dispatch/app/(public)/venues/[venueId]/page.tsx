@@ -1,6 +1,7 @@
 import { MapPin, Calendar, Star } from 'lucide-react';
 import { getUniqueVenueAttributes, getAggregatedVenueAttributes, getVenueAttributes, getVenueComments } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
+import Link from 'next/link';
 import { getCachedVenues, getCachedEvents } from '@/lib/utils_supabase_server';
 import { notFound } from 'next/navigation';
 import VenueImageGallery from './VenueImageGallery';
@@ -29,6 +30,16 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
     ]);
 
     const venueComments = await getVenueComments(venueId);
+
+    const ratedComments = (venueComments ?? []).filter((comment: any) => Number(comment.rating) > 0);
+    const ratingCount = ratedComments.length;
+    const averageRating = ratingCount > 0
+        ? ratedComments.reduce((sum: number, comment: any) => sum + Number(comment.rating), 0) / ratingCount
+        : 0;
+    const textComments = (venueComments ?? [])
+        .filter((comment: any) => Boolean(comment.comment?.trim()))
+        .sort((first: any, second: any) => Date.parse(second.created_at) - Date.parse(first.created_at))
+        .slice(0, 5);
 
     const venue = venues.find(v => v.id === venueId);
     if (!venue) return notFound();
@@ -133,29 +144,36 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
 
                         {venueComments && venueComments.length > 0 && (
                             <section className="mb-4 bg-surface p-6 rounded-lg">
-                                <h2 className="font-semibold text-text text-lg mb-2">Comments</h2>
-                                <ul className="text-text">
-                                    {venueComments.map((comment, index) => (
-                                        <div className="flex-shrink-0 min-w-[200px] max-w-[250px]">
-                                            <h4 className="text-sm font-semibold text-text mb-2">{comment.privacy_level === 'public' ? comment.user_id : 'Anon'}</h4>
-                                            {comment.rating && comment.rating > 0 && (
-                                                <div className="flex gap-1 mb-2">
+                                <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
+                                <div className="mb-5 rounded-lg border border-default p-4">
+                                    <p className="text-sm text-muted mb-2">Aggregate Rating</p>
+                                    {ratingCount > 0 ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex gap-1">
                                                 {[1, 2, 3, 4, 5].map((star) => (
-                                                    <Star
-                                                        key={star}
-                                                        size={16}
-                                                        className={star <= (comment.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                                                    />
+                                                    <Star key={star} size={18} className={star <= Math.round(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
                                                 ))}
                                             </div>
-                                            )}
-                                            {comment.comment && (
-                                                <p className="text-sm text-text">{comment.comment}</p>
-                                            )}
+                                            <p className="text-sm text-text">{averageRating.toFixed(1)} out of 5 ({ratingCount} rating{ratingCount === 1 ? '' : 's'})</p>
                                         </div>
-                                    ))}
-                                </ul>
-
+                                    ) : (
+                                        <p className="text-sm text-muted">No ratings yet.</p>
+                                    )}
+                                </div>
+                                <div className="space-y-3">
+                                    {textComments.length > 0 ? textComments.map((comment: any, index: number) => (
+                                        <blockquote key={`${comment.event_id}-${comment.created_at}-${index}`} className="rounded-lg border border-default p-4">
+                                            <p className="text-sm text-text">&ldquo;{comment.comment}&rdquo;</p>
+                                            <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+                                                <span>{comment.username}</span>
+                                                <span aria-hidden="true">&middot;</span>
+                                                <Link href={`/events/${comment.event_id}`} className="font-semibold text-accent hover:underline">
+                                                    {comment.eventName}
+                                                </Link>
+                                            </footer>
+                                        </blockquote>
+                                    )) : <p className="text-sm text-muted">No written comments yet.</p>}
+                                </div>
                             </section>
                         )}
 

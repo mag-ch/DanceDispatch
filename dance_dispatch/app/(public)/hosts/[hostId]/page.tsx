@@ -10,6 +10,7 @@ import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
+import Link from 'next/link';
 
 const chipPalette = [
     'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
@@ -351,6 +352,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             : 0;
     const averageRatingDisplay = averageRating.toFixed(1);
     const roundedAverageStars = Math.round(averageRating);
+    const textComments = hostComments
+        .filter((comment) => Boolean(comment.comment?.trim()))
+        .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
+        .slice(0, 5);
 
     if (loading) return <div className="p-8">Loading...</div>;
     if (!h) return <div className="p-8">Host not found</div>;
@@ -485,7 +490,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                         
                         {(hostComments.length > 0 || ratingCount > 0) && (
                             <section className="bg-surface rounded-lg p-6 mb-6">
-                                <h2 className="font-semibold text-text text-lg mb-4">Reviews & Comments</h2>
+                                <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
                                 <div className="mb-5 rounded-lg border border-default p-4">
                                     <p className="text-sm text-muted mb-2">Aggregate Rating</p>
                                     {ratingCount > 0 ? (
@@ -504,17 +509,19 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                     )}
                                 </div>
                                 <div className="space-y-3">
-                                    {hostComments.filter((comment) => Boolean(comment.comment)).length > 0 ? (
-                                        hostComments
-                                            .filter((comment) => Boolean(comment.comment))
-                                            .map((comment, index) => (
-                                                <div key={index} className="rounded-lg border border-default p-4">
-                                                    <h4 className="text-sm font-semibold text-text mb-2">
-                                                        {comment.privacy_level === 'public' ? comment.user_id : 'Anon'}
-                                                    </h4>
-                                                    <p className="text-sm text-text">{comment.comment}</p>
-                                                </div>
-                                            ))
+                                    {textComments.length > 0 ? (
+                                        textComments.map((comment, index) => (
+                                            <blockquote key={`${comment.event_id}-${comment.created_at}-${index}`} className="rounded-lg border border-default p-4">
+                                                <p className="text-sm text-text">&ldquo;{comment.comment}&rdquo;</p>
+                                                <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+                                                    <span>{comment.username}</span>
+                                                    <span aria-hidden="true">&middot;</span>
+                                                    <Link href={`/events/${comment.event_id}`} className="font-semibold text-accent hover:underline">
+                                                        {comment.eventName}
+                                                    </Link>
+                                                </footer>
+                                            </blockquote>
+                                        ))
                                     ) : (
                                         <p className="text-sm text-muted">No written comments yet.</p>
                                     )}

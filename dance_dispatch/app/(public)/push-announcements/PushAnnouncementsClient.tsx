@@ -164,10 +164,22 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
               </label>
 
               {mode === 'review-request' && (
-                <label className="flex items-center gap-2 text-sm font-semibold text-text">
-                  <input type="checkbox" checked={rsvpOnly} onChange={(event) => setRsvpOnly(event.target.checked)} className="h-4 w-4 rounded border-default" />
-                  Only send to users who RSVP&apos;ed to this event
-                </label>
+                <>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-text">
+                    <input type="checkbox" checked={rsvpOnly} onChange={(event) => setRsvpOnly(event.target.checked)} className="h-4 w-4 rounded border-default" />
+                    Include users who RSVP&apos;ed to this event
+                  </label>
+                  <RecipientPicker
+                    selectedUsers={selectedUsers}
+                    userQuery={userQuery}
+                    userResults={userResults}
+                    searchingUsers={searchingUsers}
+                    onQueryChange={setUserQuery}
+                    onAddUser={addUser}
+                    onRemoveUser={removeUser}
+                    helperText="Add specific users as recipients. If RSVP recipients are included, the announcement goes to both groups without duplicate notifications."
+                  />
+                </>
               )}
             </>
           )}
@@ -212,44 +224,16 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
                 </label>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-text">Recipients</span>
-                <p className="text-xs text-muted">Leave empty to send to all subscribed users, or search usernames to target specific people.</p>
-                {selectedUsers.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedUsers.map((selected) => (
-                      <span key={selected.id} className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm text-text">
-                        {selected.username}
-                        <button type="button" onClick={() => removeUser(selected.id)} aria-label={`Remove ${selected.username}`} className="text-muted hover:text-text">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="relative">
-                  <input
-                    value={userQuery}
-                    onChange={(event) => setUserQuery(event.target.value)}
-                    className="w-full rounded border border-default bg-surface px-3 py-2.5 text-text"
-                    placeholder="Search by username"
-                  />
-                  {(searchingUsers || userResults.length > 0) && userQuery.trim().length >= 2 && (
-                    <ul className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded border border-default bg-surface shadow-lg">
-                      {searchingUsers && <li className="px-3 py-2 text-sm text-muted">Searching...</li>}
-                      {!searchingUsers && userResults.length === 0 && <li className="px-3 py-2 text-sm text-muted">No users found</li>}
-                      {!searchingUsers && userResults.map((candidate) => (
-                        <li key={candidate.id}>
-                          <button type="button" onClick={() => addUser(candidate)} className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-accent/10">
-                            <span className="font-semibold text-text">{candidate.username}</span>
-                            {candidate.full_name && <span className="text-xs text-muted">{candidate.full_name}</span>}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
+              <RecipientPicker
+                selectedUsers={selectedUsers}
+                userQuery={userQuery}
+                userResults={userResults}
+                searchingUsers={searchingUsers}
+                onQueryChange={setUserQuery}
+                onAddUser={addUser}
+                onRemoveUser={removeUser}
+                helperText="Leave empty to send to all subscribed users, or search usernames to target specific people."
+              />
             </>
           )}
 
@@ -282,7 +266,11 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
           {confirming ? (
             <div className="flex flex-col gap-3 border-t border-default pt-5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-text">
-                {mode === 'message' && selectedUsers.length > 0
+                {mode === 'review-request' && rsvpOnly && selectedUsers.length > 0
+                  ? `Send to RSVP recipients and ${selectedUsers.length} selected user${selectedUsers.length === 1 ? '' : 's'}?`
+                  : mode === 'review-request' && selectedUsers.length > 0
+                    ? `Send this review request to ${selectedUsers.length} selected user${selectedUsers.length === 1 ? '' : 's'}?`
+                    : mode === 'message' && selectedUsers.length > 0
                   ? `Send this push announcement to ${selectedUsers.length} selected user${selectedUsers.length === 1 ? '' : 's'}?`
                   : mode === 'review-request' && rsvpOnly
                     ? "Send this push announcement to users who RSVP'ed to this event?"
@@ -312,5 +300,66 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
         </div>
       </div>
     </section>
+  );
+}
+
+function RecipientPicker({
+  selectedUsers,
+  userQuery,
+  userResults,
+  searchingUsers,
+  onQueryChange,
+  onAddUser,
+  onRemoveUser,
+  helperText,
+}: {
+  selectedUsers: UserResult[];
+  userQuery: string;
+  userResults: UserResult[];
+  searchingUsers: boolean;
+  onQueryChange: (query: string) => void;
+  onAddUser: (user: UserResult) => void;
+  onRemoveUser: (userId: string) => void;
+  helperText: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-semibold text-text">Specific users</span>
+      <p className="text-xs text-muted">{helperText}</p>
+      {selectedUsers.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedUsers.map((selected) => (
+            <span key={selected.id} className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm text-text">
+              {selected.username}
+              <button type="button" onClick={() => onRemoveUser(selected.id)} aria-label={`Remove ${selected.username}`} className="text-muted hover:text-text">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <input
+          value={userQuery}
+          onChange={(event) => onQueryChange(event.target.value)}
+          className="w-full rounded border border-default bg-surface px-3 py-2.5 text-text"
+          placeholder="Search by username"
+        />
+        {(searchingUsers || userResults.length > 0) && userQuery.trim().length >= 2 && (
+          <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded border border-default bg-surface shadow-lg">
+            {searchingUsers && <li className="px-3 py-2 text-sm text-muted">Searching...</li>}
+            {!searchingUsers && userResults.length === 0 && <li className="px-3 py-2 text-sm text-muted">No users found</li>}
+            {!searchingUsers && userResults.map((candidate) => (
+              <li key={candidate.id}>
+                <button type="button" onClick={() => onAddUser(candidate)} className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-accent/10">
+                  <span className="font-semibold text-text">{candidate.username}</span>
+                  {candidate.full_name && <span className="text-xs text-muted">{candidate.full_name}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }

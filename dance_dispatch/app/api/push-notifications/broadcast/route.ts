@@ -128,11 +128,19 @@ export async function POST(request: Request) {
         message = `Have you been to ${eventName}? Leave a review and share your experience.`;
         href = `/events/${encodeURIComponent(event.id)}?showReviewModal=true`;
 
+        const rawUserIds = Array.isArray(body?.userIds) ? body.userIds : [];
+        const selectedUserIds = rawUserIds
+          .map((id: unknown) => String(id ?? '').trim())
+          .filter((id: string): id is string => Boolean(id));
+
         if (body?.rsvpOnly === true) {
-          recipientUserIds = await getRsvpUserIds(event.id);
+          const rsvpUserIds = await getRsvpUserIds(event.id);
+          recipientUserIds = Array.from(new Set([...rsvpUserIds, ...selectedUserIds]));
           if (recipientUserIds.length === 0) {
             return NextResponse.json({ error: 'No RSVP\'ed users were found for this event.' }, { status: 400 });
           }
+        } else if (selectedUserIds.length > 0) {
+          recipientUserIds = Array.from(new Set(selectedUserIds));
         }
       } else {
         title = 'New event posted';

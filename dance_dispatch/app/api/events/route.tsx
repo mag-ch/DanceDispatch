@@ -42,6 +42,8 @@ export async function POST(request: Request) {
             price,
             imageurl,
             externallink,
+            hostIds,
+            recurrence,
         } = body;
 
         if (!title || !startdate || !starttime || !enddate || !endtime) {
@@ -65,6 +67,8 @@ export async function POST(request: Request) {
             imageurl,
             externallink,
             createdBy: user.id,
+            hostIds: Array.isArray(hostIds) ? hostIds : undefined,
+            recurrence: recurrence && typeof recurrence === 'object' ? recurrence : undefined,
         });
 
         if ('duplicate' in result) {

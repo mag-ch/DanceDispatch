@@ -2,7 +2,6 @@ import 'server-only';
 
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from './supabase/client';
 
 type GoogleOAuthTokenResponse = {
@@ -368,7 +367,7 @@ function isRecurringEvent(item: GoogleCalendarEventItem): boolean {
 }
 
 async function getOrCreateVenueId(
-  supabase: SupabaseClient,
+  supabase: any,
   venueName: string | null,
   venueAddress: string | null
 ): Promise<string | null> {
@@ -407,7 +406,7 @@ async function getOrCreateVenueId(
   return String(insertRes.data.id);
 }
 
-async function getOrCreateHostIds(supabase: SupabaseClient, hostNames: string[]): Promise<string[]> {
+async function getOrCreateHostIds(supabase: any, hostNames: string[]): Promise<string[]> {
   const hostIds: string[] = [];
 
   for (const hostName of hostNames) {

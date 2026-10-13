@@ -4,6 +4,8 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Event, EventReview, Host, HostExternalLink, ReviewActivityHighlight, ReviewReply, Venue } from '@/lib/utils';
+import { buildSeriesRrule, type RecurrenceOptions } from '@/lib/recurrence-options';
+import { generateRecurringEvents } from '@/lib/recurrence';
 import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
 import { revalidatePath } from 'next/cache';
@@ -201,7 +203,8 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
   const [eventsRes, venuesRes, hostsRes, eventHostsRes] = await Promise.all([
     supabase
       .from('Events')
-      .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id')
+      .select('id,title,start,end,location,description,price,flyer_url,external_url,google_cal_id,series_id')
+      .eq('cancelled', false)
       .order('start', { ascending: true }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
     supabase.from('Hosts').select('id,name,bio,image_url,tags,genres').order('name'),
@@ -275,6 +278,29 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     hostIdsByEventId.set(eventId, existing);
   }
 
+  // Recurring occurrences take their host from the series rather than event_hosts
+  const seriesIds = [...new Set(eventRows.map((r: any) => r.series_id).filter(Boolean))];
+  if (seriesIds.length > 0) {
+    const { data: seriesRows, error: seriesError } = await supabase
+      .from('EventSeries')
+      .select('id,host_id')
+      .in('id', seriesIds);
+    if (seriesError) throw seriesError;
+
+    const hostIdBySeriesId = new Map<string, number>(
+      (seriesRows ?? [])
+        .filter((s: any) => s.host_id != null)
+        .map((s: any) => [String(s.id), Number(s.host_id)] as const)
+    );
+    for (const row of eventRows as any[]) {
+      const seriesHostId = row.series_id ? hostIdBySeriesId.get(String(row.series_id)) : undefined;
+      if (seriesHostId === undefined) continue;
+      const existing = hostIdsByEventId.get(Number(row.id)) ?? [];
+      if (!existing.includes(seriesHostId)) existing.push(seriesHostId);
+      hostIdsByEventId.set(Number(row.id), existing);
+    }
+  }
+
   const events: Event[] = eventRows.map((row: any) => {
     const { date: startdate, time: starttime } = splitDbDateTime(row.start);
     const { date: enddate, time: endtime } = splitDbDateTime(row.end);
@@ -305,6 +331,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       hostIDs: mappedHostIds.map((id) => String(id)),
       hostNames: mappedHostIds.map((id) => hostNameById.get(id) ?? 'Unknown Host'),
       hostGenres,
+      series_id: row.series_id ? String(row.series_id) : undefined,
     };
   });
 
@@ -1520,6 +1547,8 @@ export interface SubmitEventInput {
   imageurl?: string;
   externallink?: string;
   createdBy?: string;
+  hostIds?: string[];
+  recurrence?: RecurrenceOptions;
 }
 
 export async function submitEvent(input: SubmitEventInput): Promise<{ id: string } | { duplicate: true; id: string }> {
@@ -1529,12 +1558,6 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
   const normalizeTime = (time: string) => (time.length === 5 ? `${time}:00` : time);
   const startTime = normalizeTime(input.starttime);
   const endTime = normalizeTime(input.endtime);
-
-  const toSeconds = (time: string) => {
-    const [hours, minutes, seconds] = time.split(':').map((part) => Number(part));
-    return (hours * 3600) + (minutes * 60) + (seconds || 0);
-  };
-
 
   const trimmedVenueName = input.newVenueName?.trim();
   const trimmedVenueAddress = input.newVenueAddress?.trim();
@@ -1587,7 +1610,7 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
     .from('Events')
     .select('id')
     .ilike('title', input.title.trim())
-    .eq('start', input.startdate)
+    .eq('start', input.startdate + 'T' + startTime)
     .limit(1)
     .maybeSingle();
 
@@ -1598,6 +1621,83 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
 
   if (existing) {
     return { duplicate: true, id: String(existing.id) };
+  }
+
+  const normalizedHostIds = input.hostIds
+    ? Array.from(
+        new Set(
+          input.hostIds
+            .map((hostId) => Number(hostId))
+            .filter((hostId) => !Number.isNaN(hostId))
+        )
+      )
+    : [];
+
+  if (input.recurrence) {
+    const dtstart = `${input.startdate}T${startTime}`;
+    const durationSeconds = Math.round(
+      (Date.parse(`${input.enddate}T${endTime}Z`) - Date.parse(`${dtstart}Z`)) / 1000
+    );
+
+    const seriesRow: Record<string, unknown> = {
+      title: input.title.trim(),
+      rrule: buildSeriesRrule(input.startdate, input.recurrence),
+      dtstart,
+    };
+    if (durationSeconds > 0) seriesRow.duration = `${durationSeconds} seconds`;
+    if (resolvedLocationId !== undefined) seriesRow.location = Number(resolvedLocationId);
+    if (input.description !== undefined) seriesRow.description = input.description;
+    if (input.price !== undefined) seriesRow.price = input.price;
+    if (input.imageurl !== undefined) seriesRow.flyer_url = input.imageurl;
+    if (input.externallink !== undefined) seriesRow.external_url = input.externallink;
+    if (normalizedHostIds.length > 0) seriesRow.host_id = normalizedHostIds[0];
+
+    const seriesClient = getServiceRoleSupabaseClient() ?? supabase;
+    const { data: series, error: seriesError } = await seriesClient
+      .from('EventSeries')
+      .insert(seriesRow)
+      .select('id')
+      .single();
+    if (seriesError || !series) {
+      console.error('Error inserting event series:', seriesError);
+      throw new Error('Failed to create recurring event series');
+    }
+
+    const { failures } = await generateRecurringEvents({ seriesId: series.id });
+    if (failures.length > 0) {
+      console.error('Error generating recurring events:', failures);
+      throw new Error('Failed to generate recurring events');
+    }
+
+    const { data, error } = await seriesClient
+      .from('Events')
+      .select('id')
+      .eq('series_id', series.id)
+      .order('start', { ascending: true });
+    if (error) {
+      console.error('Error loading generated recurring events:', error);
+      throw new Error('Failed to load generated recurring events');
+    }
+
+    const createdIds = (data ?? []).map((row: any) => String(row.id));
+    const firstEventId = createdIds[0] ?? '';
+
+    // Attach pending_events for approval/tracking
+    const pendingPayloads = createdIds.map((id) => ({
+      event_id: Number(id),
+      created_by: input.createdBy ?? null,
+      exclude: false,
+    }));
+
+    if (pendingPayloads.length > 0) {
+      const pendingInsertResult = await supabase.from('pending_events').insert(pendingPayloads);
+      if (pendingInsertResult.error) {
+        console.warn('Failed to insert pending events for recurring submit:', pendingInsertResult.error);
+      }
+    }
+
+    revalidateCatalogCache();
+    return { id: firstEventId };
   }
 
   const row: Record<string, unknown> = {
@@ -1624,31 +1724,20 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
     exclude: false,
   };
 
-  console.info('Attempting pending_events insert for manual submit', {
-    eventId: newEventId,
-    createdBy: input.createdBy ?? null,
-    payloadKeys: Object.keys(pendingPayload),
-  });
-
   const pendingInsertResult = await supabase.from('pending_events').insert(pendingPayload);
   if (pendingInsertResult.error) {
-    const pendingConflictCheck = await supabase
-      .from('pending_events')
-      .select('google_cal_id,event_id,exclude,created_by')
-      .eq('event_id', Number(newEventId))
-      .limit(5);
+    console.warn('Failed to insert pending event for manual submit:', pendingInsertResult.error);
+  }
 
-    console.warn('Failed to insert pending event for manual submit', {
-      eventId: newEventId,
-      createdBy: input.createdBy ?? null,
-      errorMessage: pendingInsertResult.error.message,
-      errorCode: pendingInsertResult.error.code,
-      errorDetails: pendingInsertResult.error.details,
-      errorHint: pendingInsertResult.error.hint,
-      payload: pendingPayload,
-      existingRowsError: pendingConflictCheck.error?.message || null,
-      existingRows: pendingConflictCheck.data || [],
-    });
+  if (normalizedHostIds.length > 0) {
+    const eventHostRows = normalizedHostIds.map((hostId) => ({
+      event_id: Number(newEventId),
+      host_id: hostId,
+    }));
+    const hostInsertResult = await supabase.from('event_hosts').insert(eventHostRows);
+    if (hostInsertResult.error) {
+      console.warn('Failed to insert event hosts for manual submit:', hostInsertResult.error);
+    }
   }
 
   revalidateCatalogCache();

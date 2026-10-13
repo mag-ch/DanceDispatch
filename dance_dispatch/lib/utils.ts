@@ -1,6 +1,5 @@
 'use server';
 
-
 export interface Event {
     id: string;
     title: string;
@@ -17,6 +16,7 @@ export interface Event {
     hostNames?: string[]; 
     hostIDs?: string[]; 
     hostGenres?: string[];
+    series_id?: string;
     // Add other fields as needed based on your CSV structure
 }
 export interface Venue {

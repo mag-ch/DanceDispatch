@@ -6,6 +6,21 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from 'lucide-react';
 
+// In React 19 / Next.js 16+, next-themes renders an inline <script> to prevent theme flicker on SSR.
+// React 19 emits a dev error when a script tag is encountered during client rendering.
+// Filter this known benign development warning so it does not trigger the error overlay.
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    if (
+      typeof args[0] === "string" &&
+      args[0].includes("Encountered a script tag while rendering React component")
+    ) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (

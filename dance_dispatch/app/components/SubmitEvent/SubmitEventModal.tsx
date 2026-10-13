@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Venue } from '@/lib/utils';
-import { ArrowLeft, Upload, X } from 'lucide-react'; 
+import { ArrowLeft, Repeat, Upload, X } from 'lucide-react'; 
 import type { Event } from "@/lib/utils";
+import { HostSelector } from '@/app/components/HostSelector';
+import { getRecurrenceSummary } from '@/lib/recurrence-options';
 
 interface FormState {
     title: string;
@@ -82,6 +84,33 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
     const flyerInputRef = React.useRef<HTMLInputElement>(null);
     const isAddingNewVenue = form.locationid === '__new__';
 
+    // Hosts state
+    const [selectedHostIds, setSelectedHostIds] = useState<string[]>(initialData?.hostIDs ?? []);
+
+    // Recurrence state
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrenceFrequency, setRecurrenceFrequency] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly');
+    const [dayOfWeek, setDayOfWeek] = useState<number>(5); // Default Friday
+    const [dayOfMonth, setDayOfMonth] = useState<number>(1);
+    const [endType, setEndType] = useState<'instances' | 'duration'>('instances');
+    const [instances, setInstances] = useState<number>(4);
+    const [durationMonths, setDurationMonths] = useState<number>(3);
+
+    // Sync form and hosts with initialData
+    useEffect(() => {
+        if (initialData) {
+            setForm(createInitialForm(initialData));
+            setSelectedHostIds(initialData.hostIDs ?? []);
+            if (initialData.startdate) {
+                const parsed = new Date(`${initialData.startdate}T00:00:00`);
+                if (!Number.isNaN(parsed.getTime())) {
+                    setDayOfWeek(parsed.getDay());
+                    setDayOfMonth(parsed.getDate());
+                }
+            }
+        }
+    }, [initialData]);
+
     // Show auth modal if user opens this while not logged in
     useEffect(() => {
         if (!isOpen || authLoading) return;
@@ -100,9 +129,18 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
     }, [isOpen, venues.length]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
         setError(null);
         setDuplicateId(null);
+
+        if (name === 'startdate' && value) {
+            const parsed = new Date(`${value}T00:00:00`);
+            if (!Number.isNaN(parsed.getTime())) {
+                setDayOfWeek(parsed.getDay());
+                setDayOfMonth(parsed.getDate());
+            }
+        }
     };
 
     const handleFlyerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,6 +192,18 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
         if (form.price !== '') body.price = Number(form.price);
         if (form.imageurl) body.imageurl = form.imageurl;
         if (form.externallink) body.externallink = form.externallink;
+        if (selectedHostIds.length > 0) body.hostIds = selectedHostIds;
+
+        if (isRecurring) {
+            body.recurrence = {
+                frequency: recurrenceFrequency,
+                dayOfWeek: recurrenceFrequency !== 'monthly' ? dayOfWeek : undefined,
+                dayOfMonth: recurrenceFrequency === 'monthly' ? dayOfMonth : undefined,
+                endType,
+                instances: endType === 'instances' ? Number(instances) || 1 : undefined,
+                durationMonths: endType === 'duration' ? Math.min(12, Math.max(1, Number(durationMonths) || 1)) : undefined,
+            };
+        }
 
         try {
             const response = await fetch('/api/events', {
@@ -181,6 +231,8 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
 
             setSuccess(true);
             setForm(empty);
+            setSelectedHostIds([]);
+            setIsRecurring(false);
             setTimeout(() => {
                 setSuccess(false);
                 onClose();
@@ -434,6 +486,181 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                                     <Upload className="h-4 w-4" />
                                 </button>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-text mb-1">Hosts</label>
+                            <HostSelector
+                                selectedHostIds={selectedHostIds}
+                                onSelectedHostIdsChange={setSelectedHostIds}
+                                maxHeightClassName="max-h-40"
+                            />
+                        </div>
+
+                        <div className="rounded-xl border border-default bg-surface/40 p-4">
+                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={isRecurring}
+                                    onChange={(e) => setIsRecurring(e.target.checked)}
+                                    className="h-4 w-4 rounded border-default text-primary focus:ring-primary"
+                                />
+                                <div className="flex-1">
+                                    <span className="font-semibold text-text text-sm flex items-center gap-2">
+                                        <Repeat className="h-4 w-4 text-primary" />
+                                        This is a recurring event
+                                    </span>
+                                    <p className="text-xs text-muted">
+                                        Automatically generate repeat instances with matching title, image, hosts, and RSVP link
+                                    </p>
+                                </div>
+                            </label>
+
+                            {isRecurring && (
+                                <div className="mt-4 pt-4 border-t border-default space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+                                            Frequency
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { value: 'weekly', label: 'Weekly' },
+                                                { value: 'biweekly', label: 'Biweekly' },
+                                                { value: 'monthly', label: 'Monthly' },
+                                            ].map((freq) => (
+                                                <button
+                                                    key={freq.value}
+                                                    type="button"
+                                                    onClick={() => setRecurrenceFrequency(freq.value as any)}
+                                                    className={`rounded-lg py-2 px-3 text-xs font-semibold border transition ${
+                                                        recurrenceFrequency === freq.value
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-default bg-bg text-muted hover:text-text'
+                                                    }`}
+                                                >
+                                                    {freq.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {recurrenceFrequency !== 'monthly' ? (
+                                        <div>
+                                            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+                                                Day of the Week
+                                            </label>
+                                            <select
+                                                value={dayOfWeek}
+                                                onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                                                className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value={0}>Sunday</option>
+                                                <option value={1}>Monday</option>
+                                                <option value={2}>Tuesday</option>
+                                                <option value={3}>Wednesday</option>
+                                                <option value={4}>Thursday</option>
+                                                <option value={5}>Friday</option>
+                                                <option value={6}>Saturday</option>
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+                                                Day of the Month
+                                            </label>
+                                            <select
+                                                value={dayOfMonth}
+                                                onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                                                className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                                                    <option key={d} value={d}>
+                                                        {d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'} of each month
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+                                            End Recurrence
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEndType('instances')}
+                                                className={`rounded-lg py-2 px-3 text-xs font-semibold border transition ${
+                                                    endType === 'instances'
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-default bg-bg text-muted hover:text-text'
+                                                }`}
+                                            >
+                                                Number of Instances
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEndType('duration')}
+                                                className={`rounded-lg py-2 px-3 text-xs font-semibold border transition ${
+                                                    endType === 'duration'
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-default bg-bg text-muted hover:text-text'
+                                                }`}
+                                            >
+                                                Duration (Max 1 Year)
+                                            </button>
+                                        </div>
+
+                                        {endType === 'instances' ? (
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min={2}
+                                                        max={52}
+                                                        value={instances}
+                                                        onChange={(e) => setInstances(Math.min(52, Math.max(1, Number(e.target.value))))}
+                                                        className="w-24 rounded-lg border border-default bg-bg px-3 py-1.5 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                    <span className="text-xs text-muted">events total (2 to 52)</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={durationMonths}
+                                                        onChange={(e) => setDurationMonths(Number(e.target.value))}
+                                                        className="rounded-lg border border-default bg-bg px-3 py-1.5 text-text text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    >
+                                                        <option value={1}>1 month</option>
+                                                        <option value={2}>2 months</option>
+                                                        <option value={3}>3 months</option>
+                                                        <option value={6}>6 months</option>
+                                                        <option value={9}>9 months</option>
+                                                        <option value={12}>1 year (12 months - max)</option>
+                                                    </select>
+                                                    <span className="text-xs text-muted">repeat until duration ends (max 1 year)</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-lg bg-bg/80 border border-default/60 p-2.5 text-xs text-muted flex items-start gap-2">
+                                        <span className="font-semibold text-text">Summary:</span>
+                                        <span>
+                                            {getRecurrenceSummary({
+                                                frequency: recurrenceFrequency,
+                                                dayOfWeek: recurrenceFrequency !== 'monthly' ? dayOfWeek : undefined,
+                                                dayOfMonth: recurrenceFrequency === 'monthly' ? dayOfMonth : undefined,
+                                                endType,
+                                                instances: endType === 'instances' ? Number(instances) || 1 : undefined,
+                                                durationMonths: endType === 'duration' ? Number(durationMonths) || 1 : undefined,
+                                            })}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <button

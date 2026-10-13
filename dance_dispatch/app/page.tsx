@@ -302,6 +302,8 @@ async function getRecentActivityFeed(viewerUserId?: string): Promise<RecentActiv
       supabase
         .from('Events')
         .select('id, title, location, created_at')
+        .is('series_id', null)
+        .eq('cancelled', false)
         .order('created_at', { ascending: false })
         .limit(120),
       directlyFollowedHostIds.length > 0

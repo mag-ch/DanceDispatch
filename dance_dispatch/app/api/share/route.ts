@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     }
 
     // Award points: 5 per unique recipient shared with
-    await awardPoints(user.id, 'share', POINTS.share * rows.length);
+    await awardPoints(user.id, 'share', String(entityId));
 
     return NextResponse.json({ success: true, count: rows.length });
   } catch (error) {

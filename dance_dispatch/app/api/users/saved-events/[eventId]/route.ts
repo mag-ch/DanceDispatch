@@ -71,7 +71,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
         await userSaveEvent(String(eventData.id), user.id, saveToggle);
 
         if (saveToggle) {
-            await awardPoints(user.id, 'rsvp', POINTS.rsvp, String(eventData.id));
+            await awardPoints(user.id, 'rsvp', String(eventData.id));
         }
 
         return NextResponse.json({ success: true });

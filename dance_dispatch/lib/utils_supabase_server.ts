@@ -7,8 +7,6 @@ import { Event, EventReview, Host, HostExternalLink, ReviewActivityHighlight, Re
 import { buildSeriesRrule, type RecurrenceOptions } from '@/lib/recurrence-options';
 import { generateRecurringEvents } from '@/lib/recurrence';
 import { getBoroughFromAddress } from '@/lib/utils';
-import { ChessBishopIcon } from 'lucide-react';
-import { revalidatePath } from 'next/cache';
 import { isUpcoming } from '@/lib/date-utils';
 
 type CatalogData = {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { awardPoints } from '@/lib/points';
+import { awardPoints, POINTS } from '@/lib/points';
 import { useEffect, useMemo, useState } from 'react';
 
 const WATCH_EXPIRATION_KEY = 'google_calendar_watch_expiration_ms';
@@ -182,7 +182,7 @@ const approvePendingReviewEvent = async (eventId: string) => {
           return;
         }
         console.log(`Approved pending event ${eventId} created by ${createdBy}`);
-        const awardResult = await awardPoints(createdBy!, "submit_event", 30, eventId);
+        const awardResult = await awardPoints(createdBy!, "submit_event", eventId);
         if (awardResult) {
           setPendingReviewError(awardResult.message || 'Failed to award points for approved event');
         }

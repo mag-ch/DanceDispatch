@@ -35,7 +35,7 @@ export async function awardPoints(
 
   // Unique constraint violation means the user already earned these points — that's fine.
   if (error && error.code !== '23505') {
-    console.error(`[awardPoints] Failed to award ${points} points (${action}) to ${userId}:`, error.message);
+    console.error(`[] Failed to award ${points} points (${action}) to ${userId}:`, error.message);
     return error;
   }
 
@@ -49,7 +49,7 @@ export async function awardPoints(
     p_dedupe_key: entityId ? `${action}:${entityId}` : null,
   });
   if (rpcError) {
-    console.error(`[awardPoints] Failed to record badge activity for ${userId}:`, rpcError);
+    console.error(`[] Failed to record badge activity for ${userId}:`, rpcError);
     return rpcError;
   }
   return null;

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     // Award the referrer — entity_id is the new user's id, unique constraint prevents double-awarding
-    await awardPoints(referrerId, 'referral', POINTS.referral, newUser.id);
+    await awardPoints(referrerId, 'referral', newUser.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

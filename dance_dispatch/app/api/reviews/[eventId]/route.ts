@@ -1,11 +1,11 @@
 import { userSubmitReview } from '@/lib/utils_supabase_server';
 import { validateAndSanitizeReviews } from '@/lib/validator';
 import { requireAuth } from '@/lib/auth-helpers';
-import { awardPoints, POINTS } from '@/lib/points';
 import { sendReviewPushToFollowers } from '@/lib/push-notifications';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
+import { awardPoints } from '@/lib/points';
 
 export async function POST(
     request: Request,
@@ -30,9 +30,8 @@ export async function POST(
         console.log('Submitting reviews for user:', user.id, 'event:', eventId, 'content:', content);
         for (const entry of content) {
             await userSubmitReview(entry, user.id, eventId);
-        }
-
-        await awardPoints(user.id, 'review', POINTS.review, eventId);
+            await awardPoints(user.id, 'review', eventId);
+        }        
 
         try {
             await sendReviewPushToFollowers(user.id, eventId);

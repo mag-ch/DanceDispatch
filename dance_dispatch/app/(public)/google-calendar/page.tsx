@@ -213,6 +213,7 @@ const approvePendingReviewEvent = async (eventId: string) => {
       const deletePayload = (await deleteResponse.json().catch(() => ({}))) as { error?: string };
       if (!deleteResponse.ok) {
         setPendingReviewError(deletePayload.error || 'Failed to delete event');
+        setPendingDeleteId(null);
         return;
       }
       

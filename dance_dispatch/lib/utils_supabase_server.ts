@@ -1462,22 +1462,13 @@ export async function updateEvent(
   return eventId;
 }
 
-export type DeleteEventOptions = {
-  useServiceRole?: boolean;
-};
-
-export async function deleteEvent(eventId: string, options: DeleteEventOptions = {}): Promise<boolean> {
+export async function deleteEvent(eventId: string): Promise<boolean> {
   const numericEventId = Number(eventId);
   if (Number.isNaN(numericEventId)) {
     throw new Error('Invalid event id');
   }
 
-  const serviceRoleClient = options.useServiceRole ? getServiceRoleSupabaseClient() : null;
-  if (options.useServiceRole && !serviceRoleClient) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for deleteEvent useServiceRole mode');
-  }
-
-  const supabase = serviceRoleClient ?? await createServerClient();
+  const supabase = await createServerClient();
 
   const existingEventResult = await supabase
     .from('Events')
@@ -1497,15 +1488,6 @@ export async function deleteEvent(eventId: string, options: DeleteEventOptions =
   }
 
   const existingRows = existingEventResult.data ?? [];
-
-  const deleteEventHostsResult = await supabase
-    .from('event_hosts')
-    .delete({ count: 'exact' })
-    .eq('event_id', numericEventId);
-  if (deleteEventHostsResult.error) {
-    console.error('Error deleting event hosts:', deleteEventHostsResult.error);
-    throw new Error(deleteEventHostsResult.error.message || 'Failed to delete event hosts');
-  }
 
   const deleteEventResult = await supabase
     .from('Events')

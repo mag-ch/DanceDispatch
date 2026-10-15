@@ -376,6 +376,9 @@ export function Header() {
                                 <button type="button" onClick={handleFeedbackClick} className="hidden rounded-full p-2 transition hover:bg-white/10 hover:text-white md:block" aria-label="Send feedback">
                                     <MessageSquarePlus className="h-5 w-5" />
                                 </button>
+                                <span className="inline-flex rounded-full p-2 transition hover:bg-white/10">
+                                    <ThemeToggle />
+                                </span>
                                 <Link href='/profile' className="hidden items-center gap-2 rounded-full border border-white/10 pl-1 pr-3 transition hover:border-white/25 md:flex" aria-label="Open profile">
                                     <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-300 text-sm font-bold text-[#191323]">
                                         {profilePicture ? <span className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profilePicture})` }} /> : (username?.[0] ?? 'D').toUpperCase()}
@@ -395,13 +398,13 @@ export function Header() {
                     
                         {!session && (
                             <>
+                            <span className="inline-flex rounded-full p-2 transition hover:bg-white/10">
+                                <ThemeToggle />
+                            </span>
                             <Link href="/auth/login" className="hidden rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-white/10 md:block">Log in</Link>
                             <Link href="/auth/signup" className="hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 md:block">Sign up</Link>
                             </>
                         )}
-                        <span className="inline-flex rounded-full p-2 transition hover:bg-white/10">
-                            <ThemeToggle />
-                        </span>
                         <button
                             type="button"
                             onClick={() => setIsMobileMenuOpen((prev) => !prev)}

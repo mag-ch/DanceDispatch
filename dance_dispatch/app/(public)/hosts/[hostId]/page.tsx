@@ -14,12 +14,12 @@ import { isUpcoming } from '@/lib/date-utils';
 import Link from 'next/link';
 
 const chipPalette = [
-    'bg-cyan-500/20 border-cyan-400/50 text-cyan-200',
-    'bg-blue-500/20 border-blue-400/50 text-blue-200',
-    'bg-emerald-500/20 border-emerald-400/50 text-emerald-200',
-    'bg-amber-500/20 border-amber-400/50 text-amber-200',
-    'bg-fuchsia-500/20 border-fuchsia-400/50 text-fuchsia-200',
-    'bg-rose-500/20 border-rose-400/50 text-rose-200',
+    'bg-cyan-500/20 border-cyan-600/50 text-cyan-900 dark:border-cyan-400/50 dark:text-cyan-200',
+    'bg-blue-500/20 border-blue-600/50 text-blue-900 dark:border-blue-400/50 dark:text-blue-200',
+    'bg-emerald-500/20 border-emerald-600/50 text-emerald-900 dark:border-emerald-400/50 dark:text-emerald-200',
+    'bg-amber-500/20 border-amber-600/50 text-amber-900 dark:border-amber-400/50 dark:text-amber-200',
+    'bg-fuchsia-500/20 border-fuchsia-600/50 text-fuchsia-900 dark:border-fuchsia-400/50 dark:text-fuchsia-200',
+    'bg-rose-500/20 border-rose-600/50 text-rose-900 dark:border-rose-400/50 dark:text-rose-200',
 ];
 
 function chipColorFor(value: string, offset = 0): string {
@@ -323,9 +323,16 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         if (!h) return;
         const fetchSimilarHosts = async () => {
             try {
-                const res = await fetch(`/api/hosts?tags=${h.tags}&exclude=${hostId}`);
+                const tags = Array.isArray(h.tags) ? h.tags.join(',') : '';
+                const genres = Array.isArray(h.genres) ? h.genres.join(',') : '';
+                if (!genres) {
+                    setSimilarHosts([]);
+                    return;
+                }
+                const params = new URLSearchParams({ tags, genres, exclude: hostId, limit: '5' });
+                const res = await fetch(`/api/hosts?${params.toString()}`);
                 const data = await res.json();
-                setSimilarHosts(data.slice(0, 5));
+                setSimilarHosts(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error('Failed to fetch similar hosts:', error);
             }
@@ -390,7 +397,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                     <div className="lg:col-span-2">
                         <section className="bg-surface rounded-lg p-6 mb-6">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex flex-col items-start gap-2 w-full">
+                                <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-2">
                                     {editing ? (
                                         <div className="flex flex-col gap-2 w-full">
                                             <label className="text-sm text-muted">Tags (comma-separated)</label>
@@ -414,10 +421,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                             />
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col gap-2">
+                                        <div className="flex w-full min-w-0 flex-col gap-2">
                                             {Array.isArray(h.tags) && h.tags.length > 0 && (
-                                                <div className="w-full max-w-full overflow-x-auto">
-                                                    <div className="flex min-w-max flex-nowrap gap-2 pb-1">
+                                                <div className="w-full min-w-0">
+                                                    <div className="flex flex-wrap gap-2 pb-1">
                                                         {h.tags.map((tag) => {
                                                             const label = normalizeChipLabel(tag);
                                                             return (
@@ -432,10 +439,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                                     </div>
                                                 </div>
                                             )}
-                                            <h1 className="text-4xl text-text font-bold">{h.name}</h1>
+                                            <h1 className="break-words text-4xl text-text font-bold">{h.name}</h1>
                                             {Array.isArray(h.genres) && h.genres.length > 0 && (
-                                                <div className="w-full max-w-full mt-3 overflow-x-auto">
-                                                    <div className="flex min-w-max flex-nowrap gap-2 pb-1">
+                                                <div className="mt-3 w-full min-w-0">
+                                                    <div className="flex flex-wrap gap-2 pb-1">
                                                         {h.genres.map((genre) => {
                                                             const label = normalizeChipLabel(genre);
                                                             return (
@@ -453,7 +460,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
                                     <FollowEntityButton entity="hosts" entityId={h.id} />
                                     {isAuthenticated && (
                                         <button onClick={startEditing} className="p-2 rounded border border-default hover:border-accent transition" title="Edit">
@@ -711,7 +718,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 {similarHosts.map((h) => (
                                     <a key={h.id} href={`/hosts/${h.id}`} className="block hover-bg-accent-soft p-3 rounded border border-default hover:border-accent transition">
                                         <p className="font-medium text-text">{h.name}</p>
-                                        <p className="text-sm text-muted">{Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : '')}</p>
+                                        <p className="text-sm text-muted">{Array.isArray(h.genres) ? h.genres.join(', ') : (typeof h.genres === 'string' ? h.genres : '')}</p>
                                     </a>
                                 ))}
                             </div>

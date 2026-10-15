@@ -51,13 +51,20 @@ export async function GET(
             }
 
             const supabase = await createClient();
-            const { error } = await supabase.from('Hosts').update(updates).eq('id', hostId);
+            const { data, error } = await supabase
+                .from('Hosts')
+                .update(updates)
+                .eq('id', hostId)
+                .select();
+
             if (error) {
                 console.error('Error updating host:', error);
                 return NextResponse.json({ error: 'Failed to update host' }, { status: 500 });
             }
 
-            return NextResponse.json({ success: true });
+            return NextResponse.json({ success: true, host: data[0] });
+
+            // return NextResponse.json({ success: true });
         } catch (error: any) {
             if (error?.status === 401) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -13,13 +13,38 @@ function splitTags(value: string | string[]): string[] {
   return value.split(',').map(normalizeTag).filter(c => c.toLowerCase() !== "dj" && Boolean(c));
 }
 
+function splitGenres(value: string | string[] | null | undefined): string[] {
+  if (!value) return [];
+  const items = Array.isArray(value) ? value : value.split(',');
+  return Array.from(new Set(
+    items.map((g) => g.replace(/[\[\]{}"']/g, '').trim().toLowerCase()).filter(Boolean)
+  ));
+}
+
+// Exact genre match scores 1; one genre containing the other (e.g. "tech house" / "house") scores 0.5.
+function genreSimilarity(source: string[], candidate: string[]): number {
+  if (source.length === 0 || candidate.length === 0) return 0;
+  let total = 0;
+  for (const genre of source) {
+    if (candidate.includes(genre)) {
+      total += 1;
+    } else if (candidate.some((other) => other.includes(genre) || genre.includes(other))) {
+      total += 0.5;
+    }
+  }
+  return total / Math.max(source.length, candidate.length);
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tagsParam = searchParams.get('tags') ?? '';
+    const genresParam = searchParams.get('genres') ?? '';
     const excludeParam = searchParams.get('exclude') ?? '';
+    const limitParam = Number.parseInt(searchParams.get('limit') ?? '', 10);
 
     const requestedTags = splitTags(tagsParam);
+    const requestedGenres = splitGenres(genresParam);
     const excludeId = excludeParam.trim();
 
     let hosts = await getHosts();
@@ -28,11 +53,26 @@ export async function GET(request: Request) {
       hosts = hosts.filter((host) => String(host.id) !== excludeId);
     }
 
-    if (requestedTags.length > 0) {
+    if (requestedGenres.length > 0) {
+      // Similar-host mode: must share all tags, then rank by genre similarity.
+      hosts = hosts
+        .filter((host) => {
+          const hostTags = splitTags(host.tags ?? '');
+          return requestedTags.every((tag) => hostTags.includes(tag));
+        })
+        .map((host) => ({ host, score: genreSimilarity(requestedGenres, splitGenres(host.genres)) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score || a.host.name.localeCompare(b.host.name))
+        .map(({ host }) => host);
+    } else if (requestedTags.length > 0) {
       hosts = hosts.filter((host) => {
         const hostTags = splitTags(host.tags ?? '');
-        return requestedTags.some((tag) => tag.toLowerCase() !== "dj" && hostTags.includes(tag));
+        return requestedTags.some((tag) => hostTags.includes(tag));
       });
+    }
+
+    if (Number.isFinite(limitParam) && limitParam > 0) {
+      hosts = hosts.slice(0, limitParam);
     }
 
     return new Response(JSON.stringify(hosts), {

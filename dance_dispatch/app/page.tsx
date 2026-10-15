@@ -36,24 +36,38 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       <section
         className="relative min-h-[570px] overflow-hidden py-28 text-left shadow-sm sm:min-h-[590px] sm:py-32"
         style={{
-          backgroundImage: "linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.93) 100%), url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
+          backgroundImage: "url(/images/24a06b12-a682-4cde-a1fa-a3f1c32af200_1024x608.jpg)",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage: "linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.93) 100%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage: "linear-gradient(90deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.8) 42%, rgba(255, 255, 255, 0.45) 100%), linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%)",
+          }}
+        />
         <div className="relative z-10 mx-auto max-w-7xl px-6">
           <div className="max-w-5xl">
             {/* <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-lime-400/60 bg-black/30 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-lime-300 shadow-[0_0_18px_rgba(163,230,53,0.12)]">
               <span className="h-2 w-2 rounded-full bg-lime-300 shadow-[0_0_8px_rgba(190,242,100,0.9)]" />
               24 parties tonight in Brooklyn
             </div> */}
-            <h1 className="max-w-4xl font-[Impact,_Haettenschweiler,sans-serif] text-[clamp(2.25rem,8vw,5rem)] font-normal uppercase leading-[0.86] tracking-[0.015em] text-white">
+            <h1 className="max-w-4xl font-[Impact,_Haettenschweiler,sans-serif] text-[clamp(2.25rem,8vw,5rem)] font-normal uppercase leading-[0.86]             tracking-[0.015em] text-slate-900 dark:text-white">
               Dispatching Dancers to the Club
-              <span className="inline-block bg-gradient-to-r from-fuchsia-400 via-purple-300 to-cyan-300 bg-clip-text text-transparent bg-[length:100%_auto]">
+                          <span className="inline-block bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600 dark:from-fuchsia-400 dark:via-purple-300 dark:to-cyan-300 bg-clip-text text-transparent bg-[length:100%_auto]">
                 One party at a time
               </span>
             </h1>
-            <p className="mt-8 max-w-2xl text-base leading-7 text-white/75 sm:text-xl sm:leading-8">
+            <p className="mt-8 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/75 sm:text-xl sm:leading-8">
               Find events by things you actually care about - sound, room, price, crowd. Then log your experience and share with friends!
             </p>
             <div className="mt-9 max-w-5xl">
@@ -95,7 +109,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               <p className="max-w-md text-sm text-muted">Latest reviews across all users plus your network activity.</p>
               <Link
                 href="/review-feed"
-                className="rounded-full border border-cyan-400/40 px-4 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-400/10 dark:text-cyan-300"
+                className="rounded-full border border-cyan-500/60 bg-white/70 px-4 py-1.5 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100 dark:border-cyan-400/40 dark:bg-transparent dark:text-cyan-300 dark:hover:bg-cyan-400/10"
               >
                 View all reviews
               </Link>
@@ -114,7 +128,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                     <Link
                       key={activity.id}
                       href={activity.href}
-                      className={`group w-[200px] h-[130px] shrink-0 snap-start rounded-xl border bg-bg/75 p-3 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-1 dark:bg-bg/75 sm:w-[300px] sm:h-[150px] sm:rounded-2xl sm:p-4 ${theme.cardClass}`}
+                      className={`group w-[200px] h-[130px] shrink-0 snap-start rounded-xl border bg-white p-3 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-1 dark:bg-bg/75 sm:w-[300px] sm:h-[150px] sm:rounded-2xl sm:p-4 ${theme.cardClass}`}
                     >
                       <p className={`text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.2em] ${theme.badgeClass}`}>
                         {recentActivityLabel(activity.type)}
@@ -139,7 +153,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       </section>
 
       <section className="mx-auto mb-10 w-full max-w-[1400px] px-4 sm:px-6">
-        <div className="rounded-2xl border border-yellow-400/30 bg-gradient-to-r from-yellow-50 via-surface to-surface p-6 shadow-sm dark:from-yellow-400/10">
+        <div className="rounded-2xl border border-yellow-500/40 bg-gradient-to-r from-yellow-100 via-yellow-50 to-white p-6 shadow-sm dark:border-yellow-400/30 dark:from-yellow-400/10 dark:via-surface dark:to-surface">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Leaderboard</p>
@@ -579,28 +593,28 @@ function recentActivityLabel(type: RecentActivityItem['type']): string {
 function recentActivityTheme(type: RecentActivityItem['type']): { cardClass: string; badgeClass: string } {
   if (type === 'review') {
     return {
-      cardClass: 'border-cyan-200/60 hover:border-cyan-400/70 hover:shadow-[0_12px_30px_rgba(8,145,178,0.2)]',
-      badgeClass: 'text-cyan-700 dark:text-cyan-300',
+      cardClass: 'border-cyan-300 hover:border-cyan-500 hover:shadow-[0_12px_30px_rgba(8,145,178,0.2)] dark:border-cyan-200/60 dark:hover:border-cyan-400/70',
+      badgeClass: 'text-cyan-800 dark:text-cyan-300',
     };
   }
 
   if (type === 'rsvp') {
     return {
-      cardClass: 'border-purple-200/70 hover:border-purple-400/75 hover:shadow-[0_12px_30px_rgba(147,51,234,0.22)]',
-      badgeClass: 'text-purple-700 dark:text-purple-300',
+      cardClass: 'border-purple-300 hover:border-purple-500 hover:shadow-[0_12px_30px_rgba(147,51,234,0.22)] dark:border-purple-200/70 dark:hover:border-purple-400/75',
+      badgeClass: 'text-purple-800 dark:text-purple-300',
     };
   }
 
   if (type === 'new_event') {
     return {
-      cardClass: 'border-blue-200/70 hover:border-blue-400/75 hover:shadow-[0_12px_30px_rgba(37,99,235,0.24)]',
-      badgeClass: 'text-blue-700 dark:text-blue-300',
+      cardClass: 'border-blue-300 hover:border-blue-500 hover:shadow-[0_12px_30px_rgba(37,99,235,0.24)] dark:border-blue-200/70 dark:hover:border-blue-400/75',
+      badgeClass: 'text-blue-800 dark:text-blue-300',
     };
   }
 
   return {
-    cardClass: 'border-cyan-200/60 hover:border-cyan-400/70 hover:shadow-[0_12px_30px_rgba(8,145,178,0.2)]',
-    badgeClass: 'text-cyan-700 dark:text-cyan-300',
+    cardClass: 'border-cyan-300 hover:border-cyan-500 hover:shadow-[0_12px_30px_rgba(8,145,178,0.2)] dark:border-cyan-200/60 dark:hover:border-cyan-400/70',
+    badgeClass: 'text-cyan-800 dark:text-cyan-300',
   };
 }
 
@@ -697,7 +711,7 @@ async function LeaderboardPreview() {
         const points = totals.get(userId) ?? 0;
 
         return (
-          <div key={userId} className="rounded-xl border border-border bg-bg/80 px-4 py-3 text-left shadow-sm">
+          <div key={userId} className="rounded-xl border border-yellow-500/30 bg-white px-4 py-3 text-left shadow-sm dark:border-default dark:bg-bg/80">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Top {index + 1}</p>
             <p className="mt-1 text-base font-semibold text-text">{name}</p>
             <p className="text-sm text-muted">{points.toLocaleString()} points</p>

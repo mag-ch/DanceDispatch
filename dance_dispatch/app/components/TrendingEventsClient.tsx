@@ -80,7 +80,7 @@ export default function TrendingEventsClient({
 
   return (
     <>
-      <div className="mb-8 flex gap-2 overflow-x-auto pb-1" aria-label="Filter events">
+      <div className="mb-8 flex gap-2 mt-5 overflow-x-auto pb-1" aria-label="Filter events">
         {missionFilters.map((option) => (
           <button
             key={option}

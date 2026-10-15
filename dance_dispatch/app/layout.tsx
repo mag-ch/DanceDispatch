@@ -64,7 +64,6 @@ export default function RootLayout({
             <PWAInstallPrompt />
             <PushNotificationPrompt />
             <LocationEnablePrompt />
-            <LocationCheckIn />
             <Suspense fallback={null}>
               <Header />
             </Suspense>

@@ -10,6 +10,7 @@ import { SoundcloudPlayer } from '@/app/components/MediaPreviews';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
+import { isUpcoming } from '@/lib/date-utils';
 import Link from 'next/link';
 
 const chipPalette = [
@@ -306,11 +307,12 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         const fetchEvents = async () => {
             const res = await fetch(`/api/events?onlyUpcoming=false&hostId=${encodeURIComponent(hostId)}`);
             const events = await res.json();
+            const now = new Date();
             const past = events
-                .filter((event: any) => new Date(`${event.enddate} ${event.endtime}`) < new Date())
+                .filter((event: any) => !isUpcoming(event, now))
                 .sort((a: any, b: any) => new Date(`${b.enddate} ${b.endtime}`).getTime() - new Date(`${a.enddate} ${a.endtime}`).getTime())
                 .slice(0, 5);
-            const upcoming = events.filter((event: any) => new Date(`${event.startdate} ${event.starttime}`) >= new Date());
+            const upcoming = events.filter((event: any) => isUpcoming(event, now));
             setPastEvents(past);
             setUpcomingEvents(upcoming);
         };

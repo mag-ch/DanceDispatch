@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { BellRing, Send, X } from 'lucide-react';
+import { isUpcoming } from '@/lib/date-utils';
 
 type Mode = 'message' | 'review-request' | 'new-review' | 'new-event';
-type AnnouncementEvent = { id: string; title: string; startdate: string; starttime: string; location?: string };
+type AnnouncementEvent = {
+  id: string;
+  title: string;
+  startdate: string;
+  starttime: string;
+  enddate: string;
+  endtime: string;
+  location?: string;
+};
 type AnnouncementReview = { id: string; eventName: string; username: string; userId: string; comment: string };
 type UserResult = { id: string; username: string; full_name: string | null };
 
@@ -40,11 +49,10 @@ export default function PushAnnouncementsClient({ events, reviews }: { events: A
 
   const eventStartDateTime = (event: AnnouncementEvent) =>
     new Date(`${event.startdate.split('T')[0]}T${event.starttime || '00:00:00'}`);
-  const now = new Date();
   const filteredEvents = mode === 'review-request'
-    ? events.filter((event) => eventStartDateTime(event) < now)
+    ? events.filter((event) => !isUpcoming(event))
       .sort((a, b) => eventStartDateTime(b).getTime() - eventStartDateTime(a).getTime())
-    : events.filter((event) => eventStartDateTime(event) >= now)
+    : events.filter((event) => isUpcoming(event))
       .sort((a, b) => eventStartDateTime(a).getTime() - eventStartDateTime(b).getTime());
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import OpenInMapsButton from '@/app/components/OpenInMapsButton';
 import { geocodeAddress } from '@/lib/geocoding';
 import VenueDetailsEditor from './VenueDetailsEditor';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
+import { isUpcoming } from '@/lib/date-utils';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -48,10 +49,10 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
 
     const now = new Date();
     const pastEvents = allEvents
-        .filter(event => new Date(`${event.startdate} ${event.starttime}`) < now)
+        .filter(event => !isUpcoming(event, now))
         .sort((a, b) => new Date(`${b.startdate} ${b.starttime}`).getTime() - new Date(`${a.startdate} ${a.starttime}`).getTime())
         .slice(0, 5);
-    const upcomingEvents = allEvents.filter(event => new Date(`${event.startdate} ${event.starttime}`) >= now);
+    const upcomingEvents = allEvents.filter(event => isUpcoming(event, now));
     const similarVenues = venues.filter(v => v.type === venue.type && v.id !== venueId).slice(0, 5);
 
     return (

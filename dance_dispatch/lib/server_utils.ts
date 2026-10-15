@@ -7,6 +7,7 @@ import { combineChunks } from '@supabase/ssr';
 import { defaultPlanNameFromEvents, normalizeEventIds } from './supabase/client';
 import { buildPartyPlanSummary, normalizePlanPrice, serializeEventIdsParam } from './party-plan';
 import { SavedPlan } from '@/app/(public)/profile/MakePartyPlanButton';
+import { isUpcoming } from './date-utils';
 
 export type SavedEventsMode = 'all' | 'upcoming' | 'past';
 
@@ -14,11 +15,6 @@ export type SavedEventsBuckets = {
     upcoming: Event[];
     past: Event[];
 };
-
-function isUpcomingEvent(event: Event, now: Date): boolean {
-    const eventEnd = new Date(`${event.enddate} ${event.endtime}`);
-    return eventEnd >= now;
-}
 
 export async function getSavedEventsForUserServer(userId: string, mode: SavedEventsMode = 'all'): Promise<Event[]> {
     const supabase = await createClient();
@@ -43,11 +39,11 @@ export async function getSavedEventsForUserServer(userId: string, mode: SavedEve
 
     const now = new Date();
     if (mode === 'past') {
-        return savedEvents.sort((a, b) => new Date(b.startdate).getTime() - new Date(a.startdate).getTime()).filter((event) => !isUpcomingEvent(event, now));
+        return savedEvents.sort((a, b) => new Date(b.startdate).getTime() - new Date(a.startdate).getTime()).filter((event) => !isUpcoming(event, now));
     }
 
     if (mode === 'upcoming') {
-        return savedEvents.filter((event) => isUpcomingEvent(event, now));
+        return savedEvents.filter((event) => isUpcoming(event, now));
     }
 
     return savedEvents;
@@ -59,7 +55,7 @@ export async function getSavedEventsBucketsForUserServer(userId: string): Promis
 
     return savedEvents.reduce<SavedEventsBuckets>(
         (acc, event) => {
-            if (isUpcomingEvent(event, now)) {
+            if (isUpcoming(event, now)) {
                 acc.upcoming.push(event);
             } else {
                 acc.past.push(event);

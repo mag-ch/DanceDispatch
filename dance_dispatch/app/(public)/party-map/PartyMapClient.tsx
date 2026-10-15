@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapBoundsBox } from './PartyMapView';
+import { isUpcoming } from '@/lib/date-utils';
 
 export type MapPartyEvent = {
   id: string;
@@ -262,7 +263,6 @@ export default function PartyMapClient({ events, pendingVenues, savedEventIds }:
 
   const filteredEvents = useMemo(() => {
     const hasDateFilter = Boolean(startFilter || endFilter);
-    const now = new Date();
     const query = searchQuery.trim().toLowerCase();
 
     return allEvents.filter((event) => {
@@ -282,8 +282,7 @@ export default function PartyMapClient({ events, pendingVenues, savedEventIds }:
 
       // No explicit date range chosen: default to upcoming parties only.
       if (!hasDateFilter) {
-        const eventEnd = new Date(`${event.enddate}T${event.endtime || event.starttime || '23:59:59'}`);
-        if (eventEnd < now) {
+        if (!isUpcoming(event)) {
           return false;
         }
       }

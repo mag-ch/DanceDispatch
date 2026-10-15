@@ -15,7 +15,15 @@ export default async function PushAnnouncementsPage() {
 
   return (
     <PushAnnouncementsClient
-      events={events.map(({ id, title, startdate, starttime, location }) => ({ id, title, startdate, starttime, location }))}
+      events={events.map(({ id, title, startdate, starttime, enddate, endtime, location }) => ({
+        id,
+        title,
+        startdate,
+        starttime,
+        enddate,
+        endtime,
+        location,
+      }))}
       reviews={reviews
         .filter((review) => review.id && (review.userId ?? review.user_id))
         .map((review) => ({

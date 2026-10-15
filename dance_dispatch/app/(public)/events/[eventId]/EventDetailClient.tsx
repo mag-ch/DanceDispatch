@@ -14,6 +14,7 @@ import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
 import { HostSelector } from '@/app/components/HostSelector';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
+import { isUpcoming } from '@/lib/date-utils';
 
 interface EventDetailClientProps {
     event: Event;
@@ -126,7 +127,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         externallink: event.externallink ?? '',
         price: event.price?.toString() ?? '',
     });
-    const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
+    const isPastEvent = !isUpcoming(event);
 
     useEffect(() => {
         let isMounted = true;

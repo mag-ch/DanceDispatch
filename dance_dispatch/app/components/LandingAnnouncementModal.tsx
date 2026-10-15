@@ -5,7 +5,7 @@ import {
   type AnnouncementEvent,
 } from './LandingAnnouncementModalClient';
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
-import type { Event } from '@/lib/utils';
+import { isUpcoming } from '@/lib/date-utils';
 
 const LOOKBACK_DAYS = 4;
 const INITIAL_LIMIT = 5;
@@ -49,8 +49,6 @@ function sortByDateTime<T extends { startdate: string; starttime?: string | null
 export async function LandingAnnouncementSection() {
   const rangeStart = getDateString(LOOKBACK_DAYS);
   const rangeEnd = getDateString(0);
-  const now = new Date();
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -58,20 +56,11 @@ export async function LandingAnnouncementSection() {
 
   if (!user) return null;
 
-  // Helper: combine date + time into a Date object for comparison
-  const toDateTime = (date: string, time: string) => new Date(`${date}T${time}`);
-
-  // Helper: check if event has ended
-  const hasEnded = (event: Event) => {
-    const endDateTime = toDateTime(event.enddate, event.endtime);
-    return endDateTime < now;
-  };
-
   // 1. Fetch saved events and all events in range
   const savedEventsRaw = await getSavedEventsForUserServer(user.id, 'past');
   const savedInRange = savedEventsRaw
     .filter((event) => event.startdate >= rangeStart && event.startdate <= rangeEnd)
-    .filter(hasEnded) // Only show events that have already ended
+    .filter((event) => !isUpcoming(event))
     .sort(sortByDateTime);
 
   const savedIds = new Set(savedInRange.map((e) => String(e.id)));
@@ -79,7 +68,7 @@ export async function LandingAnnouncementSection() {
   const allEvents = (await getCachedEvents(false))
     .filter((event) => event.startdate >= rangeStart && event.startdate <= rangeEnd)
     .filter((event) => !savedIds.has(String(event.id)))
-    .filter(hasEnded) // Only show events that have already ended
+    .filter((event) => !isUpcoming(event))
     .sort(sortByDateTime);
 
   // 2. Check which saved events already have reviews

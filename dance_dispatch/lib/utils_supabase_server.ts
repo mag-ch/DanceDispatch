@@ -9,6 +9,7 @@ import { generateRecurringEvents } from '@/lib/recurrence';
 import { getBoroughFromAddress } from '@/lib/utils';
 import { ChessBishopIcon } from 'lucide-react';
 import { revalidatePath } from 'next/cache';
+import { isUpcoming } from '@/lib/date-utils';
 
 type CatalogData = {
   events: Event[];
@@ -387,8 +388,7 @@ export async function getCachedEvents(
     return filtered;
   }
 
-  const now = new Date();
-  return filtered.filter((event) => new Date(`${event.enddate} ${event.endtime}`) >= now);
+  return filtered.filter((event) => isUpcoming(event));
 }
 
 export async function getPendingReviewEventIds(): Promise<Set<string>> {

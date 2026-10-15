@@ -1,7 +1,7 @@
 import React from 'react';
 import { processUrl, resolveServerImageUrl } from '@/lib/utils'
 import type { Event } from '@/lib/utils'
-import { formatDateOnly } from '@/lib/date-utils';
+import { formatDateOnly, isUpcoming } from '@/lib/date-utils';
 import { SaveEventButton } from './SaveEventButton';
 import CustomLink from './CustomLink';
 import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
@@ -135,7 +135,7 @@ export const RelatedEventCard: React.FC<EventCardProps> = async ({ event }) => {
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const defaultThumbnail = await resolveServerImageUrl(event.imageurl, `/images/default_events.jpg`);
-    const isPastEvent = new Date(`${event.enddate || event.startdate}T${event.endtime || event.starttime || '23:59:59'}`) < new Date();
+    const isPastEvent = !isUpcoming(event);
 
     const extLink = event.externallink ?? undefined;
     const hostGenres = Array.from(new Set((event.hostGenres ?? []).map((genre) => String(genre).trim()).filter(Boolean)));

@@ -15,7 +15,7 @@ type PushSubscriptionRow = {
 };
 
 type UserFollowRow = {
-  follower_user_id: unknown;
+  followed_id: unknown;
 };
 
 type UsernameRow = {
@@ -294,9 +294,9 @@ export async function sendReviewPushToFollowers(
 
   const supabase = getServiceRoleClient();
   const { data: followRows, error: followsError } = await supabase
-    .from('UserFollows')
-    .select('follower_user_id')
-    .eq('followed_user_id', normalizedReviewerId);
+    .from('UserFollowUsers')
+    .select('followed_id')
+    .eq('followed_id', normalizedReviewerId);
 
   if (followsError) {
     throw new Error(followsError.message || 'Failed to load followers for review notification');
@@ -304,7 +304,7 @@ export async function sendReviewPushToFollowers(
 
   const followerIds = [...new Set(
     (followRows ?? [])
-      .map((row) => String((row as UserFollowRow).follower_user_id ?? '').trim())
+      .map((row) => String((row as UserFollowRow).followed_id ?? '').trim())
       .filter((id) => Boolean(id) && id !== normalizedReviewerId)
   )];
 

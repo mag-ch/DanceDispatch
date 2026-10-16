@@ -190,6 +190,11 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         setShowAttendanceConfirmModal(true);
     };
 
+    // Full navigation to the canonical event URL: refreshes server data and drops params like ?showReviewModal=true.
+    const reloadEventPage = () => {
+        window.location.assign(`/events/${event.id}`);
+    };
+
     useEffect(() => {
         if (authLoading || !showReviewModal) return;
         void openReviewFlow();
@@ -350,7 +355,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 }
             }
 
-            window.location.reload();
+            reloadEventPage();
         } catch (error) {
             setEventDetailEditError(error instanceof Error ? error.message : 'Failed to update event');
         } finally {
@@ -396,7 +401,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             }
             setSelectedHostIds([]);
             setIsEditingHosts(false);
-            window.location.reload();
+            reloadEventPage();
         } catch (error) {
             setHostEditorError(error instanceof Error ? error.message : 'Failed to update hosts');
         } finally {
@@ -434,7 +439,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 body: JSON.stringify({ imageurl: url })
                             });
                             if (response.ok) {
-                                window.location.reload();
+                            reloadEventPage();
                             }
                         }
                     }}
@@ -845,7 +850,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                             body: JSON.stringify({ content: reviews })
                                         });
                                         if (response.ok) {
-                                            window.location.reload();
+                                            reloadEventPage();
                                             return;
                                         }
 

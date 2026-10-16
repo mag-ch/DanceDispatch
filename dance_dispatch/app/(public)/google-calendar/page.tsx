@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { awardPoints, POINTS } from '@/lib/points';
+import { awardPoints } from '@/lib/points';
 import { useEffect, useMemo, useState } from 'react';
 
 const WATCH_EXPIRATION_KEY = 'google_calendar_watch_expiration_ms';

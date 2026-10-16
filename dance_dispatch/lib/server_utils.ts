@@ -327,16 +327,16 @@ export async function getAllFollowedVenues(userId: string) {
 export async function getFollowedUsers(userId: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from('UserFollows')
-        .select('followed_user_id')
-        .eq('follower_user_id', userId);
+        .from('UserFollowUsers')
+        .select('followed_id')
+        .eq('user_id', userId);
 
     if (error) {
         console.error('Error fetching followed users from Supabase:', error);
         return [];
     }
     
-    return data?.map((row) => row.followed_user_id) || [];
+    return data?.map((row) => row.followed_id) || [];
 }
 
 export type UserPointsSummary = {

@@ -714,7 +714,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     )} */}
                                     <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-2 sm:gap-3">
                                         {rsvpUsers.map((rsvpUser) => {
-                                            const displayName = rsvpUser.fullName?.trim() || rsvpUser.username;
+                                            const displayName = rsvpUser.username ?? rsvpUser.fullName?.trim();
                                             const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
 
                                             return (

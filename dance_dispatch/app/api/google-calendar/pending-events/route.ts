@@ -8,7 +8,10 @@ type PendingEventRow = {
   google_cal_id?: string | null;
   created_by?: string | null;
   exclude?: boolean | null;
+  Events?: EventRow | EventRow[] | null;
 };
+
+type EventRow = { id: number | string; title?: string | null; start?: string | null };
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -30,44 +33,22 @@ export async function GET() {
     const supabase = getSupabaseClient();
     const pendingResult = await supabase
       .from('pending_events')
-      .select('event_id,google_cal_id,created_by,exclude')
+      // Events!event_id!inner joins through the event_id foreign key (the column name disambiguates
+      // the relationship) and inner-joins, so rows with no matching Events.id are dropped by the query.
+      .select('event_id,google_cal_id,created_by,exclude,Events!event_id!inner(id,title,start)')
       .eq('exclude', false)
-      .not('event_id', 'is', null)
       .limit(200);
 
     if (pendingResult.error) {
       return NextResponse.json({ error: pendingResult.error.message }, { status: 500 });
     }
 
-    const pendingRows = (pendingResult.data || []) as PendingEventRow[];
-    const eventIds = Array.from(
-      new Set(
-        pendingRows
-          .map((row) => Number(row.event_id))
-          .filter((eventId) => Number.isFinite(eventId) && eventId > 0)
-      )
-    );
-
-    if (eventIds.length === 0) {
-      return NextResponse.json({ ok: true, items: [] }, { status: 200 });
-    }
-
-    const eventsResult = await supabase.from('Events').select('id,title,start').in('id', eventIds);
-    if (eventsResult.error) {
-      return NextResponse.json({ error: eventsResult.error.message }, { status: 500 });
-    }
-
-    const eventsById = new Map(
-      (eventsResult.data || []).map((row: { id: number | string; title?: string | null; start?: string | null }) => [
-        String(row.id),
-        row,
-      ])
-    );
+    const pendingRows = (pendingResult.data || []) as unknown as PendingEventRow[];
 
     const items = pendingRows
       .map((row) => {
         const eventId = String(row.event_id ?? '').trim();
-        const event = eventsById.get(eventId);
+        const event = Array.isArray(row.Events) ? row.Events[0] : row.Events;
         if (!eventId || !event) {
           return null;
         }

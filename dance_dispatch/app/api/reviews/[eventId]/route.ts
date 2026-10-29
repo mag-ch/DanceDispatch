@@ -30,8 +30,14 @@ export async function POST(
         console.log('Submitting reviews for user:', user.id, 'event:', eventId, 'content:', content);
         for (const entry of content) {
             await userSubmitReview(entry, user.id, eventId);
-            await awardPoints(user.id, 'review', eventId);
-        }        
+        }
+
+        // One award per submission (deduped per event).
+        const supabase = await createClient();
+        const awardError = await awardPoints(user.id, 'review', eventId, supabase);
+        if (awardError) {
+            console.error('Failed to award review points:', awardError);
+        }
 
         // try {
         //     await sendReviewPushToFollowers(user.id, eventId);

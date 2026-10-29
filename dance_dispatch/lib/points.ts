@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 
 export const POINTS = {
@@ -23,8 +24,10 @@ export async function awardPoints(
   userId: string,
   action: PointsAction,
   entityId?: string,
+  client?: { from: SupabaseClient['from']; rpc: SupabaseClient['rpc'] },
 ): Promise<Error | null> {
-  const supabase = await createClient();
+  // Server routes must pass their cookie-aware client; the browser client has no session there.
+  const supabase = client ?? createClient();
   const { error } = await supabase.from('UserPoints').insert({
     user_id: userId,
     action,
@@ -45,7 +48,7 @@ export async function awardPoints(
     p_source_table: 'UserPoints', // The table where the points were recorded
     p_source_id: entityId ?? null,
     // One award per action per entity, so retries and re-approvals are safe
-    p_dedupe_key: entityId ? `${action}:${entityId}` : null,
+    p_dedupe_key: entityId ? `${action}:${userId}:${entityId}` : null,
   });
   if (rpcError) {
     console.error(`[awardPoints] Failed to record badge activity for ${userId}:`, rpcError);

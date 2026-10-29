@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# supabase
+/.supabase
+
 # next.js
 /.next/
 /out/

@@ -27,6 +27,10 @@ type UserBadgesInlineProps = {
 
 const badgesCache = new Map<string, BadgeRow[]>();
 
+export function clearBadgesCache() {
+  badgesCache.clear();
+}
+
 export const TIER_STYLES: Record<BadgeTier, string> = {
   bronze: 'border-amber-500/50 bg-amber-100 text-amber-900 dark:bg-amber-500/10 dark:text-amber-300',
   silver: 'border-slate-400/60 bg-slate-100 text-slate-900 dark:bg-slate-400/10 dark:text-slate-300',
@@ -77,12 +81,26 @@ async function fetchUserBadges(userId: string, maxBadges: number): Promise<Badge
     return cached;
   }
 
-  const { data: unlockedRows, error: unlockedError } = await supabase
+  const { data: activeRows, error: activeError } = await supabase
     .from('user_badges')
     .select('badge_id')
     .eq('user_id', userId)
-    .order('unlocked_at', { ascending: false })
+    .eq('active', true)
     .limit(1);
+
+  let unlockedRows = activeError ? null : activeRows;
+  let unlockedError = activeError;
+
+  if (!unlockedRows || unlockedRows.length === 0) {
+    const fallback = await supabase
+      .from('user_badges')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .order('unlocked_at', { ascending: false })
+      .limit(1);
+    unlockedRows = fallback.data;
+    unlockedError = fallback.error;
+  }
 
   if (unlockedError || !unlockedRows || unlockedRows.length === 0) {
     return [];

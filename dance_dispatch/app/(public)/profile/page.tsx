@@ -3,7 +3,7 @@ import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUser
 import { requireAuth } from '@/lib/auth-helpers';
 import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
-import UserBadgesInline from '@/app/components/UserBadgesInline';
+import BadgeShowcase from './BadgeShowcase';
 import Link from 'next/link';
 import ProfilePictureEditor from './ProfilePictureEditor';
 import ExplorerBadgeModal from './ExplorerBadgeModal';
@@ -162,10 +162,10 @@ export default async function ProfilePage() {
                     </div>}
                     {userdata?.username && <div className="space-y-2 mt-4">
                         <p className="text-sm text-text">Username</p>
-                        <p className="text-xl font-semibold text-text flex items-center gap-2">
+                        <div className="text-xl font-semibold text-text flex items-center gap-2">
                             <span>{userdata.username || 'Not provided'}</span>
-                            <UserBadgesInline userId={user.id} maxBadges={3} />
-                        </p>
+                            <BadgeShowcase userId={user.id} />
+                        </div>
                     </div>}
                     <div className="space-y-2 mt-4">
                         <p className="text-sm text-text">Email</p>
@@ -177,23 +177,28 @@ export default async function ProfilePage() {
                     </div>
                     <NotificationSubscriptionToggle />
                 </section>
-                    {user.id === PUSH_TEST_USER_ID && (
-                        <Link href="/push-announcements" className="mt-4 inline-flex items-center gap-2 rounded border border-default px-3 py-2 text-sm font-semibold text-text transition hover:border-accent">
+                {user.id === PUSH_TEST_USER_ID && (
+                    <div className="flex flex-col gap-3 self-start md:w-56 md:shrink-0">
+                        <Link href="/push-announcements" className="inline-flex items-center justify-center rounded border border-default px-3 py-2 text-center text-sm font-semibold text-text transition hover:border-accent">
                             Send push announcement
                         </Link>
-                    )}
+                        <Link href="/google-calendar" className="inline-flex items-center justify-center rounded border border-default px-3 py-2 text-center text-sm font-semibold text-text transition hover:border-accent">
+                            Google Calendar
+                        </Link>
+                    </div>
+                )}
             </div>
 
             {/* Invite-code panel temporarily disabled.
             {userIsAdmin && <AdminInviteCodePanel />}
             */}
 
-            {missionStatus.allComplete && (
+            {/* {missionStatus.allComplete && (
                 <section className="mb-8">
                     <h2 className="text-2xl font-semibold mb-4 text-text">Achievements</h2>
                     <ExplorerBadgeModal missionStatus={missionStatus} />
                 </section>
-            )}
+            )} */}
 
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-text">Stats</h2>

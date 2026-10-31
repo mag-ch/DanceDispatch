@@ -454,6 +454,7 @@ export async function getTopBadgesForUsers(
         .from('user_badges')
         .select('user_id, unlocked_at, badges!inner(id, code, name, icon, tier, sort_order, is_active)')
         .in('user_id', uniqueUserIds)
+        .order('active', { ascending: false })
         .order('unlocked_at', { ascending: false });
 
     if (error) {

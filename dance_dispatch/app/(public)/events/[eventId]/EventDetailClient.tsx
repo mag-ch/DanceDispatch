@@ -808,7 +808,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
                         {/* Reviews Section */}
                         <div className="bg-surface rounded-lg p-6">
-                            <h2 className="text-2xl font-bold mb-4 text-text">Reviews</h2>
+                            <h2 className="text-2xl font-bold mb-4 text-text">Reviews ({eventReviews.length})</h2>
                             <div >
                                 {
                                     eventReviews.length === 0 ? <p className="text-muted">No reviews yet. Be the first to review!</p> :

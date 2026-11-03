@@ -90,9 +90,11 @@ export async function DELETE(
     { params }: { params: Promise<{ eventId: string }> }
 ) {
     try {
-        await requireAdmin();
+        const user = await requireAdmin();
         const { eventId } = await params;
-        const deleted = await deleteEvent(eventId);
+        console.log('[DELETE /api/events] request', { eventId, userId: user.id });
+        const deleted = await deleteEvent(eventId, user.id);
+        console.log('[DELETE /api/events] result', { eventId, deleted });
 
         if (!deleted) {
             return new Response(JSON.stringify({ error: 'Event not found' }), {
@@ -106,6 +108,7 @@ export async function DELETE(
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        console.error('[DELETE /api/events] failed', error);
         const message = error instanceof Error ? error.message : 'Failed to delete event';
         const normalizedMessage = message.toLowerCase();
         const status = normalizedMessage.includes('unauthorized')

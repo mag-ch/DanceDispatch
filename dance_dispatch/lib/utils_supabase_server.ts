@@ -1460,7 +1460,7 @@ export async function updateEvent(
   return eventId;
 }
 
-export async function deleteEvent(eventId: string): Promise<boolean> {
+export async function deleteEvent(eventId: string, requestingUserId?: string): Promise<boolean> {
   const numericEventId = Number(eventId);
   if (Number.isNaN(numericEventId)) {
     throw new Error('Invalid event id');
@@ -1486,6 +1486,14 @@ export async function deleteEvent(eventId: string): Promise<boolean> {
   }
 
   const existingRows = existingEventResult.data ?? [];
+  const { data: sessionUserData } = await supabase.auth.getUser();
+  console.log('deleteEvent: pre-delete state', {
+    eventId: numericEventId,
+    requestingUserId,
+    sessionUserId: sessionUserData?.user?.id ?? null,
+    matchingRows: existingRows.length,
+    row: existingRows[0] ?? null,
+  });
 
   const deleteEventResult = await supabase
     .from('Events')
@@ -1498,6 +1506,12 @@ export async function deleteEvent(eventId: string): Promise<boolean> {
   }
 
   const deleted = (deleteEventResult.count ?? 0) > 0 || (deleteEventResult.data || []).length > 0;
+  console.log('deleteEvent: delete result', {
+    eventId: numericEventId,
+    count: deleteEventResult.count,
+    returnedRows: deleteEventResult.data?.length ?? 0,
+    status: deleteEventResult.status,
+  });
   if (deleted) {
     revalidateCatalogCache();
   } else {

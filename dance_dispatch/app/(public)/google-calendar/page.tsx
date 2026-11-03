@@ -208,9 +208,11 @@ const approvePendingReviewEvent = async (eventId: string) => {
       
       const deleteResponse = await fetch(`/api/events/${eventId}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       const deletePayload = (await deleteResponse.json().catch(() => ({}))) as { error?: string };
+  
       if (!deleteResponse.ok) {
         setPendingReviewError(deletePayload.error || 'Failed to delete event');
         setPendingDeleteId(null);
@@ -235,7 +237,8 @@ const approvePendingReviewEvent = async (eventId: string) => {
 
 
       setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
-    } catch {
+    } catch (error) {
+      console.error('[deletePendingReviewEvent] request threw', { eventId, error });
       setPendingReviewError('Failed to delete pending event');
     } finally {
       setPendingDeleteId(null);

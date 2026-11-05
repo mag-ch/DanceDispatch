@@ -145,7 +145,11 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     };
 
     return (
-        <div className={styles.card}>
+        <>
+        <div className={styles.mobileOnly}>
+            <EventCardCompactView event={event} thumbnail={defaultThumbnail} isPastEvent={isPastEvent} genres={hostGenres} />
+        </div>
+        <div className={`${styles.card} ${styles.desktopOnly}`}>
             <CustomLink href={`/events/${event.id}`} className={styles.cardLink}>
                 <div className={styles.imageWrap}>
                     <img src={defaultThumbnail} alt={event.title} className={styles.imageLg} />
@@ -200,8 +204,48 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                 </CustomLink>
             )}
         </div>
+        </>
     );
 };
+
+const formatCompactDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+    }).format(new Date(year, month - 1, day));
+};
+
+// Condensed horizontal card shown only on mobile widths (see EventCard).
+const EventCardCompactView: React.FC<{
+    event: Event;
+    thumbnail: string;
+    isPastEvent: boolean;
+    genres: string[];
+}> = ({ event, thumbnail, isPastEvent, genres }) => (
+    <div className={styles.compactCard}>
+        <CustomLink href={`/events/${event.id}`} className={styles.compactLink}>
+            <img src={thumbnail} alt={event.title} className={styles.compactImage} />
+            <div className={styles.compactBody}>
+                <h3 className={styles.compactTitle}>{event.title}</h3>
+                <p className={styles.compactMeta}>
+                    {formatCompactDate(event.startdate)} · {formatEventTime(event.starttime)} – {formatEventTime(event.endtime)}
+                    {event.location ? ` · ${event.location}` : ''}
+                </p>
+                <div className={styles.compactFooter}>
+                    {event.price !== undefined && event.price !== null && (
+                        <span className={styles.compactPrice}>${event.price}</span>
+                    )}
+                    {genres[0] && <span className={styles.compactChip}>{genres[0]}</span>}
+                </div>
+            </div>
+        </CustomLink>
+        <div className={styles.compactSave}>
+            <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
+        </div>
+    </div>
+);
 
 
 // add venue info table and info display

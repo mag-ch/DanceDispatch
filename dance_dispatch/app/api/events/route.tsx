@@ -43,6 +43,7 @@ export async function POST(request: Request) {
             imageurl,
             externallink,
             hostIds,
+            hostTypes,
             recurrence,
         } = body;
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
             externallink,
             createdBy: user.id,
             hostIds: Array.isArray(hostIds) ? hostIds : undefined,
+            hostTypes: hostTypes && typeof hostTypes === 'object' ? hostTypes : undefined,
             recurrence: recurrence && typeof recurrence === 'object' ? recurrence : undefined,
         });
 

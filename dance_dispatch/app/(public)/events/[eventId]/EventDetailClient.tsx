@@ -8,11 +8,13 @@ import { Event, EventReview, Host, resolveImageUrl, resolveServerImageUrl } from
 import { DisplayEventReview, EventMediaGallery, ReviewModal } from '@/app/components/EventReview';
 import { SaveEventButton } from '@/app/components/SaveEventButton';
 import { RelatedEventCard } from '@/app/components/EventCard';
+import { hostChipClass, hostTypeLabel } from '@/app/components/HostChip';
 import { ShareModal } from '@/app/components/ShareModal';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
 import { HostSelector } from '@/app/components/HostSelector';
+import type { HostTypeMap } from '@/app/components/HostSelector';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 
@@ -76,6 +78,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         (event.hostNames ?? []).map((name, index) => ({
             id: event.hostIDs?.[index] ?? `${index}`,
             name,
+            type: event.hostTypes?.[index] ?? null,
         }))
     );
 
@@ -115,6 +118,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         return Array.from(groups.values());
     })();
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
+    const [selectedHostTypes, setSelectedHostTypes] = useState<HostTypeMap>({});
+
+    const hostSelectionChanged = () =>
+        selectedHostIds.length !== eventHosts.length ||
+        selectedHostIds.some((hostId) => {
+            const current = eventHosts.find((host) => host.id === hostId);
+            return !current || (selectedHostTypes[hostId] ?? null) !== (current.type ?? null);
+        });
+    const resetHostSelection = () => {
+        setSelectedHostIds(eventHosts.map((host) => host.id));
+        setSelectedHostTypes(Object.fromEntries(eventHosts.map((host) => [host.id, host.type ?? null])));
+    };
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -254,9 +269,10 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             (event.hostNames ?? []).map((name, index) => ({
                 id: event.hostIDs?.[index] ?? `${index}`,
                 name,
+                type: event.hostTypes?.[index] ?? null,
             }))
         );
-    }, [event.hostIDs, event.hostNames]);
+    }, [event.hostIDs, event.hostNames, event.hostTypes]);
 
     useEffect(() => {
         setEventDetailEditForm({
@@ -311,7 +327,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             externallink: event.externallink ?? '',
             price: event.price?.toString() ?? '',
         });
-        setSelectedHostIds(eventHosts.map((host) => host.id));
+        resetHostSelection();
         setIsEditingEventDetails(true);
     };
 
@@ -344,15 +360,13 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 throw new Error(data?.error ?? 'Failed to update event');
             }
 
-            const hostIdsChanged =
-                selectedHostIds.length !== eventHosts.length ||
-                selectedHostIds.some((hostId) => !eventHosts.some((host) => host.id === hostId));
+            const hostIdsChanged = hostSelectionChanged();
 
             if (hostIdsChanged) {
                 const hostResponse = await fetch(`/api/events/${event.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ hostIds: selectedHostIds }),
+                    body: JSON.stringify({ hostIds: selectedHostIds, hostTypes: selectedHostTypes }),
                 });
                 const hostData = await hostResponse.json().catch(() => null);
 
@@ -376,7 +390,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
 
         if (!isEditingHosts) {
             setHostEditorError(null);
-            setSelectedHostIds(eventHosts.map((host) => host.id));
+            resetHostSelection();
             setIsEditingHosts(true);
             return;
         }
@@ -385,12 +399,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             setIsSavingHosts(true);
             setHostEditorError(null);
 
-            const currentHostIds = eventHosts.map((host) => host.id);
-            const hasChangedSelection =
-                selectedHostIds.length !== currentHostIds.length
-                || selectedHostIds.some((hostId) => !currentHostIds.includes(hostId));
-
-            if (!hasChangedSelection) {
+            if (!hostSelectionChanged()) {
                 setIsEditingHosts(false);
                 return;
             }
@@ -398,7 +407,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             const response = await fetch(`/api/events/${event.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hostIds: selectedHostIds }),
+                body: JSON.stringify({ hostIds: selectedHostIds, hostTypes: selectedHostTypes }),
             });
             const data = await response.json().catch(() => null);
 
@@ -602,6 +611,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <HostSelector
                                     selectedHostIds={selectedHostIds}
                                     onSelectedHostIdsChange={setSelectedHostIds}
+                                    hostTypes={selectedHostTypes}
+                                    onHostTypesChange={setSelectedHostTypes}
                                     existingHosts={eventHosts}
                                     maxHeightClassName="max-h-48"
                                 />
@@ -795,12 +806,14 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     <HostSelector
                                         selectedHostIds={selectedHostIds}
                                         onSelectedHostIdsChange={setSelectedHostIds}
+                                        hostTypes={selectedHostTypes}
+                                        onHostTypesChange={setSelectedHostTypes}
                                         existingHosts={eventHosts}
                                     />
                                     {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
                                 </div>
                             ) : eventHosts.length > 0 ? eventHosts.map((host) => (
-                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} className="text-sm font-bold px-3 py-1 rounded m-2 inline-block text-text bg-accent transition">
+                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} title={hostTypeLabel(host.type)} className={`text-sm font-bold px-3 py-1 rounded m-2 inline-block transition ${hostChipClass(host.type)}`}>
                                     {host.name.trim().replace(/[\[\]']/g, '')}
                                 </a>
                             )) : (

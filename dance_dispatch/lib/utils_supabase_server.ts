@@ -4,6 +4,7 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Event, EventReview, Host, HostExternalLink, ReviewActivityHighlight, ReviewReply, Venue } from '@/lib/utils';
+import { HostType, normalizeHostType } from '@/lib/host-types';
 import { buildSeriesRrule, type RecurrenceOptions } from '@/lib/recurrence-options';
 import { generateRecurringEvents } from '@/lib/recurrence';
 import { getBoroughFromAddress } from '@/lib/utils';
@@ -207,7 +208,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       .order('start', { ascending: true }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
     supabase.from('Hosts').select('id,name,bio,image_url,tags,genres').order('name'),
-    supabase.from('event_hosts').select('event_id,host_id'),
+    supabase.from('event_hosts').select('event_id,host_id,host_type'),
   ]);
 
   if (eventsRes.error) throw eventsRes.error;
@@ -266,6 +267,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
   );
 
   const hostIdsByEventId = new Map<number, number[]>();
+  const hostTypeByEventHost = new Map<string, HostType | null>();
   for (const row of eventHostRows) {
     const eventId = Number((row as any).event_id);
     const hostId = Number((row as any).host_id);
@@ -275,6 +277,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     const existing = hostIdsByEventId.get(eventId) ?? [];
     existing.push(hostId);
     hostIdsByEventId.set(eventId, existing);
+    hostTypeByEventHost.set(`${eventId}:${hostId}`, normalizeHostType((row as any).host_type));
   }
 
   // Recurring occurrences take their host from the series rather than event_hosts
@@ -329,6 +332,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       externallink: row.external_url ?? undefined,
       hostIDs: mappedHostIds.map((id) => String(id)),
       hostNames: mappedHostIds.map((id) => hostNameById.get(id) ?? 'Unknown Host'),
+      hostTypes: mappedHostIds.map((id) => hostTypeByEventHost.get(`${row.id}:${id}`) ?? null),
       hostGenres,
       series_id: row.series_id ? String(row.series_id) : undefined,
     };
@@ -1550,6 +1554,7 @@ export interface SubmitEventInput {
   externallink?: string;
   createdBy?: string;
   hostIds?: string[];
+  hostTypes?: Record<string, string | null>;
   recurrence?: RecurrenceOptions;
 }
 
@@ -1735,6 +1740,7 @@ export async function submitEvent(input: SubmitEventInput): Promise<{ id: string
     const eventHostRows = normalizedHostIds.map((hostId) => ({
       event_id: Number(newEventId),
       host_id: hostId,
+      host_type: normalizeHostType(input.hostTypes?.[String(hostId)]),
     }));
     const hostInsertResult = await supabase.from('event_hosts').insert(eventHostRows);
     if (hostInsertResult.error) {
@@ -1801,7 +1807,11 @@ export async function addHostsToEvent(eventId: string, hostIds: string[]): Promi
   return normalizedHostIds.map(String);
 }
 
-export async function setHostsForEvent(eventId: string, hostIds: string[]): Promise<string[]> {
+export async function setHostsForEvent(
+  eventId: string,
+  hostIds: string[],
+  hostTypes?: Record<string, string | null>
+): Promise<string[]> {
   const numericEventId = Number(eventId);
   if (Number.isNaN(numericEventId)) {
     throw new Error('Invalid event id');
@@ -1840,12 +1850,28 @@ export async function setHostsForEvent(eventId: string, hostIds: string[]): Prom
       toAdd.map((hostId) => ({
         event_id: numericEventId,
         host_id: Number(hostId),
+        host_type: normalizeHostType(hostTypes?.[hostId]),
       }))
     );
 
     if (addError) {
       console.error('Error adding event hosts:', addError);
       throw addError;
+    }
+  }
+
+  if (hostTypes) {
+    for (const hostId of normalizedHostIds.filter((id) => currentHostIds.includes(id))) {
+      if (!(hostId in hostTypes)) continue;
+      const { error: typeError } = await supabase
+        .from('event_hosts')
+        .update({ host_type: normalizeHostType(hostTypes[hostId]) })
+        .eq('event_id', numericEventId)
+        .eq('host_id', Number(hostId));
+      if (typeError) {
+        console.error('Error updating event host type:', typeError);
+        throw typeError;
+      }
     }
   }
 

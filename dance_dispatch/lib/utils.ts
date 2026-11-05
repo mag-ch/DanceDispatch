@@ -1,5 +1,7 @@
 'use server';
 
+import type { HostType } from '@/lib/host-types';
+
 export interface Event {
     id: string;
     title: string;
@@ -16,6 +18,8 @@ export interface Event {
     hostNames?: string[]; 
     hostIDs?: string[]; 
     hostGenres?: string[];
+    // Parallel to hostIDs; null means a plain "host".
+    hostTypes?: (HostType | null)[];
     series_id?: string;
     // Add other fields as needed based on your CSV structure
 }

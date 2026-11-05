@@ -2,12 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Host } from '@/lib/utils';
+import { HOST_TYPES, normalizeHostType } from '@/lib/host-types';
+import type { HostType } from '@/lib/host-types';
+import { hostChipClass } from '@/app/components/HostChip';
 
 type SelectedHost = { id: string; name: string };
+export type HostTypeMap = Record<string, HostType | null>;
 
 interface HostSelectorProps {
     selectedHostIds: string[];
     onSelectedHostIdsChange: (hostIds: string[]) => void;
+    // Per-event role for each selected host; missing/null means a plain "host".
+    hostTypes?: HostTypeMap;
+    onHostTypesChange?: (hostTypes: HostTypeMap) => void;
     existingHosts?: SelectedHost[];
     maxHeightClassName?: string;
 }
@@ -15,6 +22,8 @@ interface HostSelectorProps {
 export function HostSelector({
     selectedHostIds,
     onSelectedHostIdsChange,
+    hostTypes = {},
+    onHostTypesChange,
     existingHosts = [],
     maxHeightClassName = 'max-h-64',
 }: HostSelectorProps) {
@@ -72,12 +81,21 @@ export function HostSelector({
         .filter((host): host is SelectedHost => Boolean(host));
 
     const toggleHost = (hostId: string) => {
+        const removing = selectedHostIds.includes(hostId);
         onSelectedHostIdsChange(
-            selectedHostIds.includes(hostId)
+            removing
                 ? selectedHostIds.filter((id) => id !== hostId)
                 : [...selectedHostIds, hostId]
         );
+        if (removing && onHostTypesChange && hostId in hostTypes) {
+            const { [hostId]: _removed, ...rest } = hostTypes;
+            onHostTypesChange(rest);
+        }
         setSearchQuery('');
+    };
+
+    const setHostType = (hostId: string, value: string) => {
+        onHostTypesChange?.({ ...hostTypes, [hostId]: normalizeHostType(value) });
     };
 
     const createNewHost = async () => {
@@ -114,14 +132,33 @@ export function HostSelector({
             <div className="mb-3 w-full rounded-lg border border-default bg-bg px-3 py-2">
                 <div className="mb-2 flex flex-wrap gap-2">
                     {selectedHostTokens.map((host) => (
-                        <button
+                        <span
                             key={host.id}
-                            type="button"
-                            onClick={() => toggleHost(host.id)}
-                            className="rounded bg-accent px-2 py-1 text-xs font-semibold text-text transition hover:bg-accent-soft"
+                            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${hostChipClass(hostTypes[host.id])}`}
                         >
-                            {host.name} x
-                        </button>
+                            {host.name}
+                            {onHostTypesChange && (
+                                <select
+                                    aria-label={`Role for ${host.name}`}
+                                    value={hostTypes[host.id] ?? ''}
+                                    onChange={(event) => setHostType(host.id, event.target.value)}
+                                    className="rounded bg-bg px-1 py-0.5 text-xs text-text"
+                                >
+                                    <option value="">Host</option>
+                                    {HOST_TYPES.map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            )}
+                            <button
+                                type="button"
+                                aria-label={`Remove ${host.name}`}
+                                onClick={() => toggleHost(host.id)}
+                                className="hover:opacity-70"
+                            >
+                                x
+                            </button>
+                        </span>
                     ))}
                     {selectedHostTokens.length === 0 && (
                         <span className="text-xs text-muted">No hosts selected yet.</span>

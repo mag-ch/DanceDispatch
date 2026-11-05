@@ -63,6 +63,22 @@ function eventMatchesMission(event: Event, filter: MissionFilter): boolean {
   return searchableText.includes(filter.toLowerCase());
 }
 
+type DatedItem = { event: Event; card: ReactNode };
+
+function DateSection({ title, items }: { title: string; items: DatedItem[] }) {
+  return (
+    <section className="mb-8">
+      {/* top-16 keeps the header below the sticky site header */}
+      <h3 className="sticky top-16 z-40 mb-4 border-b border-default bg-bg py-2 text-lg font-semibold">
+        {title}
+      </h3>
+      <div className="grid gap-6 md:grid-cols-3">
+        {items.map(({ event, card }) => <div key={event.id}>{card}</div>)}
+      </div>
+    </section>
+  );
+}
+
 export default function TrendingEventsClient({
   events,
   initialFilter,
@@ -77,6 +93,36 @@ export default function TrendingEventsClient({
   const visibleCards = events
     .map((event, index) => ({ event, card: cards[index] }))
     .filter(({ event }) => eventMatchesMission(event, filter));
+  const [showUpcoming, setShowUpcoming] = useState(false);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(todayStart.getDate() + 1);
+  const dayAfterTomorrow = new Date(todayStart);
+  dayAfterTomorrow.setDate(todayStart.getDate() + 2);
+  // Exclusive end of the current week (the Monday after this Sunday)
+  const weekEnd = new Date(todayStart);
+  weekEnd.setDate(todayStart.getDate() + ((8 - todayStart.getDay()) % 7 || 7));
+
+  const today: DatedItem[] = [];
+  const tomorrow: DatedItem[] = [];
+  const laterThisWeek: DatedItem[] = [];
+  const upcoming: DatedItem[] = [];
+  visibleCards.forEach((item) => {
+    const day = localDay(item.event.startdate).getTime();
+    if (day < todayStart.getTime()) return;
+    if (day < tomorrowStart.getTime()) today.push(item);
+    else if (day < dayAfterTomorrow.getTime()) tomorrow.push(item);
+    else if (day < weekEnd.getTime()) laterThisWeek.push(item);
+    else upcoming.push(item);
+  });
+
+  const sections = [
+    { key: 'today', title: 'Today', items: today },
+    { key: 'tomorrow', title: 'Tomorrow', items: tomorrow },
+    { key: 'week', title: 'Later This Week', items: laterThisWeek },
+  ].filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -104,7 +150,25 @@ export default function TrendingEventsClient({
       {visibleCards.length === 0 ? (
         <p className="text-muted">No events match this mission yet.</p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-3">{visibleCards.map(({ event, card }) => <div key={event.id}>{card}</div>)}</div>
+        <>
+          {sections.map((section) => (
+            <DateSection key={section.key} title={section.title} items={section.items} />
+          ))}
+          {upcoming.length > 0 && !showUpcoming && (
+            <div className="my-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowUpcoming(true)}
+                className="rounded-full border border-default bg-surface px-6 py-2 text-sm font-semibold text-muted transition hover:border-accent hover:text-text"
+              >
+                See more
+              </button>
+            </div>
+          )}
+          {upcoming.length > 0 && showUpcoming && (
+            <DateSection title="Upcoming" items={upcoming} />
+          )}
+        </>
       )}
     </>
   );

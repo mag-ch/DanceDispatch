@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
+const EXCLUDED_USER_ID = 'ba398812-06a0-4c48-9f15-0660d3af0047';
+
 /**
  * GET /api/leaderboard?limit=50
  * Returns the top users ranked by total points.
@@ -19,7 +21,8 @@ export async function GET(request: Request) {
     // Aggregate total points per user from UserPoints
     const { data: pointsRows, error: pointsError } = await supabase
       .from('UserPoints')
-      .select('user_id, points, action');
+      .select('user_id, points, action')
+      .neq('user_id', EXCLUDED_USER_ID);
 
     if (pointsError) {
       console.error('[leaderboard] Error fetching points:', pointsError);

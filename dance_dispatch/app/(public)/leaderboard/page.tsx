@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trophy, Star, Share2, CalendarCheck, MessageSquare, Users, Radio } from 'lucide-react';
+import { Trophy, Star, Share2, CalendarCheck, MessageSquare, Users, Radio, Music, MapPin, Camera } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 
 type LeaderboardEntry = {
@@ -18,6 +18,9 @@ const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode }> = 
   rsvp:     { label: 'RSVPs',    icon: <CalendarCheck className="h-3.5 w-3.5" /> },
   share:    { label: 'Shares',   icon: <Share2 className="h-3.5 w-3.5" /> },
   review:   { label: 'Reviews',  icon: <MessageSquare className="h-3.5 w-3.5" /> },
+  review_dj:    { label: 'DJ Reviews',    icon: <Music className="h-3.5 w-3.5" /> },
+  review_venue: { label: 'Venue Reviews', icon: <MapPin className="h-3.5 w-3.5" /> },
+  review_media: { label: 'Media Uploads', icon: <Camera className="h-3.5 w-3.5" /> },
   referral: { label: 'Referrals',icon: <Users className="h-3.5 w-3.5" /> },
   submit_event: { label: 'Submitted Events', icon: <Star className="h-3.5 w-3.5" /> },
 };
@@ -77,7 +80,7 @@ export default function LeaderboardPage() {
         <Trophy className="h-10 w-10 text-yellow-400 mx-auto mb-3" />
         <h1 className="text-3xl font-bold">Leaderboard</h1>
         <p className="text-muted mt-2 text-sm">
-          Earn points by saving events, sharing with friends, writing reviews, and referring new dancers.
+          Earn points by saving events, sharing with friends, writing reviews (bonus points for reviewing DJs and venues and adding photos or videos), and referring new dancers.
         </p>
         {lastUpdated && (
           <p className="mt-3 text-xs text-muted">
@@ -92,6 +95,10 @@ export default function LeaderboardPage() {
           { action: 'rsvp',     pts: 10,  desc: 'Save an event' },
           { action: 'share',    pts: 5,   desc: 'Per friend shared' },
           { action: 'review',   pts: 20,  desc: 'Write a review' },
+          { action: 'review_dj',    pts: 15, desc: 'Review a DJ (each)' },
+          { action: 'review_venue', pts: 15, desc: 'Review the venue' },
+          { action: 'review_media', pts: 10, desc: 'Add photo/video to a review' },
+          { action: 'submit_event', pts: 50, desc: 'Submit an event' },
           { action: 'referral', pts: 50,  desc: 'Refer a new user' },
         ].map(({ action, pts, desc }) => (
           <div key={action} className="bg-surface rounded-xl p-4 text-center shadow-sm">

@@ -7,7 +7,7 @@ import { Event, EventReview, Host, HostExternalLink, ReviewActivityHighlight, Re
 import { buildSeriesRrule, type RecurrenceOptions } from '@/lib/recurrence-options';
 import { generateRecurringEvents } from '@/lib/recurrence';
 import { getBoroughFromAddress } from '@/lib/utils';
-import { isUpcoming } from '@/lib/date-utils';
+import { isBeforeEventStart, isUpcoming } from '@/lib/date-utils';
 
 type CatalogData = {
   events: Event[];
@@ -319,7 +319,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       enddate,
       endtime,
       locationid: Number.isNaN(numericLocationId) ? '' : String(numericLocationId),
-      location: venueNameById.get(numericLocationId) ?? 'Unknown Location',
+      location: venueNameById.get(numericLocationId) ?? 'Location Revealed To Ticket Holders',
       description: row.description ?? '',
       price:
         row.price === null || row.price === undefined || Number.isNaN(Number(row.price))
@@ -488,8 +488,10 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
           id: String(row.id),
           eventName,
           eventId: String(row.event_id),
+          userId: row.user_id,
           username: row.privacy_level === 'anonymous' ? 'Anonymous' : (userMap.get(row.user_id) ?? row.user_id),
           dateSubmitted: row.created_at,
+          isPreEvent: event ? isBeforeEventStart(event, row.created_at) : false,
           privacyLevel: row.privacy_level,
           mainComment: '',
           mediaPaths: [],
@@ -654,7 +656,7 @@ export async function getPublicReviewFeed(limit: number = 60): Promise<EventRevi
     const events = await getCachedEvents(false);
     const eventMap = new Map(events.map((event) => [String(event.id), event.title]));
     const eventImageMap = new Map(events.map((event) => [String(event.id), event.imageurl]));
-
+    const eventById = new Map(events.map((event) => [String(event.id), event]));
     const rows = data ?? [];
     const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
     let usernameById = new Map<string, string>();
@@ -697,6 +699,9 @@ export async function getPublicReviewFeed(limit: number = 60): Promise<EventRevi
           userId: row.user_id,
           username: row.privacy_level === 'anonymous' ? 'Anonymous' : (usernameById.get(String(row.user_id)) ?? 'Someone'),
           dateSubmitted: row.created_at,
+          isPreEvent: eventById.has(String(row.event_id))
+            ? isBeforeEventStart(eventById.get(String(row.event_id))!, row.created_at)
+            : false,
           privacyLevel: row.privacy_level,
           mainComment: '',
           mediaPaths: [],
@@ -784,6 +789,8 @@ export async function getReviewActivityHighlights(): Promise<ReviewActivityHighl
       const entityType = row.entity_type as 'host' | 'venue';
       const entityId = String(row.entity_id ?? '');
       if (!entityId) continue;
+      // Media-only rows (no rating or comment) are not reviews.
+      if (!(Number(row.rating) > 0) && !String(row.comment ?? '').trim()) continue;
 
       const key = `${entityType}:${entityId}`;
       const aggregate = aggregates.get(key) ?? {
@@ -933,7 +940,7 @@ export async function getHostPreviousEventReviews(hostId: string, eventId: strin
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
     const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
-    const rows = data ?? [];
+    const rows = (data ?? []).filter((row: any) => Number(row.rating) > 0 || String(row.comment ?? '').trim());
     const ratingTotalsByEventId = new Map<string, { total: number; count: number }>();
 
     for (const row of rows) {
@@ -1007,7 +1014,7 @@ export async function getVenuePreviousEventReviews(venueId: string | number, eve
     const users = await Promise.all(userIds.map((id) => getUserById(id)));
     const userMap = new Map(users.map((user) => [user?.id, user?.username]));
 
-    const rows = data ?? [];
+    const rows = (data ?? []).filter((row: any) => Number(row.rating) > 0 || String(row.comment ?? '').trim());
     const ratingTotalsByEventId = new Map<string, { total: number; count: number }>();
 
     for (const row of rows) {
@@ -1339,7 +1346,8 @@ export async function userSubmitReview(reviewData: any, userId: string, eventId:
         }))
       );
 
-    if (mediaErr) throw mediaErr;
+    // The same upload can be linked from the event, venue and DJ rows; tolerate a unique constraint on storage_path.
+    if (mediaErr && mediaErr.code !== '23505') throw mediaErr;
   }
 
   return 'success';

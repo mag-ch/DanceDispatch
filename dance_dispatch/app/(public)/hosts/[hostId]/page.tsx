@@ -11,6 +11,7 @@ import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
+import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
 import Link from 'next/link';
 
 const chipPalette = [
@@ -500,7 +501,13 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                         )}
 
                         
-                        {(hostComments.length > 0 || ratingCount > 0) && (
+                        <CommunityMediaGallery
+                            items={hostComments.flatMap((comment) =>
+                                (comment.mediaPaths ?? []).map((path: string) => ({ path, eventId: comment.event_id, eventName: comment.eventName }))
+                            )}
+                        />
+
+                        {(textComments.length > 0 || ratingCount > 0) && (
                             <section className="bg-surface rounded-lg p-6 mb-6">
                                 <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
                                 <div className="mb-5 rounded-lg border border-default p-4">

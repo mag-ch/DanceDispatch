@@ -115,7 +115,9 @@ export interface EventReview {
     }[];
     privacyLevel: 'public' | 'private' | 'anonymous';
     mediaPaths?: string[];
-
+    /** Submitted before the event started: shown as a "Comment" rather than a "Review". */
+    isPreEvent?: boolean;
+ 
 }
 
   export interface ReviewActivityPreview {

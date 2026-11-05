@@ -5,6 +5,9 @@ export const POINTS = {
   rsvp: 10,
   share: 5,      // per recipient
   review: 20,
+  review_dj: 15,    // per DJ/host reviewed
+  review_venue: 15, // venue reviewed
+  review_media: 10, // photo/video attached to a review (once per event)
   referral: 50,
   submit_event: 50,
 } as const;

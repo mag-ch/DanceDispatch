@@ -17,15 +17,19 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "DanceDispatch",
+  metadataBase: new URL("https://dancedispat.ch"),
+  title: { default: "DanceDispatch", template: "%s | DanceDispatch" },
   description: "Find your next dance party",  
   applicationName: "DanceDispatch",
+  openGraph: { siteName: "DanceDispatch", type: "website" },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

@@ -16,6 +16,7 @@ import { HostSelector } from '@/app/components/HostSelector';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 
+
 interface EventDetailClientProps {
     event: Event;
     eventReviews: EventReview[];
@@ -27,7 +28,6 @@ interface EventDetailClientProps {
     rsvpUsers?: Array<{
         userId: string;
         username: string;
-        fullName: string | null;
         profilePicture: string | null;
         savedAt: string;
         badges: Array<{
@@ -58,6 +58,12 @@ function formatCompactDate(value: string): string {
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading, isAdmin } = useAuth();
+    // Private reviews are only visible to their author, so exclude them from lists and counts.
+    const visibleReviews = eventReviews.filter(
+        (review) => review.privacyLevel !== 'private' || (!!session?.user?.id && review.userId === session.user.id)
+    );
+    const preEventReviews = visibleReviews.filter((review) => review.isPreEvent);
+    const postEventReviews = visibleReviews.filter((review) => !review.isPreEvent);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSavedEvent, setIsSavedEvent] = useState<boolean | null>(null);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -635,8 +641,16 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <button className="p-2 hover:bg-accent" onClick={() => setShowShareModal(true)} type="button">
                                     <Share2 className="text-gray-600"/>
                                 </button>
-                                {(event.externallink && event.externallink.length > 3) && <a
-                                    href={event.externallink || '#'}
+                                {isPastEvent ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => { void openReviewFlow(); }}
+                                        className=" btn-highlighted px-6 py-2 rounded-lg font-semibold transition"
+                                    >
+                                        Log Your Experience
+                                    </button>
+                                ) : (event.externallink && event.externallink.length > 3) && <a
+                                    href={event.externallink}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className=" btn-highlighted px-6 py-2 rounded-lg font-semibold transition"
@@ -698,7 +712,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="mb-6 rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-4 shadow-[0_12px_35px_rgba(8,145,178,0.14)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10 lg:hidden">
                             <div className="mb-3 flex items-end justify-between gap-3">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Who's Going? ({rsvpUsers.length})</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">{isPastEvent ? "Who Attended" : "Who's Going?"} ({rsvpUsers.length})</p>
                                 </div>
                             </div>
 
@@ -714,7 +728,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     )} */}
                                     <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-2 sm:gap-3">
                                         {rsvpUsers.map((rsvpUser) => {
-                                            const displayName = rsvpUser.username ?? rsvpUser.fullName?.trim();
+                                            const displayName = rsvpUser.username;
                                             const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
 
                                             return (
@@ -806,14 +820,26 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                             </a>
                         </div>
 
-                        {/* Reviews Section */}
+                        {/* Comments (before the event) */}
+                        {preEventReviews.length > 0 && (
+                            <div className="bg-surface rounded-lg p-6 mb-6">
+                                <h2 className="text-2xl font-bold mb-4 text-text">
+                                    Comments ({preEventReviews.length})
+                                </h2>
+                                {preEventReviews.map((review, index) => (
+                                    <DisplayEventReview key={review.id ?? index} review={review} />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Reviews Section (after the event started) */}
                         <div className="bg-surface rounded-lg p-6">
-                            <h2 className="text-2xl font-bold mb-4 text-text">Reviews ({eventReviews.length})</h2>
+                            <h2 className="text-2xl font-bold mb-4 text-text">Reviews ({postEventReviews.length})</h2>
                             <div >
                                 {
-                                    eventReviews.length === 0 ? <p className="text-muted">No reviews yet. Be the first to review!</p> :
-                                        eventReviews.map((review, index) => (
-                                            <DisplayEventReview key={index} review={review} />
+                                    postEventReviews.length === 0 ? <p className="text-muted">No reviews yet. Be the first to review!</p> :
+                                        postEventReviews.map((review, index) => (
+                                            <DisplayEventReview key={review.id ?? index} review={review} />
                                         ))
                                 }
                             </div>
@@ -972,7 +998,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 ) : (
                                     <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
                                         {rsvpUsers.map((rsvpUser) => {
-                                            const displayName = rsvpUser.fullName?.trim() || rsvpUser.username;
+                                            const displayName = rsvpUser.username;
                                             const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
 
                                             return (

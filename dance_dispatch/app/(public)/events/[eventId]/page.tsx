@@ -4,11 +4,12 @@ import { notFound } from 'next/navigation';
 import { EventDetailClient } from './EventDetailClient';
 import { EventReview } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
+import type { Metadata } from "next";
+import { cache } from "react";
 
 type EventRsvpUser = {
     userId: string;
     username: string;
-    fullName: string | null;
     profilePicture: string | null;
     savedAt: string;
     badges: CompactUserBadge[];
@@ -140,16 +141,44 @@ async function getEventRsvpUsers(eventId: string): Promise<EventRsvpUser[]> {
             }
 
             const username = String(profile.username ?? '').trim();
-            const fullName = profile.full_name ? String(profile.full_name) : null;
 
             return {
                 userId: row.user_id,
-                username: username || fullName || 'User',
-                fullName,
+                username: username || 'User',
                 profilePicture: profile.profile_picture ? String(profile.profile_picture) : null,
                 savedAt: row.created_at,
                 badges: badgeMap[row.user_id] ?? [],
             } satisfies EventRsvpUser;
         })
         .filter((user): user is EventRsvpUser => Boolean(user));
+}
+
+
+export async function generateMetadata({ params, searchParams, showReviewModal = false }: EventDetailPageProps) {
+  const { eventId } = await params;
+  const event = await getEventById(eventId);
+  if (!event) return { title: "Event not found" };
+
+  const when = new Date(event.starttime).toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    timeZone: "America/New_York",
+  });
+  const venue = event.location ?? "";
+  const blurb = (event.description ?? "").replace(/\s+/g, " ").slice(0, 120);
+  const description = [when, venue].filter(Boolean).join(" · ") +
+    (blurb ? ` — ${blurb}` : "");
+
+  const image = event.imageurl ?? '/images/default_events.jpg'; // fallback in /public
+
+  return {
+    title: event.title,
+    description,
+    openGraph: {
+      title: event.title,
+      description,
+      url: `/events/${event.id}`,
+      images: [{ url: image }],
+    },
+    twitter: { card: "summary_large_image", title: event.title, description, images: [image] },
+  };
 }

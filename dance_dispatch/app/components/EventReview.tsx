@@ -117,35 +117,48 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
 
     const handleSubmit = () => {
         const reviewsToSubmit: ReviewData[] = [];
+        const allMediaPaths = userMedia.map(m => m.path);
+        const hostIdFromPath = (path: string) => {
+            const fileName = path.split('/').pop() ?? '';
+            const base = fileName.replace(/\.[^.]+$/, '');
+            const underscore = base.indexOf('_');
+            return underscore >= 0 ? base.slice(underscore + 1) : '';
+        };
 
-        if (generalComment.trim()) {
+        // Media-only submissions still create an event entry so uploads are saved and rewarded.
+        if (generalComment.trim() || allMediaPaths.length > 0) {
             reviewsToSubmit.push({
                 entityType: 'event',
                 entityId: event.id || '',
                 rating: 0,
                 comment: generalComment,
                 privacyLevel,
-                // Pass media paths so your backend can store the association
-                mediaPaths: userMedia.map(m => m.path),
+                mediaPaths: allMediaPaths,
             });
         }
-        if (venueRating > 0 || venueComment.length>0) {
+        // Every upload is also tied to the venue.
+        if (venueRating > 0 || venueComment.length > 0 || (allMediaPaths.length > 0 && event.locationid)) {
             reviewsToSubmit.push({
                 entityType: 'venue',
                 entityId: event.locationid || '',
                 rating: venueRating,
                 comment: venueComment,
                 privacyLevel,
+                mediaPaths: allMediaPaths,
             });
         }
-        Object.entries(djReviews).forEach(([dj, review]) => {
-            if (review.rating > 0|| review.comment.length>0) {
+        // Uploads tagged to a DJ are tied to that DJ's review.
+        (event.hostIDs ?? []).forEach((dj) => {
+            const review = djReviews[dj] ?? { rating: 0, comment: '' };
+            const taggedPaths = allMediaPaths.filter((path) => hostIdFromPath(path) === String(dj));
+            if (review.rating > 0 || review.comment.length > 0 || taggedPaths.length > 0) {
                 reviewsToSubmit.push({
                     entityType: 'host',
                     entityId: dj,
                     rating: review.rating,
                     comment: review.comment,
                     privacyLevel,
+                    mediaPaths: taggedPaths,
                 });
             }
         });
@@ -214,7 +227,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                             eventId={event.id || ''}
                             mode="inline"
                             onMediaChange={setUserMedia}
-                            hosts = {event.hostNames}
+                            hosts={event.hostIDs?.map((id, index) => ({ id: String(id), name: event.hostNames?.[index] ?? String(id) }))}
                         />
                     </div>
 

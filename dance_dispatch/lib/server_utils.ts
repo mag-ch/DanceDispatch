@@ -283,7 +283,7 @@ export async function getHostComments(hostId:string) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('Reviews')
-        .select('event_id, user_id, rating, comment, created_at, privacy_level')
+        .select('event_id, user_id, rating, comment, created_at, privacy_level, ReviewMedia(storage_path)')
         .eq('entity_id', hostId)
         .eq('entity_type', 'host')
         .neq('privacy_level', 'private');
@@ -303,7 +303,9 @@ export async function getHostComments(hostId:string) {
             ? 'Anonymous'
             : usernameById.get(String(comment.user_id)) ?? 'Anon';
         comment.eventName = eventNameById.get(String(comment.event_id)) ?? 'Past event';
+        comment.mediaPaths = (comment.ReviewMedia ?? []).map((m: any) => m.storage_path);
         delete comment.user_id;
+        delete comment.ReviewMedia;
     });
 
     return data;

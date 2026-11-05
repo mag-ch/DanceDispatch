@@ -13,6 +13,8 @@ interface ReviewFeedClientProps {
 
 export default function ReviewFeedClient({ initialReviews, initialHighlights }: ReviewFeedClientProps) {
     const [reviews, setReviews] = useState(initialReviews);
+    const preEvent = reviews.filter((review) => review.isPreEvent);
+    const postEvent = reviews.filter((review) => !review.isPreEvent);
 
     return (
         <>
@@ -81,24 +83,46 @@ export default function ReviewFeedClient({ initialReviews, initialHighlights }: 
             {reviews.length === 0 ? (
                 <p className="text-sm text-muted">No public reviews yet.</p>
             ) : (
-                <div className="space-y-5">
-                    {reviews.map((review, index) => (
-                        <div key={`${review.eventId}-${review.username}-${index}`}>
-                            <Link href={`/events/${review.eventId}`} className="mb-1 flex items-center gap-3">
-                                <img
-                                    src={review.eventImageUrl || '/images/default_events.jpg'}
-                                    alt=""
-                                    className="h-12 w-12 shrink-0 rounded-md border border-default object-cover"
-                                />
-                                <span className="text-sm font-semibold text-text hover:underline">{review.eventName}</span>
-                            </Link>
-                            <div className="[&_video]:max-h-56 [&_img]:max-h-56 [&_video]:object-cover [&_img]:object-cover">
-                                <DisplayEventReview
-                                    review={review}
-                                    onDeleted={() => setReviews((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-                                />
+                <div className="space-y-10">
+                    {[
+                        { key: 'reviews', title: 'Reviews', subtitle: 'From people who attended.', items: postEvent, empty: 'No reviews yet.' },
+                        { key: 'comments', title: 'Comments', subtitle: 'Shared before the event.', items: preEvent, empty: 'No comments yet.' },
+                    ].map((section) => (
+                        <section key={section.key} aria-labelledby={`feed-${section.key}-heading`}>
+                            <div className="mb-4">
+                                <h2 id={`feed-${section.key}-heading`} className="text-lg font-bold text-text sm:text-xl">
+                                    {section.title} <span className="text-sm font-medium text-muted">({section.items.length})</span>
+                                </h2>
+                                <p className="mt-1 text-sm text-muted">{section.subtitle}</p>
                             </div>
-                        </div>
+                            {section.items.length === 0 ? (
+                                <p className="text-sm text-muted">{section.empty}</p>
+                            ) : (
+                                <div className="space-y-5">
+                                    {section.items.map((review) => (
+                                        <div key={review.id ?? `${review.eventId}-${review.username}-${review.dateSubmitted}`}>
+                                            <Link href={`/events/${review.eventId}`} className="mb-1 flex items-center gap-3">
+                                                <img
+                                                    src={review.eventImageUrl || '/images/default_events.jpg'}
+                                                    alt=""
+                                                    className="h-12 w-12 shrink-0 rounded-md border border-default object-cover"
+                                                />
+                                                <span className="text-sm font-semibold text-text hover:underline">{review.eventName}</span>
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${review.isPreEvent ? 'bg-accent text-muted' : 'btn-highlighted'}`}>
+                                                    {review.isPreEvent ? 'Comment' : 'Review'}
+                                                </span>
+                                            </Link>
+                                            <div className="[&_video]:max-h-56 [&_img]:max-h-56 [&_video]:object-cover [&_img]:object-cover">
+                                                <DisplayEventReview
+                                                    review={review}
+                                                    onDeleted={() => setReviews((current) => current.filter((r) => r !== review))}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
                     ))}
                 </div>
             )}

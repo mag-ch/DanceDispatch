@@ -238,7 +238,6 @@ const approvePendingReviewEvent = async (eventId: string) => {
 
       setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
     } catch (error) {
-      console.error('[deletePendingReviewEvent] request threw', { eventId, error });
       setPendingReviewError('Failed to delete pending event');
     } finally {
       setPendingDeleteId(null);

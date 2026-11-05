@@ -12,6 +12,16 @@ export function isUpcoming(event: EventDateFields, now: Date = new Date()): bool
     return eventEnd >= now;
 }
 
+/** True when something was submitted before the event started (used to tell "Comments" from "Reviews"). */
+export function isBeforeEventStart(
+    event: Pick<EventDateFields, 'startdate' | 'starttime'>,
+    submittedAt: string | Date
+): boolean {
+    const start = new Date(`${event.startdate.split('T')[0]}T${event.starttime || '00:00:00'}`);
+    if (Number.isNaN(start.getTime())) return false;
+    return new Date(submittedAt) < start;
+}
+
 const parseDateOnlyAsLocal = (dateStr: string) => {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
     if (!match) return new Date(dateStr);

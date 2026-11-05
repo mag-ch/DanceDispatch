@@ -14,6 +14,7 @@ import { geocodeAddress } from '@/lib/geocoding';
 import VenueDetailsEditor from './VenueDetailsEditor';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
+import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
 
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
@@ -141,9 +142,15 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                         </div>
 
 
+                        <CommunityMediaGallery
+                            items={(venueComments ?? []).flatMap((comment: any) =>
+                                (comment.mediaPaths ?? []).map((path: string) => ({ path, eventId: comment.event_id, eventName: comment.eventName }))
+                            )}
+                        />
+
                         {/* Comments section */}
 
-                        {venueComments && venueComments.length > 0 && (
+                        {(ratingCount > 0 || textComments.length > 0) && (
                             <section className="mb-4 bg-surface p-6 rounded-lg">
                                 <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
                                 <div className="mb-5 rounded-lg border border-default p-4">

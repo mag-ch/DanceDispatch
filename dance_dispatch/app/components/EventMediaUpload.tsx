@@ -26,7 +26,7 @@ interface EventMediaUploadProps {
     mode?: 'inline' | 'standalone';
     // in inline mode, notify parent of current files so they can be saved with the review
     onMediaChange?: (files: MediaFile[]) => void;
-    hosts?: string [];
+    hosts?: { id: string; name: string }[];
     mediaFiles?: MediaFile[];
 }
 
@@ -136,6 +136,31 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
         }
     };
 
+    // Transcodes in-browser (ffmpeg.wasm) to H.264/AAC MP4 for universal playback.
+    const transcodeToMp4 = async (file: File): Promise<File> => {
+        const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+        const { fetchFile, toBlobURL } = await import('@ffmpeg/util');
+        const ffmpeg = new FFmpeg();
+        const base = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd';
+        await ffmpeg.load({
+            coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+            wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+        const inputName = `input.${file.name.split('.').pop() || 'mp4'}`;
+        await ffmpeg.writeFile(inputName, await fetchFile(file));
+        const code = await ffmpeg.exec([
+            '-i', inputName,
+            '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-movflags', '+faststart',
+            'output.mp4',
+        ]);
+        if (code !== 0) throw new Error('Video conversion failed.');
+        const data = await ffmpeg.readFile('output.mp4');
+        ffmpeg.terminate();
+        const baseName = file.name.replace(/\.[^.]+$/, '');
+        return new File([data as Uint8Array<ArrayBuffer>], `${baseName}.mp4`, { type: 'video/mp4' });
+    };
+
     const uploadFile = async (file: File, hostId: string) => {
         setUploading(true);
         try {
@@ -147,7 +172,12 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
                     useWebWorker: true,
                 });
             }
-            const ext = file.name.split('.').pop();
+            let ext = file.name.split('.').pop();
+            if (file.type.startsWith('video/')) {
+                fileToUpload = await transcodeToMp4(file);
+                ext = 'mp4';
+            }
+            // Host tag is stored as the host id in the filename: <timestamp>_<hostId>.<ext>
             const suffix = hostId ? `_${hostId}` : '';
             const path = `${folderPath}/${Date.now()}${suffix}.${ext}`;
             const { error: uploadError } = await supabase.storage.from('event-media').upload(path, fileToUpload);
@@ -292,17 +322,17 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
                         >
                             No tag
                         </button>
-                        {hosts.map((host, id) => (
+                        {hosts.map((host) => (
                             <button
-                                key={id}
+                                key={host.id}
                                 type="button"
-                                onClick={() => setSelectedHostTag(host)}
+                                onClick={() => setSelectedHostTag(host.id)}
                                 className={`px-3 py-1 rounded-full text-xs font-semibold border transition
-                                    ${selectedHostTag === host
+                                    ${selectedHostTag === host.id
                                         ? 'bg-blue-500 border-blue-500 text-white'
                                         : 'border-default text-muted hover:border-blue-400'}`}
                             >
-                                {host}
+                                {host.name}
                             </button>
                         ))}
                     </div>

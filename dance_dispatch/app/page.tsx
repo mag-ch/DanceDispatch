@@ -669,6 +669,7 @@ function ValueProp({ title, text }: { title: string; text: string }) {
   );
 }
 
+const EXCLUDED_USER_ID = 'ba398812-06a0-4c48-9f15-0660d3af0047';
 
 async function LeaderboardPreview() {
   const supabase = await createClient();
@@ -676,6 +677,7 @@ async function LeaderboardPreview() {
   const { data: pointRows, error: pointsError } = await supabase
     .from('UserPoints')
     .select('user_id, points')
+    .neq('user_id', EXCLUDED_USER_ID)
     .order('created_at', { ascending: false });
 
   if (pointsError) {

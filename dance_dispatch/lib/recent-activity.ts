@@ -79,7 +79,7 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
     };
     if (!event) return details;
 
-    const organizerIndex = (event.hostTypes ?? []).indexOf('organizer');
+    const organizerIndex = (event.hostTypes ?? []).indexOf('Organizer');
     const organizerId = organizerIndex >= 0 ? event.hostIDs?.[organizerIndex] : undefined;
     let next: any;
     let label: string | undefined;

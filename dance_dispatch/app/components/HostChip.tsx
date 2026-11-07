@@ -3,9 +3,9 @@ import type { HostType } from '@/lib/host-types';
 // null type is a plain "host".
 const HOST_TYPE_CHIP_CLASSES: Record<HostType | 'host', string> = {
   DJ: 'bg-fuchsia-600 text-white',
-  promoter: 'bg-amber-500 text-black',
-  organizer: 'bg-emerald-600 text-white',
-  teacher: 'bg-sky-600 text-white',
+  Promoter: 'bg-amber-500 text-black',
+  Organizer: 'bg-emerald-600 text-text',
+  Teacher: 'bg-sky-600 text-white',
   host: 'bg-accent text-text',
 };
 

@@ -1,4 +1,4 @@
-export const HOST_TYPES = ['DJ', 'promoter', 'organizer', 'teacher'] as const;
+export const HOST_TYPES = ['DJ', 'Promoter', 'Organizer', 'Teacher'] as const;
 export type HostType = (typeof HOST_TYPES)[number];
 
 // Anything unrecognised (including null) is a plain "host".

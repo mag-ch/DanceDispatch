@@ -1,7 +1,8 @@
-import { getHostById } from '@/lib/utils_supabase_server';
+import { getHostById, revalidateCatalogCache } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
 import { NextResponse } from 'next/server';
+import { normalizeHostType } from '@/lib/host-types';
 
 export async function GET(
     request: Request,
@@ -37,11 +38,18 @@ export async function GET(
             await requireAdmin();
             const { hostId } = await params;
             const body = await request.json();
-                const { name, bio, tags, genres, photoUrl } = body;
+                const { name, bio, host_type, tags, genres, photoUrl } = body;
 
             const updates: Record<string, unknown> = {};
             if (typeof name === 'string') updates.name = name.trim();
             if (typeof bio === 'string') updates.bio = bio.trim();
+            if (host_type !== undefined) {
+                const normalizedHostType = normalizeHostType(host_type);
+                if (!normalizedHostType) {
+                    return NextResponse.json({ error: 'Invalid host type' }, { status: 400 });
+                }
+                updates.host_type = normalizedHostType;
+            }
             if (Array.isArray(tags)) updates.tags = tags;
             if (Array.isArray(genres)) updates.genres = genres;
             if (typeof photoUrl === 'string') updates.image_url = photoUrl.trim();
@@ -62,6 +70,7 @@ export async function GET(
                 return NextResponse.json({ error: 'Failed to update host' }, { status: 500 });
             }
 
+            revalidateCatalogCache();
             return NextResponse.json({ success: true, host: data[0] });
 
             // return NextResponse.json({ success: true });

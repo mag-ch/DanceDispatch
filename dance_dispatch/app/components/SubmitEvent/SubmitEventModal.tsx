@@ -7,8 +7,6 @@ import { Venue } from '@/lib/utils';
 import { ArrowLeft, Repeat, Upload, X } from 'lucide-react'; 
 import type { Event } from "@/lib/utils";
 import { HostSelector } from '@/app/components/HostSelector';
-import type { HostTypeMap } from '@/app/components/HostSelector';
-import { hostTypeMapFrom } from '@/app/components/HostChip';
 import { getRecurrenceSummary } from '@/lib/recurrence-options';
 
 interface FormState {
@@ -88,7 +86,6 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
 
     // Hosts state
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>(initialData?.hostIDs ?? []);
-    const [hostTypes, setHostTypes] = useState<HostTypeMap>(() => hostTypeMapFrom(initialData?.hostIDs, initialData?.hostTypes));
 
     // Recurrence state
     const [isRecurring, setIsRecurring] = useState(false);
@@ -104,7 +101,6 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
         if (initialData) {
             setForm(createInitialForm(initialData));
             setSelectedHostIds(initialData.hostIDs ?? []);
-            setHostTypes(hostTypeMapFrom(initialData.hostIDs, initialData.hostTypes));
             if (initialData.startdate) {
                 const parsed = new Date(`${initialData.startdate}T00:00:00`);
                 if (!Number.isNaN(parsed.getTime())) {
@@ -198,7 +194,6 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
         if (form.externallink) body.externallink = form.externallink;
         if (selectedHostIds.length > 0) {
             body.hostIds = selectedHostIds;
-            body.hostTypes = hostTypes;
         }
 
         if (isRecurring) {
@@ -239,7 +234,6 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
             setSuccess(true);
             setForm(empty);
             setSelectedHostIds([]);
-            setHostTypes({});
             setIsRecurring(false);
             setTimeout(() => {
                 setSuccess(false);
@@ -501,8 +495,6 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                             <HostSelector
                                 selectedHostIds={selectedHostIds}
                                 onSelectedHostIdsChange={setSelectedHostIds}
-                                hostTypes={hostTypes}
-                                onHostTypesChange={setHostTypes}
                                 maxHeightClassName="max-h-40"
                             />
                         </div>

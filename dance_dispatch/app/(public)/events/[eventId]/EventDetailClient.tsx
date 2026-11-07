@@ -14,7 +14,6 @@ import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { BadgeChipsInline } from '@/app/components/UserBadgesInline';
 import { openInMaps } from '@/lib/utils_supabase';
 import { HostSelector } from '@/app/components/HostSelector';
-import type { HostTypeMap } from '@/app/components/HostSelector';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 
@@ -78,7 +77,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         (event.hostNames ?? []).map((name, index) => ({
             id: event.hostIDs?.[index] ?? `${index}`,
             name,
-            type: event.hostTypes?.[index] ?? null,
+            host_type: event.hostTypes?.[index] ?? 'DJ',
         }))
     );
 
@@ -107,8 +106,9 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         };
 
         hostPreviousReviewsMap.forEach((reviews, hostId) => {
-            const hostName = eventHosts.find((host) => host.id === hostId)?.name || 'Host';
-            addSourceReviews(`host:${hostId}`, `DJ: ${hostName}`, reviews);
+            const host = eventHosts.find((item) => item.id === hostId);
+            const hostName = host?.name || 'Host';
+            addSourceReviews(`host:${hostId}`, `${host?.host_type ?? 'Host'}: ${hostName}`, reviews);
         });
 
         venuePreviousReviewsMap.forEach((reviews, venueId) => {
@@ -118,17 +118,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         return Array.from(groups.values());
     })();
     const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
-    const [selectedHostTypes, setSelectedHostTypes] = useState<HostTypeMap>({});
 
     const hostSelectionChanged = () =>
         selectedHostIds.length !== eventHosts.length ||
-        selectedHostIds.some((hostId) => {
-            const current = eventHosts.find((host) => host.id === hostId);
-            return !current || (selectedHostTypes[hostId] ?? null) !== (current.type ?? null);
-        });
+        selectedHostIds.some((hostId) => !eventHosts.some((host) => host.id === hostId));
     const resetHostSelection = () => {
         setSelectedHostIds(eventHosts.map((host) => host.id));
-        setSelectedHostTypes(Object.fromEntries(eventHosts.map((host) => [host.id, host.type ?? null])));
     };
     const [isSavingHosts, setIsSavingHosts] = useState(false);
     const [hostEditorError, setHostEditorError] = useState<string | null>(null);
@@ -269,7 +264,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             (event.hostNames ?? []).map((name, index) => ({
                 id: event.hostIDs?.[index] ?? `${index}`,
                 name,
-                type: event.hostTypes?.[index] ?? null,
+                host_type: event.hostTypes?.[index] ?? 'DJ',
             }))
         );
     }, [event.hostIDs, event.hostNames, event.hostTypes]);
@@ -366,7 +361,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                 const hostResponse = await fetch(`/api/events/${event.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ hostIds: selectedHostIds, hostTypes: selectedHostTypes }),
+                    body: JSON.stringify({ hostIds: selectedHostIds }),
                 });
                 const hostData = await hostResponse.json().catch(() => null);
 
@@ -407,7 +402,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             const response = await fetch(`/api/events/${event.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hostIds: selectedHostIds, hostTypes: selectedHostTypes }),
+                body: JSON.stringify({ hostIds: selectedHostIds }),
             });
             const data = await response.json().catch(() => null);
 
@@ -611,8 +606,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 <HostSelector
                                     selectedHostIds={selectedHostIds}
                                     onSelectedHostIdsChange={setSelectedHostIds}
-                                    hostTypes={selectedHostTypes}
-                                    onHostTypesChange={setSelectedHostTypes}
                                     existingHosts={eventHosts}
                                     maxHeightClassName="max-h-48"
                                 />
@@ -806,14 +799,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     <HostSelector
                                         selectedHostIds={selectedHostIds}
                                         onSelectedHostIdsChange={setSelectedHostIds}
-                                        hostTypes={selectedHostTypes}
-                                        onHostTypesChange={setSelectedHostTypes}
                                         existingHosts={eventHosts}
                                     />
                                     {hostEditorError && <p className="mt-3 text-sm text-red-500">{hostEditorError}</p>}
                                 </div>
                             ) : eventHosts.length > 0 ? eventHosts.map((host) => (
-                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} title={hostTypeLabel(host.type)} className={`text-sm font-bold px-3 py-1 rounded m-2 inline-block transition ${hostChipClass(host.type)}`}>
+                                <a key={host.id} href={`/hosts/${encodeURIComponent(host.id)}`} title={hostTypeLabel(host.host_type)} className={`text-sm font-bold px-3 py-1 rounded m-2 inline-block transition ${hostChipClass(host.host_type)}`}>
                                     {host.name.trim().replace(/[\[\]']/g, '')}
                                 </a>
                             )) : (

@@ -11,6 +11,7 @@ import { FollowEntityButton } from '@/app/components/SaveEventButton';
 import { useAuth } from '@/app/providers/AuthContext';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
+import { HOST_TYPES, type HostType } from '@/lib/host-types';
 import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
 import Link from 'next/link';
 
@@ -56,7 +57,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editBio, setEditBio] = useState('');
-    const [editTags, setEditTags] = useState('');
+    const [editHostType, setEditHostType] = useState<HostType>('DJ');
     const [editGenre, setEditGenre] = useState('');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         if (!h) return;
         setEditName(h.name);
         setEditBio(h.bio ?? '');
-        setEditTags(Array.isArray(h.tags) ? h.tags.join(', ') : (typeof h.tags === 'string' ? h.tags : ''));
+        setEditHostType(h.host_type);
         setEditGenre(Array.isArray(h.genres) ? h.genres.join(', ') : '');
         setSaveError(null);
         setEditing(true);
@@ -106,7 +107,6 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         setSaving(true);
         setSaveError(null);
         try {
-            const tags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
             const genres = editGenre.split(',').map((g) => g.trim()).filter(Boolean);
             const pendingMediaLink = editMediaLink.trim();
             const pendingMediaEmbedCode = editMediaEmbedCode.trim();
@@ -118,7 +118,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             const res = await fetch(`/api/hosts/${hostId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editName, bio: editBio, tags, genres }),
+                body: JSON.stringify({ name: editName, bio: editBio, host_type: editHostType, genres }),
             });
             if (!res.ok) {
                 const err = await res.json();
@@ -131,7 +131,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                 cancelEditingMedia();
             }
 
-            setHost({ ...h, name: editName, bio: editBio, tags: tags, genres: genres });
+            setHost({ ...h, name: editName, bio: editBio, host_type: editHostType, genres: genres });
             setEditing(false);
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : 'Failed to save');
@@ -401,12 +401,16 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-2">
                                     {editing ? (
                                         <div className="flex flex-col gap-2 w-full">
-                                            <label className="text-sm text-muted">Tags (comma-separated)</label>
-                                            <input
+                                            <label className="text-sm text-muted">Host type</label>
+                                            <select
                                                 className="bg-bg text-text border border-default rounded p-2 w-full"
-                                                value={editTags}
-                                                onChange={(e) => setEditTags(e.target.value)}
-                                            />
+                                                value={editHostType}
+                                                onChange={(e) => setEditHostType(e.target.value as HostType)}
+                                            >
+                                                {HOST_TYPES.map((type) => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
 
                                             <input
                                             className="text-4xl text-text font-bold bg-bg border border-default rounded p-2 w-full"

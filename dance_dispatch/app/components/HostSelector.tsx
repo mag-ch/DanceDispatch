@@ -1,20 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Host } from '@/lib/utils';
-import { HOST_TYPES, normalizeHostType } from '@/lib/host-types';
-import type { HostType } from '@/lib/host-types';
+import type { Host } from '@/lib/utils';
 import { hostChipClass } from '@/app/components/HostChip';
 
-type SelectedHost = { id: string; name: string };
-export type HostTypeMap = Record<string, HostType | null>;
+type SelectedHost = Pick<Host, 'id' | 'name' | 'host_type'>;
 
 interface HostSelectorProps {
     selectedHostIds: string[];
     onSelectedHostIdsChange: (hostIds: string[]) => void;
-    // Per-event role for each selected host; missing/null means a plain "host".
-    hostTypes?: HostTypeMap;
-    onHostTypesChange?: (hostTypes: HostTypeMap) => void;
     existingHosts?: SelectedHost[];
     maxHeightClassName?: string;
 }
@@ -22,8 +16,6 @@ interface HostSelectorProps {
 export function HostSelector({
     selectedHostIds,
     onSelectedHostIdsChange,
-    hostTypes = {},
-    onHostTypesChange,
     existingHosts = [],
     maxHeightClassName = 'max-h-64',
 }: HostSelectorProps) {
@@ -74,7 +66,7 @@ export function HostSelector({
         .map((hostId) => {
             const loadedHost = allHosts.find((host) => String(host.id) === hostId);
             if (loadedHost) {
-                return { id: String(loadedHost.id), name: loadedHost.name };
+                return { id: String(loadedHost.id), name: loadedHost.name, host_type: loadedHost.host_type };
             }
             return existingHosts.find((host) => host.id === hostId) ?? null;
         })
@@ -87,15 +79,7 @@ export function HostSelector({
                 ? selectedHostIds.filter((id) => id !== hostId)
                 : [...selectedHostIds, hostId]
         );
-        if (removing && onHostTypesChange && hostId in hostTypes) {
-            const { [hostId]: _removed, ...rest } = hostTypes;
-            onHostTypesChange(rest);
-        }
         setSearchQuery('');
-    };
-
-    const setHostType = (hostId: string, value: string) => {
-        onHostTypesChange?.({ ...hostTypes, [hostId]: normalizeHostType(value) });
     };
 
     const createNewHost = async () => {
@@ -134,22 +118,9 @@ export function HostSelector({
                     {selectedHostTokens.map((host) => (
                         <span
                             key={host.id}
-                            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${hostChipClass(hostTypes[host.id])}`}
+                            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold ${hostChipClass(host.host_type)}`}
                         >
                             {host.name}
-                            {onHostTypesChange && (
-                                <select
-                                    aria-label={`Role for ${host.name}`}
-                                    value={hostTypes[host.id] ?? ''}
-                                    onChange={(event) => setHostType(host.id, event.target.value)}
-                                    className="rounded bg-bg px-1 py-0.5 text-xs text-text"
-                                >
-                                    <option value="">Host</option>
-                                    {HOST_TYPES.map((type) => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                            )}
                             <button
                                 type="button"
                                 aria-label={`Remove ${host.name}`}

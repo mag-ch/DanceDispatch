@@ -37,11 +37,7 @@ export async function PATCH(
         const { eventId } = await params;
         const body = await request.json();
         if (Array.isArray(body?.hostIds)) {
-            const nextHostIds = await setHostsForEvent(
-                eventId,
-                body.hostIds,
-                body.hostTypes && typeof body.hostTypes === 'object' ? body.hostTypes : undefined
-            );
+            const nextHostIds = await setHostsForEvent(eventId, body.hostIds);
 
             return new Response(JSON.stringify({ success: true, hostIds: nextHostIds }), {
                 status: 200,

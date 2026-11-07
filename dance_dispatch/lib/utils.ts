@@ -38,6 +38,7 @@ export interface Host {
     name: string;
     bio: string;
     photoUrl: string;
+    host_type: HostType;
     tags: string[];
     genres: string[];
     externalLinks?: HostExternalLink[];

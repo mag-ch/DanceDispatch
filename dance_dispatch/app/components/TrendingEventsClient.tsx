@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from "react";
 import type { Event } from "@/lib/utils";
+import { groupTrendingEvents, localDay, startOfWeek } from "@/lib/trending-event-dates";
 
 const BASE_MISSION_FILTERS = ['All', 'Today', 'This Weekend', 'Free'] as const;
 type MissionFilter = (typeof BASE_MISSION_FILTERS)[number] | string;
@@ -33,17 +34,6 @@ function getMissionFilters(events: Event[]): string[] {
       .slice(0, 5)
       .map(({ label }) => label),
   ];
-}
-
-function localDay(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, (month || 1) - 1, day || 1);
-}
-
-function startOfWeek(date: Date): Date {
-  const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-  return weekStart;
 }
 
 function eventMatchesMission(event: Event, filter: MissionFilter): boolean {
@@ -101,28 +91,7 @@ export default function TrendingEventsClient({
     .filter(({ event }) => eventMatchesMission(event, filter));
   const [showUpcoming, setShowUpcoming] = useState(false);
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(todayStart.getDate() + 1);
-  const dayAfterTomorrow = new Date(todayStart);
-  dayAfterTomorrow.setDate(todayStart.getDate() + 2);
-  // Exclusive end of the current week (the Monday after this Sunday)
-  const weekEnd = new Date(todayStart);
-  weekEnd.setDate(todayStart.getDate() + ((8 - todayStart.getDay()) % 7 || 7));
-
-  const today: DatedItem[] = [];
-  const tomorrow: DatedItem[] = [];
-  const laterThisWeek: DatedItem[] = [];
-  const upcoming: DatedItem[] = [];
-  visibleCards.forEach((item) => {
-    const day = localDay(item.event.startdate).getTime();
-    if (day < todayStart.getTime()) return;
-    if (day < tomorrowStart.getTime()) today.push(item);
-    else if (day < dayAfterTomorrow.getTime()) tomorrow.push(item);
-    else if (day < weekEnd.getTime()) laterThisWeek.push(item);
-    else upcoming.push(item);
-  });
+  const { today, tomorrow, laterThisWeek, nextWeek, upcoming } = groupTrendingEvents(visibleCards, new Date());
 
   const upcomingWeeks = new Map<number, DatedItem[]>();
   upcoming.forEach((item) => {
@@ -148,6 +117,7 @@ export default function TrendingEventsClient({
     { key: 'today', title: 'Today', items: today },
     { key: 'tomorrow', title: 'Tomorrow', items: tomorrow },
     { key: 'week', title: 'Later This Week', items: laterThisWeek },
+    { key: 'next-week', title: 'Next Week', items: nextWeek },
   ].filter((section) => section.items.length > 0);
 
   return (

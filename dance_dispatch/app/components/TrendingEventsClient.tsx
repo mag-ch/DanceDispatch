@@ -40,6 +40,12 @@ function localDay(value: string): Date {
   return new Date(year, (month || 1) - 1, day || 1);
 }
 
+function startOfWeek(date: Date): Date {
+  const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  return weekStart;
+}
+
 function eventMatchesMission(event: Event, filter: MissionFilter): boolean {
   if (filter === 'All') return true;
 
@@ -118,6 +124,26 @@ export default function TrendingEventsClient({
     else upcoming.push(item);
   });
 
+  const upcomingWeeks = new Map<number, DatedItem[]>();
+  upcoming.forEach((item) => {
+    const weekStart = startOfWeek(localDay(item.event.startdate)).getTime();
+    const weekItems = upcomingWeeks.get(weekStart) ?? [];
+    weekItems.push(item);
+    upcomingWeeks.set(weekStart, weekItems);
+  });
+  const weekTitleFormatter = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const groupedUpcoming = [...upcomingWeeks.entries()]
+    .sort(([firstWeek], [secondWeek]) => firstWeek - secondWeek)
+    .map(([weekStart, items]) => ({
+      key: weekStart,
+      title: `Week of ${weekTitleFormatter.format(new Date(weekStart))}`,
+      items,
+    }));
+
   const sections = [
     { key: 'today', title: 'Today', items: today },
     { key: 'tomorrow', title: 'Tomorrow', items: tomorrow },
@@ -166,7 +192,9 @@ export default function TrendingEventsClient({
             </div>
           )}
           {upcoming.length > 0 && showUpcoming && (
-            <DateSection title="Upcoming" items={upcoming} />
+            groupedUpcoming.map((week) => (
+              <DateSection key={week.key} title={week.title} items={week.items} />
+            ))
           )}
         </>
       )}

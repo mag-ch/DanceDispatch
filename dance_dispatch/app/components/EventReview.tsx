@@ -276,6 +276,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
     );
 };
 
+const StarRating: React.FC<{ label: string; rating: number; size?: number }> = ({ label, rating, size = 14 }) => (
+    <div className="flex shrink-0 gap-0.5" aria-label={`${label} rating ${rating} out of 5`}>
+        {[1, 2, 3, 4, 5].map((star) => (
+            <Star key={star} size={size} className={star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+        ))}
+    </div>
+);
 
 export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void; compact?: boolean }> = ({ review, onDeleted, compact = false }) => {
 
@@ -295,8 +302,6 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
 
     const { session, loading: authLoading } = useAuth();
 
-    // Don't render owner controls until auth is resolved
-
     const [privacyLevel, setPrivacyLevel] = useState<PrivacyLevel>(review.privacyLevel as PrivacyLevel);
     const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -304,34 +309,15 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [deleted, setDeleted] = useState(false);
 
-
-    // useEffect(() => {
-    //     if (authLoading ) return;
-    //     if (session) {
-    //         setIsOwner(!!session?.user?.id && session.user.id === review.userId);
-    //     } else {
-    //         setIsOwner(false);
-    //     }
-    // }, [authLoading, session, review.userId]);
-    
-    
+    // Don't render owner controls until auth is resolved
     useEffect(() => {
-        let isMounted = true;
-
         if (authLoading || !session) {
             setIsOwner(false);
-            return () => {
-                isMounted = false;
-            };
+            return;
         }
-
-        setIsOwner(!!session?.user?.id && session.user.id === review.userId);
-
-        return () => {
-            isMounted = false;
-        };
+        setIsOwner(!!session.user?.id && session.user.id === review.userId);
     }, [authLoading, review.userId, session]);
-    
+
     const displayUsername = privacyLevel === 'anonymous' ? 'Anonymous' : review.username;
     const usernameComponent = review.userId && privacyLevel !== 'anonymous'
         ? (
@@ -342,16 +328,16 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
         : <span className="font-semibold text-text">{displayUsername}</span>;
 
     const supabase = createClient();
-    
+
     const handlePrivacyCycle = async () => {
         const next = PRIVACY_CONFIG[privacyLevel].next;
         setIsUpdatingPrivacy(true);
         try {
             const { error } = await supabase
-            .from('Reviews')
-            .update({ privacy_level: next })
-            .eq('event_id', Number(review.eventId))
-            .eq('user_id', session?.user?.id);
+                .from('Reviews')
+                .update({ privacy_level: next })
+                .eq('event_id', Number(review.eventId))
+                .eq('user_id', session?.user?.id);
             if (error) throw error;
             setPrivacyLevel(next);
         } catch (err) {
@@ -360,7 +346,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
             setIsUpdatingPrivacy(false);
         }
     };
-    
+
     const handleDelete = async () => {
         if (!confirmDelete) {
             setConfirmDelete(true);
@@ -375,10 +361,10 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                 if (!response.ok) throw new Error('Failed to delete review');
             } else {
                 const { error } = await supabase
-                .from('Reviews')
-                .delete()
-                .eq('event_id', Number(review.eventId))
-                .eq('user_id', session?.user?.id);
+                    .from('Reviews')
+                    .delete()
+                    .eq('event_id', Number(review.eventId))
+                    .eq('user_id', session?.user?.id);
                 if (error) throw error;
             }
             setDeleted(true);
@@ -389,39 +375,48 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
             setConfirmDelete(false);
         }
     };
-    
+
     if (deleted) return null;
-    
+
     // Hide entirely if private and not the owner
     if (privacyLevel === 'private' && !isOwner) return null;
-    
+
     const config = PRIVACY_CONFIG[privacyLevel];
-    const ratings = [
-        ...(Number(review.rating) > 0 ? [{ label: 'Party', rating: Number(review.rating) }] : []),
-        ...(Number(review.venueReview?.rating) > 0
-            ? [{ label: 'Venue', rating: Number(review.venueReview?.rating) }]
+
+    // Party review: the main, full-width section
+    const partyRating = Number(review.rating) > 0 ? Number(review.rating) : 0;
+    const partyComment = review.mainComment?.trim() ?? '';
+    const hasPartySection = partyRating > 0 || partyComment.length > 0;
+
+    // Venue + DJ subsections: rating shown in the subheader, comment (if any) below
+    // NOTE: assumes venueReview.venueId and djReview.djId exist on the types; links are skipped if missing.
+    const subSections = [
+        ...(review.venueReview && (Number(review.venueReview.rating) > 0 || review.venueReview.comments?.trim())
+            ? [{
+                key: 'venue',
+                prefix: 'Venue',
+                name: review.venueReview.venueName,
+                href: review.venueReview.venueId ? `/venues/${review.venueReview.venueId}` : null,
+                rating: Number(review.venueReview.rating) || 0,
+                comment: review.venueReview.comments?.trim() ?? '',
+            }]
             : []),
         ...(review.djReviews ?? [])
-            .filter((djReview) => Number(djReview.rating) > 0)
-            .map((djReview) => ({ label: djReview.djName, rating: Number(djReview.rating) })),
+            .filter((djReview) => Number(djReview.rating) > 0 || djReview.comments?.trim())
+            .map((djReview) => ({
+                key: `dj:${djReview.djName}`,
+                prefix: 'DJ',
+                name: djReview.djName,
+                href: djReview.djId ? `/hosts/${djReview.djId}` : null,
+                rating: Number(djReview.rating) || 0,
+                comment: djReview.comments?.trim() ?? '',
+            })),
     ];
 
-    const textSections = [
-        ...(review.mainComment?.trim()
-            ? [{ key: 'party', label: `Party: ${review.eventName}`, comment: review.mainComment }]
-            : []),
-        ...(review.venueReview?.comments?.trim()
-            ? [{ key: 'venue', label: `Venue: ${review.venueReview.venueName}`, comment: review.venueReview.comments }]
-            : []),
-        ...(review.djReviews ?? [])
-            .filter((djReview) => Boolean(djReview.comments?.trim()))
-            .map((djReview) => ({ key: `dj:${djReview.djName}`, label: `DJ: ${djReview.djName}`, comment: djReview.comments })),
-    ];
-    
     return (
         <div className={`bg-surface rounded-lg shadow transition-opacity ${compact ? 'p-3' : 'p-4'} ${isDeleting ? 'opacity-50' : ''}`}>
-            {/* Header */}
-            <div className={`flex items-center justify-between ${compact ? 'mb-3 pb-2' : 'mb-4 pb-3'} border-b`}>
+            {/* Header (no divider; spacing does the separating) */}
+            <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-3'}`}>
                 <div className="flex items-center gap-2">
                     {usernameComponent}
                     <span className={`text-sm text-text ${compact ? 'opacity-80' : ''}`}>•</span>
@@ -482,42 +477,52 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
                 </div>
             </div>
 
-            {ratings.length > 0 && (
-                <div className="-mx-1 overflow-x-auto px-1 pb-1">
-                    <div className="flex w-max min-w-full items-center gap-4">
-                        {ratings.map(({ label, rating }) => (
-                            <div key={label} className="flex shrink-0 items-center gap-2">
-                                <span className="text-xs font-medium uppercase text-muted">{label}</span>
-                                <div className="flex gap-0.5" aria-label={`${label} rating ${rating} out of 5`}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star key={star} size={16} className={star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+            {/* Party review — full width, no inner container */}
+            {hasPartySection && (
+                <section>
+                    <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <h4 className="text-sm font-semibold uppercase text-muted">
+                            <Link href={`/events/${review.eventId}`} className="hover:text-text hover:underline">
+                                Party: {review.eventName}
+                            </Link>
+                        </h4>
+                        {partyRating > 0 && <StarRating label="Party" rating={partyRating} size={18} />}
                     </div>
-                </div>
+                    {partyComment && (
+                        <p className="whitespace-pre-wrap text-base text-text">{partyComment}</p>
+                    )}
+                </section>
             )}
 
-            {textSections.length > 0 && (
-                <div className="mt-3 rounded-md bg-bg/60 px-3 py-2.5">
-                    {textSections.map((section, index) => (
-                        <section key={section.key} className={`py-2 ${index > 0 ? 'border-t border-default' : ''}`}>
-                            <h4 className="mb-1 text-xs font-semibold uppercase text-muted">
-                                {section.key === 'party' ? (
-                                    <Link href={`/events/${review.eventId}`} className="hover:text-text hover:underline">
-                                        {section.label}
-                                    </Link>
-                                ) : section.label}
-                            </h4>
-                            <p className="whitespace-pre-wrap text-sm text-text">{section.comment}</p>
+            {/* Venue + DJ subsections — compact tinted blocks, no dividers */}
+            {subSections.length > 0 && (
+                <div className={`${hasPartySection ? 'mt-3' : ''} space-y-1.5`}>
+                    {subSections.map((section) => (
+                        <section key={section.key} className="rounded-md bg-bg/60 px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                                <h4 className="text-xs font-semibold uppercase text-muted">
+                                    {section.href ? (
+                                        <Link href={section.href} className="hover:text-text hover:underline">
+                                            {section.prefix}: {section.name}
+                                        </Link>
+                                    ) : (
+                                        `${section.prefix}: ${section.name}`
+                                    )}
+                                </h4>
+                                {section.rating > 0 && (
+                                    <StarRating label={section.name} rating={section.rating} size={14} />
+                                )}
+                            </div>
+                            {section.comment && (
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-text">{section.comment}</p>
+                            )}
                         </section>
                     ))}
                 </div>
             )}
 
             {review.mediaPaths && review.mediaPaths.length > 0 && (
-                <div className="mt border-t">
+                <div className="mt-3">
                     {/*
                         EventMediaUpload's own preview sizing is correct on other pages, so rather than
                         change the shared component, we cap it locally here. Note: the <img>/<video> tags

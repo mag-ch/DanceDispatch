@@ -9,6 +9,7 @@ interface SaveEventButtonProps {
     eventId: string | number;
     initialSaved?: boolean;
     isDisabled?: boolean;
+    showLabel?: boolean;
 }
 interface SaveEntityButtonProps {
     entity: string;
@@ -38,10 +39,12 @@ const getFollowedEntityLabel = (entity: string) => {
     return 'entity';
 };
 
-export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initialSaved, isDisabled }) => {
+export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initialSaved, isDisabled, showLabel = false }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
+    const [loadError, setLoadError] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
     const [showPopup, setShowPopup] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const isSubmittingRef = useRef(false);
@@ -71,6 +74,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
         if (initialSaved !== undefined) {
             setIsSaved(initialSaved);
             setIsLoading(false);
+            setLoadError(false);
             return () => {
                 isMounted = false;
             };
@@ -85,6 +89,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
         if (!session) {
             setIsSaved(false);
             setIsLoading(false);
+            setLoadError(false);
             return () => {
                 isMounted = false;
             };
@@ -92,22 +97,31 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
 
         setIsLoading(true);
         fetch(`/api/users/saved-events/${eventId}`)
-            .then((res) => res.json())
+            .then((res) => {
+                if (!res.ok) throw new Error('Failed to check saved state');
+                return res.json();
+            })
             .then((data) => {
+                if (typeof data.isSaved !== 'boolean') throw new Error('Invalid saved state response');
                 if (isMounted) {
-                    setIsSaved(!!data.isSaved);
+                    setIsSaved(data.isSaved);
                     setIsLoading(false);
+                    setLoadError(false);
                 }
             })
             .catch((error) => {
                 console.error('Error fetching saved state:', error);
-                if (isMounted) setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                    setLoadError(true);
+                    showToast('Could not load RSVP status');
+                }
             });
 
         return () => {
             isMounted = false;
         };
-    }, [eventId, initialSaved, session, authLoading]);
+    }, [eventId, initialSaved, session, authLoading, retryCount]);
 
     const handleClick = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -119,6 +133,12 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
 
         if (!session) {
             setShowPopup(true);
+            return;
+        }
+
+        if (loadError) {
+            setIsLoading(true);
+            setRetryCount((count) => count + 1);
             return;
         }
         
@@ -149,6 +169,7 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
         } catch (error) {
             console.error('Failed to save event:', error);
             setIsSaved(previousSavedState);
+            showToast('Could not update RSVP');
         } finally {
             isSubmittingRef.current = false;
         }
@@ -157,17 +178,23 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
     return (
         <>
             <button
+                type="button"
                 onClick={handleClick}
-                disabled={isLoading || isDisabled}
-                className={`group rounded-full p-2 transition ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
+                disabled={isLoading || authLoading || isDisabled}
+                className={`group inline-flex items-center gap-2 rounded-full transition ${showLabel ? 'px-4 py-2 text-sm font-semibold' : 'p-2'} ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                aria-disabled={isLoading || isDisabled}
-                title={isDisabled ? 'RSVP closed for past events' : 'Save event'}
+                aria-disabled={isLoading || authLoading || isDisabled}
+                aria-pressed={loadError ? undefined : isSaved}
+                aria-label={isDisabled ? 'RSVP closed for past events' : loadError ? 'Retry loading RSVP status' : isSaved ? 'Remove RSVP' : 'RSVP to event'}
+                title={isDisabled ? 'RSVP closed for past events' : loadError ? 'Retry loading RSVP status' : isSaved ? 'Remove RSVP' : 'RSVP to event'}
             >
                 <Bookmark
                     fill={isSaved ? 'white' : 'none'}
                     className={`transition-all ${isDisabled ? 'text-slate-400' : 'text-white'}`}
+                    size={showLabel ? 18 : 24}
+                    aria-hidden="true"
                 />
+                {showLabel && <span className="text-white">{loadError ? 'Retry RSVP' : isSaved ? 'RSVPed' : 'RSVP'}</span>}
             </button>
             <AuthRequiredModal
                 isOpen={showPopup}

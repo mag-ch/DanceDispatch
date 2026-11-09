@@ -1,22 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCachedEvents, getCachedHosts, getCachedVenues } from "@/lib/utils_supabase_server";
 import { isUpcoming } from "@/lib/date-utils";
+import { buildFollowedEventActivity } from "@/lib/followed-event-activity";
+import { isBeforeEventStart } from "@/lib/date-utils";
+import type { EventReview } from "@/lib/utils";
 
 export type RecentActivityItem = {
   id: string;
   type: 'review' | 'comment' | 'rsvp' | 'new_event';
-  // Event start for event-based items, creation time for reviews/comments.
+  // Creation time for individual activity; event start for grouped follow cards.
   createdAt: string;
   title: string;
   subtitle?: string;
   href: string;
   actorName?: string;
   actorAvatar?: string;
+  eventId?: string;
   eventTitle?: string;
   eventDate?: string;
   venueName?: string;
   imageUrl?: string;
   excerpt?: string;
+  parentReview?: EventReview;
   chips?: string[];
   nextLabel?: string;
   nextDate?: string;
@@ -30,6 +35,7 @@ export type RecentActivityItem = {
 export type ActivitySections = {
   friendsGoing: RecentActivityItem[];
   fromFollows: RecentActivityItem[];
+  followedEvents: RecentActivityItem[];
   reviewsAndComments: RecentActivityItem[];
 };
 
@@ -49,7 +55,7 @@ function uniqueIds(rows: any[] | null | undefined, key: string): string[] {
   return [...new Set((rows ?? []).map((row) => String(row[key] ?? '')).filter(Boolean))];
 }
 
-export async function getRecentActivitySections(viewerUserId?: string): Promise<ActivitySections> {
+export async function getRecentActivitySections(viewerUserId?: string, includeFollowedEvents = false): Promise<ActivitySections> {
   const supabase = await createClient();
   const now = new Date();
   const windowStart = new Date(now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
@@ -129,7 +135,7 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
   if (reviewIdsForReplies.length > 0) {
     const { data: parentReviews, error } = await supabase
       .from('Reviews')
-      .select('id, event_id, privacy_level')
+      .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
       .in('id', reviewIdsForReplies)
       .neq('privacy_level', 'private');
     if (error) console.error('Failed to fetch reviews for comments:', error);
@@ -147,6 +153,9 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
       supabase.from('UserFollowedVenues').select('venue_id').eq('user_id', viewerUserId),
       supabase.from('UserFollowedHosts').select('host_id').eq('user_id', viewerUserId),
     ]);
+    if (usersResult.error) console.error('Failed to fetch followed users for activity feed:', usersResult.error);
+    if (venuesResult.error) console.error('Failed to fetch followed venues for activity feed:', venuesResult.error);
+    if (hostsResult.error) console.error('Failed to fetch followed hosts for activity feed:', hostsResult.error);
     followedUserIds = uniqueIds(usersResult.data, 'followed_id');
     followedVenueIds = uniqueIds(venuesResult.data, 'venue_id');
     followedHostIds = uniqueIds(hostsResult.data, 'host_id');
@@ -155,8 +164,9 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
   if (followedUserIds.length > 0) {
     const { data, error } = await supabase
       .from('SavedEvents')
-      .select('id, user_id, event_id')
+      .select('id, user_id, event_id, created_at')
       .in('user_id', followedUserIds)
+      .order('created_at', { ascending: false })
       .limit(500);
     if (error) console.error('Failed to fetch friend RSVPs:', error);
     savedRows = data ?? [];
@@ -166,6 +176,7 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
     ...new Set([
       ...reviewRows.map((row: any) => String(row.user_id)),
       ...replyRows.map((row: any) => String(row.user_id)),
+      ...[...parentReviewById.values()].filter((row) => row.privacy_level !== 'anonymous').map((row) => String(row.user_id)),
       ...savedRows.map((row: any) => String(row.user_id)),
     ]),
   ].filter(Boolean);
@@ -200,7 +211,7 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
     friendsGoing.push({
       id: `rsvp-${row.id}`,
       type: 'rsvp',
-      createdAt: eventStartIso(event),
+      createdAt: String(row.created_at ?? ''),
       title: `${actor} is going`,
       href: `/events/${event.id}`,
       actorName: actor,
@@ -211,6 +222,24 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
 
   const followedVenueSet = new Set(followedVenueIds);
   const followedHostSet = new Set(followedHostIds);
+  const matchedEvents = includeFollowedEvents ? upcomingEvents.filter((event) =>
+    event.startdate.split('T')[0] <= windowEndDate &&
+    (followedVenueSet.has(String(event.locationid)) ||
+      (event.hostIDs ?? []).some((id: string) => followedHostSet.has(String(id))))
+  ) : [];
+  const createdAtById = new Map<string, string>();
+  for (let offset = 0; offset < matchedEvents.length; offset += 200) {
+    const ids = matchedEvents.slice(offset, offset + 200).map((event) => event.id);
+    const { data, error } = await supabase.from('Events').select('id, created_at').in('id', ids);
+    if (error) {
+      console.error('Failed to fetch creation dates for followed events:', error);
+      continue;
+    }
+    for (const row of data ?? []) {
+      if (row.created_at) createdAtById.set(String(row.id), String(row.created_at));
+    }
+  }
+  const followedEvents = buildFollowedEventActivity(matchedEvents, followedVenueIds, followedHostIds, createdAtById);
   const MAX_EVENTS_PER_ENTITY = 3;
 
   // One card per followed venue/host, listing its upcoming events in the window.
@@ -279,6 +308,32 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
     if (!parent) continue;
     const event: any = eventById.get(String(parent.event_id));
     const actor = usernameById.get(String(row.user_id)) ?? 'Someone';
+    const parentReview: EventReview = {
+      id: String(parent.id),
+      eventId: String(parent.event_id),
+      eventName: event?.title ?? 'Unknown Event',
+      eventImageUrl: event?.imageurl || undefined,
+      userId: parent.user_id,
+      username: parent.privacy_level === 'anonymous' ? 'Anonymous' : (usernameById.get(String(parent.user_id)) ?? 'Someone'),
+      dateSubmitted: parent.created_at,
+      isPreEvent: event ? isBeforeEventStart(event, parent.created_at) : false,
+      privacyLevel: parent.privacy_level,
+      mainComment: parent.entity_type === 'event' ? parent.comment : undefined,
+      rating: parent.entity_type === 'event' ? Number(parent.rating) || 0 : undefined,
+      mediaPaths: parent.entity_type === 'event' ? (parent.ReviewMedia ?? []).map((media: { storage_path: string }) => media.storage_path) : [],
+      venueReview: parent.entity_type === 'venue' ? {
+        venueId: String(parent.entity_id),
+        venueName: venueById.get(String(parent.entity_id))?.name ?? 'Unknown Venue',
+        rating: parent.rating,
+        comments: parent.comment,
+      } : undefined,
+      djReviews: parent.entity_type === 'host' ? [{
+        djId: String(parent.entity_id),
+        djName: hostById.get(String(parent.entity_id))?.name ?? 'Unknown Host',
+        rating: parent.rating,
+        comments: parent.comment,
+      }] : [],
+    };
     reviewsAndComments.push({
       id: `comment-${row.id}`,
       type: 'comment',
@@ -288,6 +343,7 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
       actorName: actor,
       actorAvatar: avatarById.get(String(row.user_id)),
       excerpt: String(row.comment ?? '').trim() || undefined,
+      parentReview,
       ...buildCardDetails(event),
     });
   }
@@ -296,8 +352,9 @@ export async function getRecentActivitySections(viewerUserId?: string): Promise<
   const valid = (item: RecentActivityItem) => !Number.isNaN(Date.parse(item.createdAt));
 
   return {
-    friendsGoing: friendsGoing.filter(valid).sort(byDate),
+    friendsGoing: friendsGoing.filter(valid).sort((a, b) => byDate(b, a)),
     fromFollows: fromFollows.filter(valid).sort(byDate),
+    followedEvents: followedEvents.sort((a, b) => byDate(b, a)),
     reviewsAndComments: reviewsAndComments.filter(valid).sort((a, b) => byDate(b, a)),
   };
 }

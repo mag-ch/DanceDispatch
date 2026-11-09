@@ -1,0 +1,16 @@
+.reviews { --category-color: 192 38 211; }
+.comments { --category-color: 2 132 199; }
+.rsvps { --category-color: 5 150 105; }
+.newEvents { --category-color: 217 119 6; }
+
+button.chip {
+  border-color: rgb(var(--border));
+  background-color: transparent;
+  color: rgb(var(--text));
+}
+
+button.chip[aria-pressed="true"], .activityCard, .badge {
+  border: 1px solid rgb(var(--category-color) / 0.8);
+  background-color: rgb(var(--category-color) / 0.15);
+  color: rgb(var(--text));
+}

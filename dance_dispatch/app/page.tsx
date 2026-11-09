@@ -82,7 +82,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           <div className="relative flex items-center justify-between gap-3">
             <h2 className="text-lg font-extrabold text-text sm:text-xl">Recent Activity</h2>
             <Link
-              href="/review-feed"
+              href="/activity-feed"
               className="rounded-full border border-cyan-500/60 bg-white/70 px-3 py-1 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100 dark:border-cyan-400/40 dark:bg-transparent dark:text-cyan-300 dark:hover:bg-cyan-400/10"
             >
               View all reviews

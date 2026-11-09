@@ -108,11 +108,13 @@ export interface EventReview {
     rating?: number;
     mainComment?: string;
     venueReview?: {
+      venueId: string;
         venueName: string;
         rating: number;
         comments: string;
     };
     djReviews?: {
+      djId: string;
         djName: string;
         rating: number;
         comments: string;

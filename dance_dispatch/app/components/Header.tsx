@@ -354,7 +354,7 @@ export function Header() {
                         <Link href="/mission" className="px-4 py-2 transition ">Mission</Link>
                         <Link href="/party-calendar" className="px-4 py-2 transition">Calendar</Link>
                         <Link href="/party-map" className="px-4 py-2 transition">Map</Link>
-                        <Link href="/review-feed" className="px-4 py-2 transition">Community Reviews</Link>
+                        <Link href="/activity-feed" className="px-4 py-2 transition">Activity Feed</Link>
                         {isAdmin && (
                             <SubmitEventButton
                                 label="Add event"
@@ -442,11 +442,11 @@ export function Header() {
                             Party Map
                         </Link>
                         <Link
-                            href="/review-feed"
+                            href="/activity-feed"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10"
                         >
-                            Community Reviews
+                            Activity Feed
                         </Link>
                         <Link
                             href="/mission"

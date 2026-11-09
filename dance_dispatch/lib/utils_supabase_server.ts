@@ -516,12 +516,14 @@ export async function getEventReviews(eventId: string): Promise<EventReview[]> {
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
         review.venueReview = {
+          venueId: String(row.entity_id),
           venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
           rating: row.rating,
           comments: row.comment,
         };
       } else if (row.entity_type === 'host') {
         review.djReviews?.push({
+          djId: String(row.entity_id),
           djName: hostMap.get(String(row.entity_id)) ?? 'Unknown Host',
           rating: row.rating,
           comments: row.comment,
@@ -620,12 +622,14 @@ export async function getUserReviews(userId: string, includeAnon: boolean): Prom
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
         review.venueReview = {
+          venueId: String(row.entity_id),
           venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
           rating: row.rating,
           comments: row.comment,
         };
       } else if (row.entity_type === 'host') {
         review.djReviews?.push({
+          djId: String(row.entity_id),
           djName: hostMap.get(String(row.entity_id)) ?? 'Unknown Host',
           rating: row.rating,
           comments: row.comment,
@@ -725,12 +729,14 @@ export async function getPublicReviewFeed(limit: number = 60): Promise<EventRevi
         review.mediaPaths = mediaPaths;
       } else if (row.entity_type === 'venue') {
         review.venueReview = {
+          venueId: String(row.entity_id),
           venueName: venueMap.get(String(row.entity_id)) ?? 'Unknown Venue',
           rating: row.rating,
           comments: row.comment,
         };
       } else if (row.entity_type === 'host') {
         review.djReviews?.push({
+          djId: String(row.entity_id),
           djName: hostMap.get(String(row.entity_id)) ?? 'Unknown Host',
           rating: row.rating,
           comments: row.comment,

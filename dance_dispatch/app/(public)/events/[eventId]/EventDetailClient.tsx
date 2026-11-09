@@ -59,6 +59,7 @@ function formatCompactDate(value: string): string {
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading, isAdmin } = useAuth();
+    const locationName = event.location?.trim() || 'Location Revealed To Ticket Holders';
     // Private reviews are only visible to their author, so exclude them from lists and counts.
     const visibleReviews = eventReviews.filter(
         (review) => review.privacyLevel !== 'private' || (!!session?.user?.id && review.userId === session.user.id)
@@ -112,7 +113,7 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         });
 
         venuePreviousReviewsMap.forEach((reviews, venueId) => {
-            addSourceReviews(`venue:${venueId}`, `Venue: ${event.location}`, reviews);
+            addSourceReviews(`venue:${venueId}`, `Venue: ${locationName}`, reviews);
         });
 
         return Array.from(groups.values());
@@ -692,17 +693,19 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     <p className="font-semibold text-text">{new Date(`2000-01-01 ${event.starttime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} to {new Date(`2000-01-01 ${event.endtime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => openInMaps(event.location)}
-                                className="flex items-center gap-3 hover:text-blue-500 transition-colors text-left"
-                            >
+                            <div className="flex items-center gap-3">
                                 <MapPin className="text-blue-600 shrink-0" />
                                 <div>
                                     <p className="text-sm text-muted">Location</p>
-                                    <p className="font-semibold text-text hover:underline">{event.location}</p>
+                                    {event.location?.trim() ? (
+                                        <button type="button" onClick={() => openInMaps(event.location)} className="font-semibold text-text hover:text-blue-500 hover:underline">
+                                            {locationName}
+                                        </button>
+                                    ) : (
+                                        <p className="font-semibold text-text">{locationName}</p>
+                                    )}
                                 </div>
-                            </button>
+                            </div>
                         </div>
 
                         {/* Description */}
@@ -815,13 +818,17 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         {/* Venue */}
                         <div className="bg-surface rounded-lg p-6 mb-6">
                             <h2 className="text-2xl text-text font-bold mb-4">Venue Information</h2>
-                            <a href={`/venues/${encodeURIComponent(event.locationid || '')}`} className="block border rounded-lg p-4 hover:shadow-md transition">
-                                <h3 className="font-semibold text-text text-lg mb-2">{event.location}</h3>
-                                <div className="flex items-center gap-2 text-muted">
-                                    <MapPin size={18} />
-                                    <p className="text-sm">{venueAddress}</p>
-                                </div>
-                            </a>
+                            {event.location?.trim() && event.locationid ? (
+                                <a href={`/venues/${encodeURIComponent(event.locationid)}`} className="block border rounded-lg p-4 hover:shadow-md transition">
+                                    <h3 className="font-semibold text-text text-lg mb-2">{locationName}</h3>
+                                    <div className="flex items-center gap-2 text-muted">
+                                        <MapPin size={18} />
+                                        <p className="text-sm">{venueAddress}</p>
+                                    </div>
+                                </a>
+                            ) : (
+                                <p className="text-muted">{locationName}</p>
+                            )}
                         </div>
 
                         {/* Comments (before the event) */}

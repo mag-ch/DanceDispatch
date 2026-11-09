@@ -171,7 +171,6 @@ def migrate_csv_files():
     #         temp_json = {
     #             'name': host["Name"],
     #             'bio': host["Bio"],
-    #             'tags': "{" +  ",".join([s.replace("'", "") for s in host["Tags"].strip("[]").split(",")]) + "}" if host["Tags"] else None,
     #             'temp_id': host["ID"],
     #         }
     #         response = client.table("Hosts").insert(temp_json).execute()
@@ -298,6 +297,16 @@ def get_venue_id(venue_name, venue_address):
         print(f"Added new venue: {venue_name} with ID {response.data[0]['id']}")
         return response.data[0]["id"]
     
+def _insert_host(host_data):
+    _execute_with_retry(lambda: _client().table("Hosts").insert(host_data, returning="minimal").execute())
+    response = _execute_with_retry(
+        lambda: _client().table("Hosts").select("id").eq("name", host_data["name"]).limit(1).execute()
+    )
+    if not response.data:
+        raise RuntimeError(f"Unable to find newly created host: {host_data['name']}")
+    return response.data[0]["id"]
+
+
 def get_host_id(hosts):
     host_ids = []
     if not hosts:
@@ -315,11 +324,10 @@ def get_host_id(hosts):
             temp_json = {
                 'name': host_name,
                 'bio': None,
-                'tags': None,
             }
-            response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
-            print(f"Auto-added host: {host_name} with ID {response.data[0]['id']}")
-            host_ids.append(response.data[0]["id"])
+            host_id = _insert_host(temp_json)
+            print(f"Auto-added host: {host_name} with ID {host_id}")
+            host_ids.append(host_id)
         else:
             name = input(f"Host with name '{host.strip()}' not found. Type 'skip' to skip adding host or leave blank to use {host}: ").strip()
             if name.lower() == "skip":
@@ -327,23 +335,29 @@ def get_host_id(hosts):
                 continue
             elif name == "":
                 name = host.strip()
-                tags = input(f"Enter tags for host '{name}' (comma-separated) or leave blank: ").strip()
+                host_types = ("DJ", "Promoter", "Organizer", "Teacher", "Host", "Judge")
+                while True:
+                    entered_type = input(f"Host type {', '.join(host_types)} [DJ]: ").strip()
+                    host_type = next((value for value in host_types if value.lower() == entered_type.lower()), None) if entered_type else "DJ"
+                    if host_type:
+                        break
+                    print("Invalid host type.")
                 temp_json = {
                     'name': name,
                     'bio': None,
-                    'tags': "{" +  ",".join([s.replace("'", "") for s in tags.split(",")]) + "}" if tags else None,
+                    'host_type': host_type,
                 }
-                response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
-                print(f"Added new host: {name} with ID {response.data[0]['id']}")
-                host_ids.append(response.data[0]["id"])
+                host_id = _insert_host(temp_json)
+                print(f"Added new host: {name} with ID {host_id}")
+                host_ids.append(host_id)
             else:
                 temp_json = {
                     'name': host.strip(),
                     'bio': None,
-                    'tags': None,}
-                response = _execute_with_retry(lambda tj=temp_json: _client().table("Hosts").insert(tj).execute())
-                print(f"Added new host: {host.strip()} with ID {response.data[0]['id']}")
-                host_ids.append(response.data[0]["id"])
+                }
+                host_id = _insert_host(temp_json)
+                print(f"Added new host: {host.strip()} with ID {host_id}")
+                host_ids.append(host_id)
     return host_ids
 
 
@@ -394,6 +408,4 @@ def handle_event_entry(event: Event):
 
 if __name__ == "__main__":
     migrate_csv_files()
-
-
 

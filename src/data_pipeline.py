@@ -106,13 +106,19 @@ def get_host_id(listofhostnames):
             host_ids.append(matched_hosts['ID'].values[0])
         else:
             print(f"Adding Host '{host.strip()}'.")
-            htags_inp = [x.strip() for x in input(f"List of tags (optional, comma-separated): ").split(",")]
+            host_types = ("DJ", "Promoter", "Organizer", "Teacher", "Host", "Judge")
+            while True:
+                entered_type = input(f"Host type {', '.join(host_types)} [DJ]: ").strip()
+                host_type = next((value for value in host_types if value.lower() == entered_type.lower()), None) if entered_type else "DJ"
+                if host_type:
+                    break
+                print("Invalid host type.")
             hid = max(HOSTS['ID'].values) + 1 if not HOSTS.empty else 0
             new_host = {
                 'ID': hid,
                 'Name': host.strip(),
                 'Bio': '',
-                'Tags': htags_inp,
+                'HostType': host_type,
                 'ExternalLinks': '',
                 'PhotoURLs': ''
             }

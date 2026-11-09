@@ -421,7 +421,6 @@ async function getOrCreateHostIds(supabase: any, hostNames: string[]): Promise<s
       .insert({
         name: hostName,
         bio: null,
-        tags: null,
       })
       .select('id')
       .single();

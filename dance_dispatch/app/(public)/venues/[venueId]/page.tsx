@@ -15,7 +15,18 @@ import VenueDetailsEditor from './VenueDetailsEditor';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
+import type { Metadata } from 'next';
+import { metadataDescription, pageMetadata } from '@/lib/page-metadata';
 
+export async function generateMetadata({ params }: { params: Promise<{ venueId: string }> }): Promise<Metadata> {
+    const { venueId } = await params;
+    const venue = (await getCachedVenues()).find((item) => item.id === venueId);
+    if (!venue) return { title: 'Venue not found' };
+
+    const description = metadataDescription(venue.bio, `Discover events and reviews at ${venue.name} on DanceDispatch.`);
+    const image = venue.photourls.split(',')[0]?.trim() || '/images/default_venues.jpg';
+    return pageMetadata(venue.name, description, `/venues/${encodeURIComponent(venue.id)}`, image);
+}
 
 export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
     const { venueId } = await params;

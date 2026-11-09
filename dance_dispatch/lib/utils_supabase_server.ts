@@ -207,7 +207,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       .eq('cancelled', false)
       .order('start', { ascending: true }),
     supabase.from('Venues').select('id,name,address,type,bio,image_url,external_url').order('name'),
-    supabase.from('Hosts').select('id,name,bio,image_url,host_type,tags,genres').order('name'),
+    supabase.from('Hosts').select('id,name,bio,image_url,host_type,genres').order('name'),
     supabase.from('event_hosts').select('event_id,host_id'),
   ]);
 
@@ -325,7 +325,7 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
       enddate,
       endtime,
       locationid: Number.isNaN(numericLocationId) ? '' : String(numericLocationId),
-      location: venueNameById.get(numericLocationId) ?? 'Location Revealed To Ticket Holders',
+      location: venueNameById.get(numericLocationId) ?? '',
       description: row.description ?? '',
       price:
         row.price === null || row.price === undefined || Number.isNaN(Number(row.price))
@@ -357,14 +357,13 @@ async function fetchCatalogFromSupabase(): Promise<CatalogData> {
     bio: row.bio ?? '',
     photoUrl: row.image_url ?? '',
     host_type: normalizeHostType(row.host_type) ?? 'DJ',
-    tags: normalizeStringList(row.tags),
     genres: normalizeStringList(row.genres),
   }));
 
   return { events, hosts, venues };
 }
 
-const getCachedCatalogInternal = unstable_cache(fetchCatalogFromSupabase, ['supabase-catalog-v2'], {
+const getCachedCatalogInternal = unstable_cache(fetchCatalogFromSupabase, ['supabase-catalog-v3'], {
   revalidate: 300,
   tags: ['catalog', 'events', 'hosts', 'venues'],
 });
@@ -1068,7 +1067,8 @@ export async function getVenuePreviousEventReviews(venueId: string | number, eve
 
 export async function createHost(data: {
   name: string;
-  tags?: string | null;
+  host_type: HostType;
+  genres: string[];
 }): Promise<any> {
   const supabase = await createServerClient();
 
@@ -1077,11 +1077,11 @@ export async function createHost(data: {
     .insert([
       {
         name: data.name,
-        host_type: 'DJ',
-        tags: data.tags || null,
+        host_type: data.host_type,
+        genres: data.genres,
       },
     ])
-    .select()
+    .select('id,name,bio,image_url,host_type,genres')
     .single();
 
   if (error) {

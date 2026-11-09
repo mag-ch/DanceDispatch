@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Host } from '@/lib/utils';
 import { hostChipClass } from '@/app/components/HostChip';
+import { HOST_TYPES, normalizeHostType, parseHostGenres, type HostType } from '@/lib/host-types';
 
 type SelectedHost = Pick<Host, 'id' | 'name' | 'host_type'>;
 
@@ -23,7 +24,8 @@ export function HostSelector({
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
-    const [newHostTags, setNewHostTags] = useState('');
+    const [newHostType, setNewHostType] = useState<HostType>('DJ');
+    const [newHostGenres, setNewHostGenres] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -94,7 +96,7 @@ export function HostSelector({
             const response = await fetch('/api/hosts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, tags: newHostTags.trim() }),
+                body: JSON.stringify({ name, host_type: newHostType, genres: parseHostGenres(newHostGenres) }),
             });
             const data = await response.json().catch(() => null);
             if (!response.ok) {
@@ -104,7 +106,8 @@ export function HostSelector({
             setAllHosts((current) => [...current, data as Host]);
             onSelectedHostIdsChange([...selectedHostIds, String(data.id)]);
             setSearchQuery('');
-            setNewHostTags('');
+            setNewHostType('DJ');
+            setNewHostGenres('');
             setIsCreating(false);
         } catch (createError) {
             setError(createError instanceof Error ? createError.message : 'Failed to create host');
@@ -177,14 +180,31 @@ export function HostSelector({
                         </button>
                     ) : (
                         <div className="space-y-2">
-                            <input
-                                type="text"
-                                value={newHostTags}
-                                onChange={(event) => setNewHostTags(event.target.value)}
-                                placeholder="Enter host tags, comma separated"
-                                className="w-full rounded-lg border border-default bg-bg px-3 py-2 text-sm text-text outline-none"
-                                autoFocus
-                            />
+                            <label className="block text-sm text-muted">
+                                Host type
+                                <select
+                                    value={newHostType}
+                                    onChange={(event) => {
+                                        const type = normalizeHostType(event.target.value);
+                                        if (type) setNewHostType(type);
+                                    }}
+                                    className="mt-1 w-full rounded-lg border border-default bg-bg px-3 py-2 text-sm text-text outline-none"
+                                >
+                                    {HOST_TYPES.map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="block text-sm text-muted">
+                                Genres (comma-separated)
+                                <input
+                                    type="text"
+                                    value={newHostGenres}
+                                    onChange={(event) => setNewHostGenres(event.target.value)}
+                                    placeholder="House, techno"
+                                    className="mt-1 w-full rounded-lg border border-default bg-bg px-3 py-2 text-sm text-text outline-none"
+                                />
+                            </label>
                             <div className="flex gap-2">
                                 <button
                                     type="button"
@@ -197,7 +217,8 @@ export function HostSelector({
                                     type="button"
                                     onClick={() => {
                                         setIsCreating(false);
-                                        setNewHostTags('');
+                                        setNewHostType('DJ');
+                                        setNewHostGenres('');
                                         setError(null);
                                     }}
                                     className="flex-1 rounded-lg border border-default px-3 py-2 text-sm font-semibold text-text transition hover:bg-accent-soft"

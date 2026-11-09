@@ -1,5 +1,7 @@
 import { getEvents, getVenues, getHosts, getUniqueBoroughs, getUsers } from '@/lib/utils_supabase_server';
 import SearchClient, { SearchCategory } from './SearchClient';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/page-metadata';
 
 type SearchPageProps = {
     searchParams?: Promise<{
@@ -26,6 +28,24 @@ function firstParam(value?: string | string[]): string | undefined {
 
 function isSearchCategory(value: string): value is SearchCategory {
     return value === 'events' || value === 'venues' || value === 'hosts' || value === 'users';
+}
+
+export async function generateMetadata({ searchParams }: SearchPageProps): Promise<Metadata> {
+    const params = await searchParams;
+    const query = firstParam(params?.query);
+    const queryLabel = query?.replace(/\s+/g, ' ').slice(0, 80);
+    const title = queryLabel ? `Search: ${queryLabel}` : 'Search';
+    const description = queryLabel
+        ? `Search DanceDispatch for events, venues, hosts, and users matching "${queryLabel}".`
+        : 'Search for dance events, venues, hosts, and users on DanceDispatch.';
+    const urlParams = new URLSearchParams();
+    if (query) urlParams.set('query', query);
+    const categories = Array.isArray(params?.categories) ? params.categories : [params?.categories];
+    categories.filter((category): category is SearchCategory => typeof category === 'string' && isSearchCategory(category))
+        .forEach((category) => urlParams.append('categories', category));
+    const search = urlParams.toString();
+    const url = search ? `/search?${search}` : '/search';
+    return pageMetadata(title, description, url, '/icons/icon_1.png');
 }
 
 // This is a Server Component (no 'use client')

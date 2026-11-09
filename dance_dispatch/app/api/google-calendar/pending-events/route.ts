@@ -45,9 +45,27 @@ export async function GET() {
 
     const pendingRows = (pendingResult.data || []) as unknown as PendingEventRow[];
 
+    const creatorIds = [...new Set(pendingRows.map((row) => row.created_by?.trim()).filter((id): id is string => Boolean(id)))];
+    const usernameById = new Map<string, string>();
+    if (creatorIds.length > 0) {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id,username')
+        .in('id', creatorIds);
+      if (error) {
+        return NextResponse.json({ error: `Failed to load creator profiles: ${error.message}` }, { status: 500 });
+      }
+      for (const profile of profiles ?? []) {
+        if (typeof profile.username === 'string' && profile.username.trim()) {
+          usernameById.set(String(profile.id), profile.username.trim());
+        }
+      }
+    }
+
     const items = pendingRows
       .map((row) => {
         const eventId = String(row.event_id ?? '').trim();
+        const creatorId = row.created_by?.trim() || null;
         const event = Array.isArray(row.Events) ? row.Events[0] : row.Events;
         if (!eventId || !event) {
           return null;
@@ -58,7 +76,8 @@ export async function GET() {
           title: String(event.title ?? 'Untitled event').trim() || 'Untitled event',
           start: String(event.start ?? '').trim() || null,
           googleCalId: String(row.google_cal_id ?? '').trim() || null,
-          createdBy: String(row.created_by ?? '').trim() || null,
+          createdBy: creatorId,
+          createdByUsername: creatorId ? usernameById.get(creatorId) ?? null : null,
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null)

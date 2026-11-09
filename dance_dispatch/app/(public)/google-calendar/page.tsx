@@ -57,6 +57,7 @@ type PendingReviewItem = {
   start: string | null;
   googleCalId: string | null;
   createdBy: string | null;
+  createdByUsername: string | null;
 };
 
 type PendingReviewResponse = {
@@ -358,7 +359,7 @@ const approvePendingReviewEvent = async (eventId: string) => {
                     <div className="mt-1 text-xs text-muted">
                       Event #{item.eventId}
                       {item.start ? ` • ${new Date(item.start).toLocaleString()}` : ''}
-                      {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : item.createdBy ? ` • Created by: ${item.createdBy}` : ''}
+                      {item.googleCalId ? ` • Google ID: ${item.googleCalId}` : item.createdBy ? ` • Created by: ${item.createdByUsername || 'Unknown user'}` : ''}
                     </div>
                   </Link>
                   <button

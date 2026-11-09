@@ -6,6 +6,7 @@ import { EventReview } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 import type { Metadata } from "next";
 import { cache } from "react";
+import { pageMetadata } from '@/lib/page-metadata';
 
 type EventRsvpUser = {
     userId: string;
@@ -153,7 +154,6 @@ async function getEventRsvpUsers(eventId: string): Promise<EventRsvpUser[]> {
         .filter((user): user is EventRsvpUser => Boolean(user));
 }
 
-
 export async function generateMetadata({ params, searchParams, showReviewModal = false }: EventDetailPageProps) {
   const { eventId } = await params;
   const event = await getEventById(eventId);
@@ -169,16 +169,5 @@ export async function generateMetadata({ params, searchParams, showReviewModal =
     (blurb ? ` — ${blurb}` : "");
 
   const image = event.imageurl ?? '/images/default_events.jpg'; // fallback in /public
-
-  return {
-    title: event.title,
-    description,
-    openGraph: {
-      title: event.title,
-      description,
-      url: `/events/${event.id}`,
-      images: [{ url: image }],
-    },
-    twitter: { card: "summary_large_image", title: event.title, description, images: [image] },
-  };
+  return pageMetadata(event.title, description, `/events/${event.id}`, image);
 }

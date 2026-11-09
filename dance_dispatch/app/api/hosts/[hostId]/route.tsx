@@ -38,7 +38,7 @@ export async function GET(
             await requireAdmin();
             const { hostId } = await params;
             const body = await request.json();
-                const { name, bio, host_type, tags, genres, photoUrl } = body;
+                const { name, bio, host_type, genres, photoUrl } = body;
 
             const updates: Record<string, unknown> = {};
             if (typeof name === 'string') updates.name = name.trim();
@@ -50,7 +50,6 @@ export async function GET(
                 }
                 updates.host_type = normalizedHostType;
             }
-            if (Array.isArray(tags)) updates.tags = tags;
             if (Array.isArray(genres)) updates.genres = genres;
             if (typeof photoUrl === 'string') updates.image_url = photoUrl.trim();
 
@@ -63,7 +62,7 @@ export async function GET(
                 .from('Hosts')
                 .update(updates)
                 .eq('id', hostId)
-                .select();
+                .select('id,name,bio,image_url,host_type,genres');
 
             if (error) {
                 console.error('Error updating host:', error);

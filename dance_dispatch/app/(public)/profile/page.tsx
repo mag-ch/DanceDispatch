@@ -112,7 +112,7 @@ export default async function ProfilePage() {
         <SearchResult
             key={`${host.id}-${index}`}
             header={host.name}
-            subheader={host.tags?.join(', ')}
+            subheader={[host.host_type, ...(host.genres ?? [])].filter(Boolean).join(', ')}
             location={host.address}
             img={host.photoUrl}
             entityId={host.id}

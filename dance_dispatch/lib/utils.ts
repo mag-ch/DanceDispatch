@@ -39,7 +39,6 @@ export interface Host {
     bio: string;
     photoUrl: string;
     host_type: HostType;
-    tags: string[];
     genres: string[];
     externalLinks?: HostExternalLink[];
     // Add other fields as needed based on your CSV structure

@@ -63,7 +63,7 @@ export default function UserProfileClient({
           <SearchResult
             key={host.id}
             header={host.name}
-            subheader={Array.isArray(host.tags) ? host.tags.join(", ") : String(host.tags || "")}
+            subheader={[host.host_type, ...(host.genres ?? [])].filter(Boolean).join(", ")}
             img={host.photoUrl}
             entityId={host.id}
             entity="hosts"

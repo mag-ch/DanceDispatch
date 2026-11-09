@@ -12,6 +12,7 @@ import { useAuth } from '@/app/providers/AuthContext';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 import { HOST_TYPES, type HostType } from '@/lib/host-types';
+import { hostChipClass } from '@/app/components/HostChip';
 import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
 import Link from 'next/link';
 
@@ -324,13 +325,12 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         if (!h) return;
         const fetchSimilarHosts = async () => {
             try {
-                const tags = Array.isArray(h.tags) ? h.tags.join(',') : '';
                 const genres = Array.isArray(h.genres) ? h.genres.join(',') : '';
                 if (!genres) {
                     setSimilarHosts([]);
                     return;
                 }
-                const params = new URLSearchParams({ tags, genres, exclude: hostId, limit: '5' });
+                const params = new URLSearchParams({ host_type: h.host_type, genres, exclude: hostId, limit: '5' });
                 const res = await fetch(`/api/hosts?${params.toString()}`);
                 const data = await res.json();
                 setSimilarHosts(Array.isArray(data) ? data : []);
@@ -427,23 +427,11 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                         </div>
                                     ) : (
                                         <div className="flex w-full min-w-0 flex-col gap-2">
-                                            {Array.isArray(h.tags) && h.tags.length > 0 && (
-                                                <div className="w-full min-w-0">
-                                                    <div className="flex flex-wrap gap-2 pb-1">
-                                                        {h.tags.map((tag) => {
-                                                            const label = normalizeChipLabel(tag);
-                                                            return (
-                                                                <span
-                                                                    key={`tag-${tag}`}
-                                                                    className={`rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${chipColorFor(label)}`}
-                                                                >
-                                                                    {label}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <div>
+                                                <span className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold ${hostChipClass(h.host_type)}`}>
+                                                    {h.host_type}
+                                                </span>
+                                            </div>
                                             <h1 className="break-words text-4xl text-text font-bold">{h.name}</h1>
                                             {Array.isArray(h.genres) && h.genres.length > 0 && (
                                                 <div className="mt-3 w-full min-w-0">
@@ -729,7 +717,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 {similarHosts.map((h) => (
                                     <a key={h.id} href={`/hosts/${h.id}`} className="block hover-bg-accent-soft p-3 rounded border border-default hover:border-accent transition">
                                         <p className="font-medium text-text">{h.name}</p>
-                                        <p className="text-sm text-muted">{Array.isArray(h.genres) ? h.genres.join(', ') : (typeof h.genres === 'string' ? h.genres : '')}</p>
+                                        <p className="text-sm text-muted">{[h.host_type, ...(h.genres ?? [])].filter(Boolean).join(', ')}</p>
                                     </a>
                                 ))}
                             </div>

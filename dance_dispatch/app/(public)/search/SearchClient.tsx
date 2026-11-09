@@ -497,7 +497,7 @@ export default function SearchClient({
                                 <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-text">Hosts</h2>
                                 <div className="space-y-3">
                                     {filteredHosts.map((host: any, index: number) => (
-                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={Array.isArray(host.tags) ? host.tags.join(', ') : null} location={host.address} img={host.photoUrl} entityId={host.id} entity="hosts" />
+                                        <SearchResult key={`${host.id}-${index}`} header={host.name} subheader={[host.host_type, ...(Array.isArray(host.genres) ? host.genres : [])].filter(Boolean).join(', ')} location={host.address} img={host.photoUrl} entityId={host.id} entity="hosts" />
                                     ))}
                                     {filteredHosts.length === 0 && <p className="text-text">No hosts found</p>}
                                 </div>

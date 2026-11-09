@@ -273,7 +273,7 @@ export default function PartyMapClient({ events, pendingVenues, savedEventIds }:
       if (
         query &&
         !event.title.toLowerCase().includes(query) &&
-        !.toLowerCase().includes(query)
+        !event.location?.toLowerCase().includes(query)
       ) {
         return false;
       }

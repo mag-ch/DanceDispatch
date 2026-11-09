@@ -355,6 +355,7 @@ export function Header() {
                         <Link href="/party-calendar" className="px-4 py-2 transition">Calendar</Link>
                         <Link href="/party-map" className="px-4 py-2 transition">Map</Link>
                         <Link href="/activity-feed" className="px-4 py-2 transition">Activity Feed</Link>
+                        <Link href="/leaderboard" className="px-4 py-2 transition">Leaderboard</Link>
                         {isAdmin && (
                             <SubmitEventButton
                                 label="Add event"

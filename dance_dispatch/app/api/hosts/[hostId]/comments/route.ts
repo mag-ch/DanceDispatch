@@ -8,11 +8,12 @@ export async function GET(
         const { hostId } = await params;
         const comments = await getHostComments(hostId);
 
-        return new Response(JSON.stringify(comments ?? []), {
+        return new Response(JSON.stringify(comments), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
     } catch (error) {
+        console.error('Failed to fetch host comments:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch host comments' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },

@@ -284,7 +284,7 @@ const StarRating: React.FC<{ label: string; rating: number; size?: number }> = (
     </div>
 );
 
-export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void; compact?: boolean }> = ({ review, onDeleted, compact = false }) => {
+export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () => void; compact?: boolean; hostLabel?: string }> = ({ review, onDeleted, compact = false, hostLabel = 'DJ' }) => {
 
     type PrivacyLevel = 'public' | 'private' | 'anonymous';
 
@@ -405,7 +405,7 @@ export const DisplayEventReview: React.FC<{ review: EventReview; onDeleted?: () 
             .filter((djReview) => Number(djReview.rating) > 0 || djReview.comments?.trim())
             .map((djReview) => ({
                 key: `dj:${djReview.djName}`,
-                prefix: 'DJ',
+                prefix: hostLabel,
                 name: djReview.djName,
                 href: djReview.djId ? `/hosts/${djReview.djId}` : null,
                 rating: Number(djReview.rating) || 0,

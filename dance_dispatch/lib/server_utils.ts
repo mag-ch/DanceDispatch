@@ -8,6 +8,7 @@ import { defaultPlanNameFromEvents, normalizeEventIds } from './supabase/client'
 import { buildPartyPlanSummary, normalizePlanPrice, serializeEventIdsParam } from './party-plan';
 import { SavedPlan } from '@/app/(public)/profile/MakePartyPlanButton';
 import { isUpcoming } from './date-utils';
+import { getOrganizerEventIds } from './organizer-event-ids';
 
 export type SavedEventsMode = 'all' | 'upcoming' | 'past';
 
@@ -281,16 +282,40 @@ export async function getVenueComments(venueId: string) {
 
 export async function getHostComments(hostId:string) {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const pageSize = 500;
+    const getHostReviewPage = (page: number) => supabase
         .from('Reviews')
-        .select('event_id, user_id, rating, comment, created_at, privacy_level, ReviewMedia(storage_path)')
+        .select('id, event_id, user_id, entity_type, rating, comment, created_at, privacy_level, ReviewMedia(storage_path)')
         .eq('entity_id', hostId)
         .eq('entity_type', 'host')
-        .neq('privacy_level', 'private');
-        
-    if (error) {
-        console.error('Error fetching host comments from Supabase:', error);
-        return null;
+        .neq('privacy_level', 'private')
+        .order('id')
+        .range(page, page + pageSize - 1);
+    const hostReviews = await getHostReviewPage(0);
+
+    if (hostReviews.error) throw hostReviews.error;
+
+    const data = [...(hostReviews.data ?? [])];
+    for (let page = pageSize; data.length === page; page += pageSize) {
+        const { data: nextReviews, error } = await getHostReviewPage(page);
+        if (error) throw error;
+        data.push(...(nextReviews ?? []));
+    }
+    const organizerEventIds = await getOrganizerEventIds(supabase, hostId);
+    for (let offset = 0; offset < organizerEventIds.length; offset += 200) {
+        for (let page = 0; ; page += pageSize) {
+            const { data: partyReviews, error } = await supabase
+                .from('Reviews')
+                .select('id, event_id, user_id, entity_type, rating, comment, created_at, privacy_level, ReviewMedia(storage_path)')
+                .in('event_id', organizerEventIds.slice(offset, offset + 200))
+                .eq('entity_type', 'event')
+                .neq('privacy_level', 'private')
+                .order('id')
+                .range(page, page + pageSize - 1);
+            if (error) throw error;
+            data.push(...(partyReviews ?? []));
+            if ((partyReviews?.length ?? 0) < pageSize) break;
+        }
     }
 
     const users = await getUsers();
@@ -298,17 +323,21 @@ export async function getHostComments(hostId:string) {
     const events = await getCachedEvents(false);
     const eventNameById = new Map(events.map((event) => [String(event.id), event.title]));
 
-    data.forEach((comment: any) => {
-        comment.username = comment.privacy_level === 'anonymous'
+    return data.map((comment) => ({
+        id: String(comment.id),
+        event_id: String(comment.event_id),
+        eventName: eventNameById.get(String(comment.event_id)) ?? 'Past event',
+        username: comment.privacy_level === 'anonymous'
             ? 'Anonymous'
-            : usernameById.get(String(comment.user_id)) ?? 'Anon';
-        comment.eventName = eventNameById.get(String(comment.event_id)) ?? 'Past event';
-        comment.mediaPaths = (comment.ReviewMedia ?? []).map((m: any) => m.storage_path);
-        delete comment.user_id;
-        delete comment.ReviewMedia;
-    });
-
-    return data;
+            : usernameById.get(String(comment.user_id)) ?? 'Anon',
+        userId: comment.privacy_level === 'anonymous' ? undefined : String(comment.user_id),
+        rating: comment.rating,
+        comment: comment.comment,
+        created_at: comment.created_at,
+        privacy_level: comment.privacy_level,
+        entity_type: comment.entity_type,
+        mediaPaths: (comment.ReviewMedia ?? []).map((media: { storage_path: string }) => media.storage_path),
+    }));
 }
 
 export async function getAllFollowedVenues(userId: string) {

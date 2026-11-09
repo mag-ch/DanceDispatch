@@ -47,10 +47,12 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const [h, setHost] = useState<Host | null>(null);
     const [loading, setLoading] = useState(true);
     const [pastEvents, setPastEvents] = useState<any[]>([]);
+    const [showAllPastEvents, setShowAllPastEvents] = useState(false);
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
     const [similarHosts, setSimilarHosts] = useState<Host[]>([]);
     const [hostMedia, setHostMedia] = useState<any[]>([]);
     const [hostComments, setHostComments] = useState<any[]>([]);
+    const [visibleCommentCount, setVisibleCommentCount] = useState(5);
 
     const { session, isAdmin } = useAuth();
     const isAuthenticated = !!session && isAdmin;
@@ -312,10 +314,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
             const now = new Date();
             const past = events
                 .filter((event: any) => !isUpcoming(event, now))
-                .sort((a: any, b: any) => new Date(`${b.enddate} ${b.endtime}`).getTime() - new Date(`${a.enddate} ${a.endtime}`).getTime())
-                .slice(0, 5);
+                .sort((a: any, b: any) => new Date(`${b.enddate} ${b.endtime}`).getTime() - new Date(`${a.enddate} ${a.endtime}`).getTime());
             const upcoming = events.filter((event: any) => isUpcoming(event, now));
             setPastEvents(past);
+            setShowAllPastEvents(false);
             setUpcomingEvents(upcoming);
         };
         fetchEvents();
@@ -346,8 +348,10 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
         const fetchHostComments = async () => {
             try {
                 const res = await fetch(`/api/hosts/${hostId}/comments`);
+                if (!res.ok) throw new Error('Failed to fetch host comments');
                 const data = await res.json();
                 setHostComments(Array.isArray(data) ? data : []);
+                setVisibleCommentCount(5);
             } catch (error) {
                 console.error('Failed to fetch host comments:', error);
             }
@@ -365,8 +369,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
     const roundedAverageStars = Math.round(averageRating);
     const textComments = hostComments
         .filter((comment) => Boolean(comment.comment?.trim()))
-        .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
-        .slice(0, 5);
+        .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at));
 
     if (loading) return <div className="p-8">Loading...</div>;
     if (!h) return <div className="p-8">Host not found</div>;
@@ -499,46 +502,6 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             )}
                         />
 
-                        {(textComments.length > 0 || ratingCount > 0) && (
-                            <section className="bg-surface rounded-lg p-6 mb-6">
-                                <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
-                                <div className="mb-5 rounded-lg border border-default p-4">
-                                    <p className="text-sm text-muted mb-2">Aggregate Rating</p>
-                                    {ratingCount > 0 ? (
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <Star key={star} size={18} className={star <= roundedAverageStars ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
-                                                ))}
-                                            </div>
-                                            <p className="text-sm text-text">
-                                                {averageRatingDisplay} out of 5 ({ratingCount} rating{ratingCount === 1 ? '' : 's'})
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-muted">No ratings yet.</p>
-                                    )}
-                                </div>
-                                <div className="space-y-3">
-                                    {textComments.length > 0 ? (
-                                        textComments.map((comment, index) => (
-                                            <blockquote key={`${comment.event_id}-${comment.created_at}-${index}`} className="rounded-lg border border-default p-4">
-                                                <p className="text-sm text-text">&ldquo;{comment.comment}&rdquo;</p>
-                                                <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
-                                                    <span>{comment.username}</span>
-                                                    <span aria-hidden="true">&middot;</span>
-                                                    <Link href={`/events/${comment.event_id}`} className="font-semibold text-accent hover:underline">
-                                                        {comment.eventName}
-                                                    </Link>
-                                                </footer>
-                                            </blockquote>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-muted">No written comments yet.</p>
-                                    )}
-                                </div>
-                            </section>
-                        )}
 
                         <section className="mb-8 bg-surface p-6 rounded-lg">
                             <div className="flex items-center gap-2 mb-4">
@@ -701,13 +664,69 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                             <section className="bg-surface p-6 rounded-lg">
                                 <h2 className="font-semibold text-text text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
-                                    {pastEvents.map((event, index) => (
+                                    {(showAllPastEvents ? pastEvents : pastEvents.slice(0, 3)).map((event, index) => (
                                         <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" />
                                     ))}
+                                    {!showAllPastEvents && pastEvents.length > 5 && (
+                                        <button type="button" onClick={() => setShowAllPastEvents(true)}
+                                            className="rounded-full border border-default px-4 py-2 text-sm font-semibold text-text hover:bg-bg">
+                                            See more
+                                        </button>
+                                    )}
                                 </div>
                             </section>
                         </div>
 
+                        {(textComments.length > 0 || ratingCount > 0) && (
+                            <section className="bg-surface rounded-lg p-6 mb-6">
+                                <h2 className="font-semibold text-text text-lg mb-4">Reviews &amp; Comments</h2>
+                                <div className="mb-5 rounded-lg border border-default p-4">
+                                    <p className="text-sm text-muted mb-2">Aggregate Rating</p>
+                                    {ratingCount > 0 ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <Star key={star} size={18} className={star <= roundedAverageStars ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                                                ))}
+                                            </div>
+                                            <p className="text-sm text-text">
+                                                {averageRatingDisplay} out of 5 ({ratingCount} rating{ratingCount === 1 ? '' : 's'})
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted">No ratings yet.</p>
+                                    )}
+                                </div>
+                                <div className="space-y-3">
+                                    {textComments.length > 0 ? (
+                                        textComments.slice(0, visibleCommentCount).map((comment, index) => (
+                                            <blockquote key={`${comment.event_id}-${comment.created_at}-${index}`} className="rounded-lg border border-default p-4">
+                                                <p className="text-sm text-text">&ldquo;{comment.comment}&rdquo;</p>
+                                                <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+                                                    <span>{comment.username}</span>
+                                                    <span aria-hidden="true">&middot;</span>
+                                                    <time dateTime={comment.created_at}>
+                                                        {new Date(comment.created_at).toLocaleDateString()}
+                                                    </time>
+                                                    <span aria-hidden="true">&middot;</span>
+                                                    <Link href={`/events/${comment.event_id}`} className="font-semibold text-accent hover:underline">
+                                                        {comment.eventName}
+                                                    </Link>
+                                                </footer>
+                                            </blockquote>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-muted">No written comments yet.</p>
+                                    )}
+                                    {visibleCommentCount < textComments.length && (
+                                        <button type="button" onClick={() => setVisibleCommentCount((count) => count + 10)}
+                                            className="rounded-full border border-default px-4 py-2 text-sm font-semibold text-text hover:bg-bg">
+                                            See more
+                                        </button>
+                                    )}
+                                </div>
+                            </section>
+                        )}
                     </div>
 
                     <div>

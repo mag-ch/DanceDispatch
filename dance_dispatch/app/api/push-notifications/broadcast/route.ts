@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       const supabase = await createServerClient();
       const { data: reviewRow, error: reviewError } = await supabase
         .from('Reviews')
-        .select('id, event_id, user_id')
+        .select('id, event_id, user_id, privacy_level')
         .eq('id', Number(reviewId))
         .maybeSingle();
 
@@ -91,14 +91,32 @@ export async function POST(request: Request) {
       }
 
       const reviewerId = String((reviewRow as { user_id?: unknown }).user_id ?? '').trim();
+      if (reviewRow.privacy_level === 'private') {
+        return NextResponse.json({ error: 'Private reviews cannot be announced.' }, { status: 400 });
+      }
+      let reviewerName = 'Anonymous';
+      if (reviewRow.privacy_level !== 'anonymous') {
+        if (!reviewerId) throw new Error('Review has no author.');
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', reviewerId)
+          .maybeSingle();
+        if (profileError) throw profileError;
+        reviewerName = typeof profile?.username === 'string' ? profile.username.trim() : '';
+        if (!reviewerName) {
+          console.warn('No username found for review announcement:', reviewerId);
+          reviewerName = 'Someone';
+        }
+      }
       const eventIdForReview = String((reviewRow as { event_id?: unknown }).event_id ?? '').trim();
       const event = eventIdForReview ? await getEventById(eventIdForReview) : null;
       const eventName = event?.title.trim() || 'an event';
 
       href = event ? `/events/${encodeURIComponent(event.id)}` : '/notifications';
       tag = `broadcast-new-review-${reviewId}-${randomUUID()}`;
-      title = 'New review posted';
-      message = `A new review is available for ${eventName}.`;
+      title = 'New review';
+      message = `${reviewerName} posted a review for ${eventName}!`;
 
       if (body?.followersOnly === true) {
         if (!reviewerId) {
@@ -124,8 +142,8 @@ export async function POST(request: Request) {
       tag = `broadcast-${mode}-${event.id}-${randomUUID()}`;
 
       if (mode === 'review-request') {
-        title = 'Write a review';
-        message = `Have you been to ${eventName}? Leave a review and share your experience.`;
+        title = `${eventName}`;
+        message = `Did you go? Leave a review and share your experience!`;
         href = `/events/${encodeURIComponent(event.id)}?showReviewModal=true`;
 
         const rawUserIds = Array.isArray(body?.userIds) ? body.userIds : [];
@@ -143,8 +161,8 @@ export async function POST(request: Request) {
           recipientUserIds = Array.from(new Set(selectedUserIds));
         }
       } else {
-        title = 'New event posted';
-        const customMessage = typeof body?.message === 'string' ? body.message.trim() : '';
+        title = `${eventName}`;
+        const customMessage = typeof body?.message === 'string' ? body.message.trim() : 'New event posted';
         if (customMessage.length > 240) {
           return NextResponse.json({ error: 'Message must be 240 characters or fewer.' }, { status: 400 });
         }

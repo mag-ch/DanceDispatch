@@ -120,7 +120,7 @@ export default async function PartyPlanPage({ params }: { params: Promise<{ plan
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-text">{event.title}</p>
                   <p className="mt-1 text-sm text-muted">{formatEventDate(event.startdate, event.starttime)}</p>
-                  <p className="text-sm text-muted">{ || 'Location TBD'}</p>
+                  <p className="text-sm text-muted">{ event.location || 'Location TBD'}</p>
                 </div>
               </Link>
             ))}

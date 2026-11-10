@@ -14,7 +14,10 @@
 /coverage
 
 # supabase
-/.supabase
+/.supabase/*
+!.supabase/.gitkeep
+/test/*
+!/test/.gitkeep
 
 # next.js
 /.next/

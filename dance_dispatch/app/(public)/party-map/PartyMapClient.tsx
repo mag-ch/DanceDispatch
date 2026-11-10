@@ -469,7 +469,7 @@ export default function PartyMapClient({ events, pendingVenues, savedEventIds }:
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 lg:flex lg:gap-4">
+      <div className="relative min-h-0 flex-1 lg:flex lg:h-[65vh] lg:min-h-[400px] lg:flex-none lg:gap-4">
         <div className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden lg:rounded-xl">
           <PartyMapView
             events={filteredEvents}

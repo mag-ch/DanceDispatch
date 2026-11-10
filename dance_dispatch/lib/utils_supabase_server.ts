@@ -377,7 +377,11 @@ export async function getCachedEvents(
   venueId?: string | number,
   hostId?: string | number
 ): Promise<Event[]> {
-  const { events } = await getCachedCatalog();
+  const [catalog, pendingReviewEventIds] = await Promise.all([
+      getCachedCatalog(),
+      getPendingReviewEventIds(),
+    ]);
+    const events = catalog.events.filter((event) => !pendingReviewEventIds.has(String(event.id)));
 
   let filtered = events;
 

@@ -241,8 +241,17 @@ type BroadcastResult = {
   failed: number;
 };
 
-export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<BroadcastResult> {
-  const uniqueUserIds = [...new Set(userIds.map((id) => id.trim()).filter(Boolean))];
+export async function sendPushToUsers(userIds: string[], payload: PushPayload, actorUserId?: string): Promise<BroadcastResult> {
+  let uniqueUserIds = [...new Set(userIds.map((id) => id.trim()).filter(Boolean))];
+  if (actorUserId) {
+    const { data: blocks, error } = await getServiceRoleClient()
+      .from('user_blocks')
+      .select('blocked_id')
+      .eq('blocker_id', actorUserId);
+    if (error) throw new Error(error.message || 'Failed to load blocked push recipients');
+    const blockedIds = new Set((blocks ?? []).map((row) => String(row.blocked_id)));
+    uniqueUserIds = uniqueUserIds.filter((id) => !blockedIds.has(id));
+  }
 
   let notified = 0;
   let sent = 0;
@@ -264,7 +273,7 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
   return { users: uniqueUserIds.length, notified, sent, removed, failed };
 }
 
-export async function sendPushToAllUsers(payload: PushPayload): Promise<BroadcastResult> {
+export async function sendPushToAllUsers(payload: PushPayload, actorUserId?: string): Promise<BroadcastResult> {
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from(PUSH_SUBSCRIPTIONS_TABLE)
@@ -278,7 +287,7 @@ export async function sendPushToAllUsers(payload: PushPayload): Promise<Broadcas
     .map((row) => String((row as { user_id?: unknown }).user_id ?? '').trim())
     .filter(Boolean);
 
-  return sendPushToUsers(userIds, payload);
+  return sendPushToUsers(userIds, payload, actorUserId);
 }
 
 export async function sendReviewPushToFollowers(
@@ -419,6 +428,15 @@ export async function sendReviewReplyNotification({
   if (!recipientUserId || recipientUserId === replierUserId) {
     return { notified: false };
   }
+
+  const { data: block, error: blockError } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', replierUserId)
+    .eq('blocked_id', recipientUserId)
+    .maybeSingle();
+  if (blockError) throw new Error(blockError.message || 'Failed to check blocked notification recipient');
+  if (block) return { notified: false };
 
   let replierName = 'Someone';
   const { data: replierProfile } = await supabase

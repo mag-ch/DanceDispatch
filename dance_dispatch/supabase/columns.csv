@@ -1,0 +1,513 @@
+kind,object_name,definition
+column,admin_invite_codes,created_at timestamp with time zone
+column,user_badge_stats,total_points integer
+column,user_badge_stats,rsvp_count integer
+column,user_badge_stats,review_count integer
+column,user_badge_stats,referral_count integer
+column,user_badge_stats,share_count integer
+column,user_badge_stats,updated_at timestamp with time zone
+column,user_badge_stats,submit_event_count integer
+column,user_badges,id uuid
+column,user_badges,user_id uuid
+column,user_badges,badge_id uuid
+column,user_badges,unlocked_at timestamp with time zone
+column,event_comparisons,user_id uuid
+column,event_comparisons,event_a_id bigint
+column,event_comparisons,event_b_id bigint
+column,event_comparisons,winner_is_a boolean
+column,event_comparisons,created_at timestamp with time zone
+column,pending_events,id bigint
+column,pending_events,created_at timestamp with time zone
+column,pending_events,event_id bigint
+column,pending_events,created_by uuid
+column,pending_events,exclude boolean
+column,event_rankings,id uuid
+column,event_rankings,user_id uuid
+column,event_rankings,event_id bigint
+column,event_rankings,rank integer
+column,event_rankings,score numeric
+column,event_rankings,created_at timestamp with time zone
+column,event_rankings,updated_at timestamp with time zone
+column,review_replies,id bigint
+column,review_replies,review_id bigint
+column,review_replies,parent_reply_id bigint
+column,review_replies,user_id uuid
+column,review_replies,created_at timestamp with time zone
+column,EventSeries,id uuid
+column,EventSeries,created_at timestamp with time zone
+column,EventSeries,dtstart timestamp without time zone
+column,EventSeries,duration interval
+column,EventSeries,location bigint
+column,EventSeries,price numeric
+column,EventSeries,host_id integer
+column,EventSeries,active boolean
+column,host_media,id bigint
+column,host_media,created_at timestamp with time zone
+column,host_media,host_id bigint
+column,Hosts,id bigint
+column,Hosts,created_at timestamp with time zone
+column,patch_notes,id bigint
+column,patch_notes,created_at timestamp with time zone
+column,user_plans,user_id uuid
+column,user_plans,event_ids ARRAY
+column,user_plans,id bigint
+column,venue_attributes,id bigint
+column,venue_attributes,created_at timestamp with time zone
+column,venue_attributes,venue_id bigint
+column,venue_attributes,data_type USER-DEFINED
+column,SavedEvents,id bigint
+column,SavedEvents,created_at timestamp with time zone
+column,SavedEvents,event_id bigint
+column,SavedEvents,user_id uuid
+column,Events,id bigint
+column,Events,created_at timestamp with time zone
+column,Events,start timestamp with time zone
+column,Events,end timestamp with time zone
+column,Events,location bigint
+column,Events,price numeric
+column,Events,series_id uuid
+column,Events,cancelled boolean
+column,admin_invite_redemptions,id bigint
+column,admin_invite_redemptions,code_id bigint
+column,admin_invite_redemptions,redeemed_by uuid
+column,admin_invite_redemptions,redeemed_at timestamp with time zone
+column,admin_users,user_id uuid
+column,admin_users,granted_by uuid
+column,admin_users,created_at timestamp with time zone
+column,admin_invite_codes,id bigint
+column,admin_invite_codes,owner_user_id uuid
+column,admin_invite_codes,max_uses integer
+column,admin_invite_codes,uses_count integer
+column,admin_invite_codes,revoked boolean
+column,user_badge_stats,user_id uuid
+column,user_badges,metadata jsonb
+column,user_badges,active boolean
+column,badges,id uuid
+column,badges,is_active boolean
+column,badges,sort_order integer
+column,badges,created_at timestamp with time zone
+column,badge_requirements,id uuid
+column,badge_requirements,badge_id uuid
+column,badge_requirements,min_value numeric
+column,badge_requirements,created_at timestamp with time zone
+column,event_hosts,id bigint
+column,event_hosts,event_id bigint
+column,event_hosts,host_id bigint
+column,push_subscriptions,id bigint
+column,push_subscriptions,user_id uuid
+column,push_subscriptions,expiration_time bigint
+column,push_subscriptions,created_at timestamp with time zone
+column,push_subscriptions,updated_at timestamp with time zone
+column,UserFollowUsers,id bigint
+column,UserFollowUsers,created_at timestamp with time zone
+column,UserFollowUsers,user_id uuid
+column,UserFollowUsers,followed_id uuid
+column,UserSubmittedFeedback,id bigint
+column,UserSubmittedFeedback,created_at timestamp with time zone
+column,UserSubmittedFeedback,user_id uuid
+column,UserPoints,id bigint
+column,UserPoints,user_id uuid
+column,UserPoints,points integer
+column,UserPoints,created_at timestamp with time zone
+column,UserFollowedVenues,id bigint
+column,UserFollowedVenues,created_at timestamp with time zone
+column,UserFollowedVenues,user_id uuid
+column,UserFollowedVenues,venue_id bigint
+column,categories,id bigint
+column,Venues,id bigint
+column,Venues,created_at timestamp with time zone
+column,Venues,temp_id integer
+column,Venues,latitude double precision
+column,Venues,longitude double precision
+column,UserFollowedHosts,id bigint
+column,UserFollowedHosts,created_at timestamp with time zone
+column,UserFollowedHosts,user_id uuid
+column,UserFollowedHosts,host_id bigint
+column,ReviewMedia,id bigint
+column,ReviewMedia,review_id bigint
+column,ReviewMedia,created_at timestamp with time zone
+column,location_confirmations,id bigint
+column,location_confirmations,user_id uuid
+column,location_confirmations,event_id bigint
+column,location_confirmations,latitude double precision
+column,location_confirmations,longitude double precision
+column,location_confirmations,distance_meters integer
+column,location_confirmations,confirmed_at timestamp with time zone
+column,point_activity_events,id uuid
+column,point_activity_events,user_id uuid
+column,point_activity_events,points_delta integer
+column,point_activity_events,metadata jsonb
+column,point_activity_events,created_at timestamp with time zone
+column,profiles,id uuid
+column,profiles,created_at timestamp with time zone
+column,profiles,birthday date
+column,profiles,phone_number bigint
+column,Reviews,id bigint
+column,Reviews,created_at timestamp with time zone
+column,Reviews,user_id uuid
+column,Reviews,event_id bigint
+column,Reviews,entity_type USER-DEFINED
+column,Reviews,entity_id bigint
+column,Reviews,rating real
+column,Reviews,privacy_level USER-DEFINED
+column,SharedItems,id bigint
+column,SharedItems,created_at timestamp with time zone
+column,SharedItems,sender_id uuid
+column,SharedItems,recipient_id uuid
+column,SharedItems,entity_type USER-DEFINED
+column,SharedItems,entity_id bigint
+column,user_notifications,id uuid
+column,user_notifications,user_id uuid
+column,user_notifications,actor_user_id uuid
+column,user_notifications,metadata jsonb
+column,user_notifications,is_read boolean
+column,user_notifications,read_at timestamp with time zone
+column,user_notifications,created_at timestamp with time zone
+column,event_comparisons,id uuid
+column,user_badges,unlock_source text
+column,user_notifications,type text
+column,user_notifications,title text
+column,user_notifications,body text
+column,badges,code text
+column,badges,name text
+column,badges,description text
+column,badges,icon text
+column,badges,tier text
+column,user_notifications,href text
+column,Hosts,image_url character varying
+column,Hosts,host_type text
+column,venue_attributes,value text
+column,EventSeries,rrule text
+column,badge_requirements,requirement_type text
+column,Events,title text
+column,EventSeries,tzid text
+column,point_activity_events,event_type text
+column,point_activity_events,action_key text
+column,patch_notes,description text
+column,point_activity_events,source_table text
+column,point_activity_events,source_id text
+column,push_subscriptions,endpoint text
+column,push_subscriptions,p256dh text
+column,push_subscriptions,auth text
+column,EventSeries,title text
+column,push_subscriptions,user_agent text
+column,point_activity_events,dedupe_key text
+column,patch_notes,href text
+column,event_comparisons,week_key text
+column,EventSeries,description text
+column,profiles,full_name text
+column,profiles,username text
+column,EventSeries,flyer_url text
+column,EventSeries,external_url text
+column,profiles,email character varying
+column,UserSubmittedFeedback,status text
+column,UserSubmittedFeedback,content text
+column,profiles,profile_picture text
+column,admin_invite_codes,code text
+column,UserPoints,action text
+column,Events,google_cal_id text
+column,UserPoints,entity_id text
+column,pending_events,google_cal_id text
+column,admin_users,source text
+column,user_plans,plan_name text
+column,Events,description text
+column,Events,flyer_url text
+column,Reviews,comment text
+column,categories,name text
+column,host_media,type text
+column,host_media,embed_code text
+column,Venues,name text
+column,Venues,address text
+column,Venues,type text
+column,Venues,bio text
+column,Venues,image_url character varying
+column,Venues,external_url text
+column,event_rankings,week_key text
+column,Venues,instagram text
+column,host_media,link text
+column,Events,external_url text
+column,venue_attributes,attribute text
+column,Hosts,name text
+column,SharedItems,message text
+column,Hosts,bio text
+column,Hosts,genres ARRAY
+column,review_replies,comment text
+column,ReviewMedia,storage_path text
+constraint,user_badge_stats,PRIMARY KEY (user_id)
+constraint,user_badge_stats,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,user_badges,FOREIGN KEY (badge_id) REFERENCES badges(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,user_badges,PRIMARY KEY (id)
+constraint,user_badges,"UNIQUE (user_id, badge_id)"
+constraint,user_badges,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,badges,UNIQUE (code)
+constraint,badges,PRIMARY KEY (id)
+constraint,badges,"CHECK ((tier = ANY (ARRAY['bronze'::text, 'silver'::text, 'gold'::text, 'platinum'::text])))"
+constraint,badge_requirements,"UNIQUE (min_value, requirement_type)"
+constraint,badge_requirements,FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE
+constraint,badge_requirements,PRIMARY KEY (id)
+constraint,badge_requirements,"UNIQUE (badge_id, requirement_type)"
+constraint,event_hosts,"FOREIGN KEY (event_id) REFERENCES ""Events""(id) ON UPDATE CASCADE ON DELETE CASCADE"
+constraint,event_hosts,"FOREIGN KEY (host_id) REFERENCES ""Hosts""(id) ON UPDATE CASCADE ON DELETE SET NULL"
+constraint,event_hosts,PRIMARY KEY (id)
+constraint,event_hosts,"UNIQUE (event_id, host_id)"
+constraint,push_subscriptions,UNIQUE (endpoint)
+constraint,push_subscriptions,PRIMARY KEY (id)
+constraint,push_subscriptions,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,UserFollowUsers,FOREIGN KEY (followed_id) REFERENCES profiles(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserFollowUsers,PRIMARY KEY (id)
+constraint,UserFollowUsers,FOREIGN KEY (user_id) REFERENCES profiles(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserSubmittedFeedback,PRIMARY KEY (id)
+constraint,UserSubmittedFeedback,FOREIGN KEY (user_id) REFERENCES profiles(id)
+constraint,UserPoints,PRIMARY KEY (id)
+constraint,UserPoints,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,UserFollowedVenues,PRIMARY KEY (id)
+constraint,UserFollowedVenues,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserFollowedVenues,FOREIGN KEY (user_id) REFERENCES profiles(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserFollowedVenues,"FOREIGN KEY (venue_id) REFERENCES ""Venues""(id)"
+constraint,categories,PRIMARY KEY (id)
+constraint,Venues,UNIQUE (address)
+constraint,Venues,PRIMARY KEY (id)
+constraint,UserFollowedHosts,"FOREIGN KEY (host_id) REFERENCES ""Hosts""(id)"
+constraint,UserFollowedHosts,PRIMARY KEY (id)
+constraint,UserFollowedHosts,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserFollowedHosts,FOREIGN KEY (user_id) REFERENCES profiles(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,UserFollowedHosts,"FOREIGN KEY (host_id) REFERENCES ""Venues""(id)"
+constraint,UserFollowedHosts,UNIQUE (host_id)
+constraint,ReviewMedia,PRIMARY KEY (id)
+constraint,ReviewMedia,"FOREIGN KEY (review_id) REFERENCES ""Reviews""(id) ON UPDATE CASCADE ON DELETE CASCADE"
+constraint,location_confirmations,PRIMARY KEY (id)
+constraint,location_confirmations,"UNIQUE (user_id, event_id)"
+constraint,location_confirmations,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,point_activity_events,UNIQUE (dedupe_key)
+constraint,point_activity_events,PRIMARY KEY (id)
+constraint,point_activity_events,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,profiles,UNIQUE (email)
+constraint,profiles,FOREIGN KEY (id) REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,profiles,PRIMARY KEY (id)
+constraint,profiles,UNIQUE (username)
+constraint,Reviews,"FOREIGN KEY (event_id) REFERENCES ""Events""(id)"
+constraint,Reviews,PRIMARY KEY (id)
+constraint,Reviews,FOREIGN KEY (user_id) REFERENCES profiles(id)
+constraint,SharedItems,PRIMARY KEY (id)
+constraint,SharedItems,FOREIGN KEY (recipient_id) REFERENCES profiles(id)
+constraint,SharedItems,FOREIGN KEY (sender_id) REFERENCES profiles(id)
+constraint,user_notifications,FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+constraint,user_notifications,PRIMARY KEY (id)
+constraint,user_notifications,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,event_comparisons,CHECK ((event_a_id < event_b_id))
+constraint,event_comparisons,PRIMARY KEY (id)
+constraint,event_comparisons,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,event_comparisons,"UNIQUE (user_id, week_key, event_a_id, event_b_id)"
+constraint,pending_events,FOREIGN KEY (created_by) REFERENCES profiles(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,pending_events,"FOREIGN KEY (event_id) REFERENCES ""Events""(id) ON UPDATE CASCADE ON DELETE CASCADE"
+constraint,pending_events,UNIQUE (event_id)
+constraint,pending_events,UNIQUE (google_cal_id)
+constraint,pending_events,PRIMARY KEY (id)
+constraint,event_rankings,PRIMARY KEY (id)
+constraint,event_rankings,CHECK ((rank > 0))
+constraint,event_rankings,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,event_rankings,"UNIQUE (user_id, week_key, event_id)"
+constraint,review_replies,FOREIGN KEY (parent_reply_id) REFERENCES review_replies(id) ON DELETE CASCADE
+constraint,review_replies,PRIMARY KEY (id)
+constraint,review_replies,"FOREIGN KEY (review_id) REFERENCES ""Reviews""(id) ON DELETE CASCADE"
+constraint,review_replies,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,EventSeries,"FOREIGN KEY (location) REFERENCES ""Venues""(id)"
+constraint,EventSeries,PRIMARY KEY (id)
+constraint,host_media,"FOREIGN KEY (host_id) REFERENCES ""Hosts""(id)"
+constraint,host_media,PRIMARY KEY (id)
+constraint,Hosts,"CHECK ((host_type = ANY (ARRAY['DJ'::text, 'Promoter'::text, 'Organizer'::text, 'Teacher'::text, 'Host'::text, 'Judge'::text])))"
+constraint,Hosts,UNIQUE (name)
+constraint,Hosts,PRIMARY KEY (id)
+constraint,patch_notes,PRIMARY KEY (id)
+constraint,user_plans,PRIMARY KEY (id)
+constraint,user_plans,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint,venue_attributes,PRIMARY KEY (id)
+constraint,venue_attributes,"FOREIGN KEY (venue_id) REFERENCES ""Venues""(id)"
+constraint,SavedEvents,"FOREIGN KEY (event_id) REFERENCES ""Events""(id) ON UPDATE CASCADE ON DELETE CASCADE"
+constraint,SavedEvents,PRIMARY KEY (id)
+constraint,SavedEvents,FOREIGN KEY (user_id) REFERENCES auth.users(id) ON UPDATE CASCADE ON DELETE CASCADE
+constraint,Events,UNIQUE (google_cal_id)
+constraint,Events,"FOREIGN KEY (location) REFERENCES ""Venues""(id)"
+constraint,Events,PRIMARY KEY (id)
+constraint,Events,"FOREIGN KEY (series_id) REFERENCES ""EventSeries""(id) ON DELETE SET NULL"
+constraint,Events,"UNIQUE (series_id, start)"
+constraint,admin_invite_redemptions,FOREIGN KEY (code_id) REFERENCES admin_invite_codes(id) ON DELETE CASCADE
+constraint,admin_invite_redemptions,PRIMARY KEY (id)
+trigger,push_subscriptions,CREATE TRIGGER push_subscriptions_set_updated_at BEFORE UPDATE ON public.push_subscriptions FOR EACH ROW EXECUTE FUNCTION set_push_subscriptions_updated_at()
+trigger,user_notifications,CREATE TRIGGER user_notifications_set_read_state BEFORE INSERT OR UPDATE ON public.user_notifications FOR EACH ROW EXECUTE FUNCTION set_user_notification_read_state()
+trigger,event_comparisons,CREATE TRIGGER after_comparison_insert AFTER INSERT ON public.event_comparisons FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_rankings()
+trigger,event_comparisons,CREATE TRIGGER after_comparison_update AFTER UPDATE ON public.event_comparisons FOR EACH ROW EXECUTE FUNCTION trigger_recalculate_rankings()
+trigger,user_badge_stats,CREATE TRIGGER trg_user_badge_stats_updated_at BEFORE UPDATE ON public.user_badge_stats FOR EACH ROW EXECUTE FUNCTION set_updated_at_now()
+trigger,point_activity_events,CREATE TRIGGER trg_apply_badge_activity_event AFTER INSERT ON public.point_activity_events FOR EACH ROW EXECUTE FUNCTION apply_badge_activity_event()
+trigger,user_badge_stats,CREATE TRIGGER trg_evaluate_badges_for_user AFTER INSERT OR UPDATE ON public.user_badge_stats FOR EACH ROW EXECUTE FUNCTION trg_evaluate_badges_for_user()
+?column?,proname,pg_get_functiondef
+security definer function,broadcast_row_changes_to_user_topic,"CREATE OR REPLACE FUNCTION public.broadcast_row_changes_to_user_topic()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$begin
+  -- Build topic using user_id from NEW (or OLD for deletes if NEW is null)
+  PERFORM realtime.broadcast_changes(
+    'notifications-header:' || coalesce( (NEW->> 'user_id')::text, (OLD->> 'user_id')::text )::text,
+    TG_OP,                 -- event
+    TG_OP,                 -- operation
+    TG_TABLE_NAME,         -- table
+    TG_TABLE_SCHEMA,       -- schema
+    NEW,                   -- new record (may be null for DELETE)
+    OLD                    -- old record
+  );
+  return null;
+end;$function$
+"
+security definer function,grant_default_party_newbie_badge,"CREATE OR REPLACE FUNCTION public.grant_default_party_newbie_badge()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_party_newbie_badge_id uuid;
+begin
+  select id into v_party_newbie_badge_id
+  from public.badges
+  where code = 'party_newbie'
+  limit 1;
+
+  if v_party_newbie_badge_id is null then
+    return new;
+  end if;
+
+  insert into public.user_badges (user_id, badge_id, unlock_source, metadata)
+  values (
+    new.id,
+    v_party_newbie_badge_id,
+    'signup_default_badge',
+    jsonb_build_object('reason', 'default_starter_badge')
+  )
+  on conflict (user_id, badge_id) do nothing;
+
+  return new;
+end;
+$function$
+"
+security definer function,increment_admin_invite_code_usage,"CREATE OR REPLACE FUNCTION public.increment_admin_invite_code_usage(p_owner_user_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_code_id bigint;
+begin
+  update public.admin_invite_codes
+  set uses_count = uses_count + 1
+  where owner_user_id = p_owner_user_id
+    and not revoked
+  returning id into v_code_id;
+
+  return v_code_id is not null;
+end;
+$function$
+"
+security definer function,record_badge_activity,"CREATE OR REPLACE FUNCTION public.record_badge_activity(p_user_id uuid, p_action_key text, p_points_delta integer DEFAULT 0, p_source_table text DEFAULT NULL::text, p_source_id text DEFAULT NULL::text, p_metadata jsonb DEFAULT '{}'::jsonb, p_dedupe_key text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$declare
+  v_id uuid;
+begin
+  insert into public.point_activity_events (
+    user_id, event_type, action_key, points_delta,
+    source_table, source_id, metadata, dedupe_key
+  )
+  values (
+    p_user_id, 'activity', p_action_key, coalesce(p_points_delta, 0),
+    p_source_table, p_source_id, coalesce(p_metadata, '{}'::jsonb), p_dedupe_key
+  )
+  returning id into v_id;
+
+  return v_id;
+end;$function$
+"
+security definer function,redeem_admin_invite_code,"CREATE OR REPLACE FUNCTION public.redeem_admin_invite_code(p_code text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_code_id bigint;
+  v_owner uuid;
+  v_user_id uuid := auth.uid();
+  v_revoked boolean;
+  v_uses_count integer;
+  v_max_uses integer;
+begin
+  if v_user_id is null or p_code is null or length(trim(p_code)) = 0 then
+    return false;
+  end if;
+
+  select id, owner_user_id, revoked, uses_count, max_uses
+    into v_code_id, v_owner, v_revoked, v_uses_count, v_max_uses
+    from public.admin_invite_codes
+    where code = upper(trim(p_code))
+    for update;
+
+  if v_code_id is null then
+    return false;
+  end if;
+
+  if exists (
+    select 1 from public.admin_invite_redemptions
+    where code_id = v_code_id and redeemed_by = v_user_id
+  ) then
+    return true;
+  end if;
+
+  if v_revoked or v_uses_count >= v_max_uses then
+    return false;
+  end if;
+
+  update public.admin_invite_codes
+  set uses_count = uses_count + 1
+  where id = v_code_id;
+
+  insert into public.admin_invite_redemptions (code_id, redeemed_by)
+  values (v_code_id, v_user_id);
+
+  insert into public.admin_users (user_id, granted_by, source)
+  values (v_user_id, v_owner, 'invite')
+  on conflict (user_id) do nothing;
+
+  return true;
+end;
+$function$
+"
+security definer function,set_active_badge,"CREATE OR REPLACE FUNCTION public.set_active_badge(p_badge_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if not exists (
+    select 1 from public.user_badges
+    where user_id = auth.uid() and badge_id = p_badge_id
+  ) then
+    raise exception 'badge not unlocked';
+  end if;
+
+  update public.user_badges set active = false
+  where user_id = auth.uid() and active;
+
+  update public.user_badges set active = true
+  where user_id = auth.uid() and badge_id = p_badge_id;
+end;
+$function$
+"

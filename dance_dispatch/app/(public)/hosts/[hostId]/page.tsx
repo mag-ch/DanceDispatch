@@ -656,7 +656,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 </div>
                                 <div className="space-y-3">
                                     {upcomingEvents.map((event, index) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" />
+                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" event={event} />
                                     ))}
                                 </div>
                             </section>
@@ -665,7 +665,7 @@ export default function HostPage({ params }: { params: Promise<{ hostId: string 
                                 <h2 className="font-semibold text-text text-lg mb-4">Recent Events</h2>
                                 <div className="space-y-3">
                                     {(showAllPastEvents ? pastEvents : pastEvents.slice(0, 3)).map((event, index) => (
-                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" />
+                                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" event={event} />
                                     ))}
                                     {!showAllPastEvents && pastEvents.length > 5 && (
                                         <button type="button" onClick={() => setShowAllPastEvents(true)}

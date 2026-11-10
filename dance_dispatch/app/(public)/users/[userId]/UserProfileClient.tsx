@@ -4,18 +4,32 @@ import { useMemo, useState } from "react";
 import { SearchResult } from "@/app/components/EventCard";
 import UserBadgesInline from "@/app/components/UserBadgesInline";
 import { Event, EventReview, Host, Venue } from "@/lib/utils";
-import CustomLink from "@/app/components/CustomLink";
 import { FollowEntityButton } from "@/app/components/SaveEventButton";
 import { DisplayEventReview } from "@/app/components/EventReview";
+import { useRouter } from "next/navigation";
+import BlockUserButton from "@/app/components/BlockUserButton";
+import SearchableListModal from "@/app/components/SearchableListModal";
+
+type Profile = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  profile_picture: string | null;
+  created_at: string;
+};
 
 type UserProfileClientProps = {
-  user: any;
+  user: Profile;
   followedVenues: Venue[];
   followedHosts: Host[];
-  followedUsers: any[];
+  followedUsers: Profile[];
   upcomingEvents: Event[];
   pastEvents: Event[];
   userReviews: EventReview[];
+  canSeeActivity: boolean;
+  isOwnProfile: boolean;
+  canManageBlock: boolean;
+  isBlocked: boolean;
 };
 
 export default function UserProfileClient({
@@ -26,11 +40,12 @@ export default function UserProfileClient({
   upcomingEvents,
   pastEvents,
   userReviews,
+  canSeeActivity,
+  isOwnProfile,
+  canManageBlock,
+  isBlocked,
 }: UserProfileClientProps) {
-  if (!user?.id) {
-    return <div className="min-h-screen bg-bg text-text p-6">User not found.</div>;
-  }
-
+  const router = useRouter();
   const [activeFollowModal, setActiveFollowModal] = useState<"venues" | "hosts" | "users" | null>(null);
 
   const displayName = user.username || "User";
@@ -50,6 +65,7 @@ export default function UserProfileClient({
             img={venue.photourls}
             entityId={venue.id}
             entity="venues"
+            showActions
           />
         )),
       };
@@ -67,6 +83,7 @@ export default function UserProfileClient({
             img={host.photoUrl}
             entityId={host.id}
             entity="hosts"
+            showActions
           />
         )),
       };
@@ -81,10 +98,11 @@ export default function UserProfileClient({
             key={followed.id}
             header={followed.full_name || followed.username || "User"}
             subheader={followed.username ? `@${followed.username}` : "User profile"}
-            img={followed.profile_picture}
+            img={followed.profile_picture ?? '/images/default_users.jpg'}
             entityId={followed.id}
             entity="users"
             badgeUserId={followed.id}
+            showActions
           />
         )),
       };
@@ -114,7 +132,10 @@ export default function UserProfileClient({
               </div>
             </div>
 
-            <FollowEntityButton entity="users" entityId={user.id} />
+            {!isOwnProfile && <div className="flex flex-wrap items-start gap-3">
+              {!isBlocked && <FollowEntityButton entity="users" entityId={user.id} onFollowChange={() => router.refresh()} />}
+              {canManageBlock && <BlockUserButton userId={user.id} name={displayName} isBlocked={isBlocked} />}
+            </div>}
           </div>
         </section>
 
@@ -164,13 +185,14 @@ export default function UserProfileClient({
                 img={event.imageurl}
                 entityId={event.id}
                 entity="events"
+                event={event}
               />
             ))}
             {pastEvents.length === 0 && <p className="text-sm text-text/80">No recent attended events.</p>}
           </div>
         </section>
 
-        <section>
+        {canSeeActivity ? <section>
           <h2 className="text-2xl font-semibold mb-4">Upcoming Events ({upcomingEvents.length})</h2>
           <div className="space-y-3">
             {upcomingEvents.slice(0, 8).map((event, index) => (
@@ -183,13 +205,19 @@ export default function UserProfileClient({
                 img={event.imageurl}
                 entityId={event.id}
                 entity="events"
+                event={event}
               />
             ))}
             {upcomingEvents.length === 0 && <p className="text-sm text-text/80">No upcoming events.</p>}
           </div>
-        </section>
+        </section> : (
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">Upcoming Events and Reviews</h2>
+            <p className="text-sm text-text/80">Follow this user to see their upcoming events and reviews.</p>
+          </section>
+        )}
 
-        <section>
+        {canSeeActivity && <section>
           <h2 className="text-2xl font-semibold mb-4">Recent Reviews and Comments ({userReviews.length})</h2>
           <div className="space-y-3">
             {userReviews.slice(0, 10).map((review,id) => (
@@ -207,42 +235,13 @@ export default function UserProfileClient({
             ))}
             {userReviews.length === 0 && <p className="text-sm text-text/80">No recent reviews or comments.</p>}
           </div>
-        </section>
+        </section>}
       </div>
 
-      {modalConfig && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-6"
-          onClick={() => setActiveFollowModal(null)}
-        >
-          <div
-            className="w-full max-w-[75vw] max-h-[75vh] overflow-y-auto rounded-xl border border-text/10 bg-surface p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={modalConfig.title}
-          >
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h3 className="text-2xl font-semibold text-text">{modalConfig.title}</h3>
-              <button
-                type="button"
-                onClick={() => setActiveFollowModal(null)}
-                className="rounded-md border border-text/10 px-3 py-1 text-sm text-text transition hover:bg-slate-50 dark:hover:bg-slate-800"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] overflow-y-auto pr-2">
-              {modalConfig.content.length > 0 ? (
-                <div className="space-y-3">{modalConfig.content}</div>
-              ) : (
-                <p className="text-sm text-text/80">{modalConfig.emptyText}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {modalConfig && <SearchableListModal title={modalConfig.title} count={modalConfig.content.length}
+        emptyMessage={modalConfig.emptyText} onClose={() => setActiveFollowModal(null)}>
+        {modalConfig.content}
+      </SearchableListModal>}
     </div>
   );
 }

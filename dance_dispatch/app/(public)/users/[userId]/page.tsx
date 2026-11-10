@@ -5,6 +5,8 @@ import UserProfileClient from "./UserProfileClient";
 import type { Metadata } from 'next';
 import { cache } from 'react';
 import { pageMetadata } from '@/lib/page-metadata';
+import { getCurrentUser } from '@/lib/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
 
 const getProfile = cache(getUserById);
 
@@ -25,13 +27,35 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
   const user = await getProfile(userId);
   if (!user?.id) return <div className="min-h-screen bg-bg text-text p-6">User not found.</div>;
 
+  const viewer = await getCurrentUser();
+  let canSeeActivity = viewer?.id === userId;
+  let isBlocked = false;
+  if (viewer && !canSeeActivity) {
+    const supabase = await createClient();
+    const [{ data, error }, blockResult] = await Promise.all([supabase
+      .from('UserFollowUsers')
+      .select('user_id')
+      .eq('user_id', viewer.id)
+      .eq('followed_id', userId)
+      .maybeSingle(), supabase
+      .from('user_blocks')
+      .select('blocked_id')
+      .eq('blocker_id', viewer.id)
+      .eq('blocked_id', userId)
+      .maybeSingle()]);
+    if (error) throw error;
+    if (blockResult.error) throw blockResult.error;
+    isBlocked = Boolean(blockResult.data);
+    canSeeActivity = Boolean(data);
+  }
+
   const [followedVenues, followedHosts, followedUsers, upcomingEvents, pastEvents, userReviews] = await Promise.all([
     getAllFollowedVenues(userId).catch(() => []),
     getAllFollowedHosts(userId).catch(() => []),
     getAllFollowedUsers(userId).catch(() => []),
-    getSavedEventsForUserServer(userId, "upcoming").catch(() => []),
+    canSeeActivity ? getSavedEventsForUserServer(userId, "upcoming") : Promise.resolve([]),
     getSavedEventsForUserServer(userId, "past").catch(() => []),
-    getUserReviews(user.id, false).catch(() => []),
+    canSeeActivity ? getUserReviews(user.id, viewer?.id === userId) : Promise.resolve([]),
   ]);
 
   return (
@@ -43,6 +67,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
       upcomingEvents={upcomingEvents}
       pastEvents={pastEvents}
       userReviews={userReviews}
+      canSeeActivity={canSeeActivity}
+      isOwnProfile={viewer?.id === userId}
+      canManageBlock={Boolean(viewer) && viewer?.id !== userId}
+      isBlocked={isBlocked}
     />
   );
 }

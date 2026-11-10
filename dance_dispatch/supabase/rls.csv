@@ -1,0 +1,246 @@
+rls_policy_sql
+"-- Policy for table: Events
+ALTER TABLE public.Events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all queries ON public.Events AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: event_hosts
+ALTER TABLE public.event_hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all queries select ON public.event_hosts AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: Hosts
+ALTER TABLE public.Hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all select queries ON public.Hosts AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: Venues
+ALTER TABLE public.Venues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all select queries ON public.Venues AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: categories
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all select ON public.categories AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow all select ON public.profiles AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: SavedEvents
+ALTER TABLE public.SavedEvents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable operations for users based on user_id ON public.SavedEvents AS PERMISSIVE FOR ALL TO public USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: SavedEvents
+ALTER TABLE public.SavedEvents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.SavedEvents AS PERMISSIVE FOR INSERT TO public WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: UserFollowedVenues
+ALTER TABLE public.UserFollowedVenues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable operations for users based on user_id ON public.UserFollowedVenues AS PERMISSIVE FOR ALL TO public USING ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: Venues
+ALTER TABLE public.Venues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.Venues AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: Hosts
+ALTER TABLE public.Hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.Hosts AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: Events
+ALTER TABLE public.Events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.Events AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: event_hosts
+ALTER TABLE public.event_hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.event_hosts AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: Reviews
+ALTER TABLE public.Reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for users based on user_id ON public.Reviews AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: Reviews
+ALTER TABLE public.Reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.Reviews AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: host_media
+ALTER TABLE public.host_media ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.host_media AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: host_media
+ALTER TABLE public.host_media ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.host_media AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: venue_attributes
+ALTER TABLE public.venue_attributes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.venue_attributes AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY all insert ON public.profiles AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);"
+"-- Policy for table: UserFollowUsers
+ALTER TABLE public.UserFollowUsers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.UserFollowUsers AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: UserFollowedHosts
+ALTER TABLE public.UserFollowedHosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.UserFollowedHosts AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: user_badge_stats
+ALTER TABLE public.user_badge_stats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_badge_stats_read_own ON public.user_badge_stats AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: user_badges
+ALTER TABLE public.user_badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_badges_read_all ON public.user_badges AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: UserFollowedHosts
+ALTER TABLE public.UserFollowedHosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable delete for users based on user_id ON public.UserFollowedHosts AS PERMISSIVE FOR DELETE TO public USING ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: UserFollowUsers
+ALTER TABLE public.UserFollowUsers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY access following ON public.UserFollowUsers AS PERMISSIVE FOR ALL TO public USING (true) WITH CHECK (true);"
+"-- Policy for table: UserFollowedHosts
+ALTER TABLE public.UserFollowedHosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.UserFollowedHosts AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: UserFollowedVenues
+ALTER TABLE public.UserFollowedVenues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.UserFollowedVenues AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: UserFollowUsers
+ALTER TABLE public.UserFollowUsers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.UserFollowUsers AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: SavedEvents
+ALTER TABLE public.SavedEvents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.SavedEvents AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: UserFollowedVenues
+ALTER TABLE public.UserFollowedVenues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.UserFollowedVenues AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: SharedItems
+ALTER TABLE public.SharedItems ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.SharedItems AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: SharedItems
+ALTER TABLE public.SharedItems ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.SharedItems AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: Events
+ALTER TABLE public.Events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.Events AS PERMISSIVE FOR UPDATE TO authenticated USING (true) WITH CHECK (true);"
+"-- Policy for table: patch_notes
+ALTER TABLE public.patch_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.patch_notes AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: UserSubmittedFeedback
+ALTER TABLE public.UserSubmittedFeedback ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.UserSubmittedFeedback AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: UserSubmittedFeedback
+ALTER TABLE public.UserSubmittedFeedback ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.UserSubmittedFeedback AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: user_plans
+ALTER TABLE public.user_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_plans_select_own ON public.user_plans AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable update for authenticated users only ON public.profiles AS PERMISSIVE FOR UPDATE TO authenticated USING (true) WITH CHECK (true);"
+"-- Policy for table: event_hosts
+ALTER TABLE public.event_hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.event_hosts AS PERMISSIVE FOR DELETE TO authenticated USING (true);"
+"-- Policy for table: Hosts
+ALTER TABLE public.Hosts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable insert for authenticated users only ON public.Hosts AS PERMISSIVE FOR UPDATE TO authenticated USING (true) WITH CHECK (true);"
+"-- Policy for table: UserPoints
+ALTER TABLE public.UserPoints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY users_read_own_points ON public.UserPoints AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: UserPoints
+ALTER TABLE public.UserPoints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY service_can_manage_points ON public.UserPoints AS PERMISSIVE FOR ALL TO public USING (true) WITH CHECK (true);"
+"-- Policy for table: badges
+ALTER TABLE public.badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY badges_read_all ON public.badges AS PERMISSIVE FOR SELECT TO public USING ((is_active = true));"
+"-- Policy for table: badge_requirements
+ALTER TABLE public.badge_requirements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY badge_requirements_read_all ON public.badge_requirements AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: venue_attributes
+ALTER TABLE public.venue_attributes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable delete for authenticated users only ON public.venue_attributes AS PERMISSIVE FOR DELETE TO authenticated USING (true);"
+"-- Policy for table: ReviewMedia
+ALTER TABLE public.ReviewMedia ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Public can view non-private review media ON public.ReviewMedia AS PERMISSIVE FOR SELECT TO public USING ((EXISTS ( SELECT 1
+   FROM ""Reviews""
+  WHERE ((""Reviews"".id = ""ReviewMedia"".review_id) AND (""Reviews"".privacy_level <> 'private'::""Review Privacy Level"")))));"
+"-- Policy for table: ReviewMedia
+ALTER TABLE public.ReviewMedia ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can view own private review media ON public.ReviewMedia AS PERMISSIVE FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM ""Reviews""
+  WHERE ((""Reviews"".id = ""ReviewMedia"".review_id) AND (""Reviews"".user_id = auth.uid())))));"
+"-- Policy for table: ReviewMedia
+ALTER TABLE public.ReviewMedia ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can insert own review media ON public.ReviewMedia AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
+   FROM ""Reviews""
+  WHERE ((""Reviews"".id = ""ReviewMedia"".review_id) AND (""Reviews"".user_id = auth.uid())))));"
+"-- Policy for table: ReviewMedia
+ALTER TABLE public.ReviewMedia ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can delete own review media ON public.ReviewMedia AS PERMISSIVE FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
+   FROM ""Reviews""
+  WHERE ((""Reviews"".id = ""ReviewMedia"".review_id) AND (""Reviews"".user_id = auth.uid())))));"
+"-- Policy for table: admin_invite_codes
+ALTER TABLE public.admin_invite_codes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Admins can read their own invite code ON public.admin_invite_codes AS PERMISSIVE FOR SELECT TO authenticated USING ((owner_user_id = auth.uid()));"
+"-- Policy for table: push_subscriptions
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can read their own push subscriptions ON public.push_subscriptions AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: push_subscriptions
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can insert their own push subscriptions ON public.push_subscriptions AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: push_subscriptions
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can update their own push subscriptions ON public.push_subscriptions AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: push_subscriptions
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can delete their own push subscriptions ON public.push_subscriptions AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: user_notifications
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can read their own notifications ON public.user_notifications AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: user_notifications
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can update their own notifications ON public.user_notifications AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: Events
+ALTER TABLE public.Events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Authenticated users can update events ON public.Events AS PERMISSIVE FOR UPDATE TO authenticated USING (true) WITH CHECK (true);"
+"-- Policy for table: user_plans
+ALTER TABLE public.user_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_plans_insert_own ON public.user_plans AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: user_plans
+ALTER TABLE public.user_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can delete their own plans ON public.user_plans AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: user_plans
+ALTER TABLE public.user_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY users update their own plans ON public.user_plans AS PERMISSIVE FOR UPDATE TO authenticated USING ((auth.uid() = user_id));"
+"-- Policy for table: venue_attributes
+ALTER TABLE public.venue_attributes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY venue_attributes insert ON public.venue_attributes AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
+   FROM ""Venues"" v
+  WHERE (v.id = venue_attributes.venue_id))));"
+"-- Policy for table: event_comparisons
+ALTER TABLE public.event_comparisons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can insert own comparisons ON public.event_comparisons AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: event_rankings
+ALTER TABLE public.event_rankings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY authenticated users can insert ON public.event_rankings AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (true);"
+"-- Policy for table: event_rankings
+ALTER TABLE public.event_rankings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.event_rankings AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: event_comparisons
+ALTER TABLE public.event_comparisons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable read access for all users ON public.event_comparisons AS PERMISSIVE FOR SELECT TO public USING (true);"
+"-- Policy for table: event_rankings
+ALTER TABLE public.event_rankings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable update for users based on user_id ON public.event_rankings AS PERMISSIVE FOR UPDATE TO public USING ((( SELECT auth.uid() AS uid) = user_id)) WITH CHECK (true);"
+"-- Policy for table: event_comparisons
+ALTER TABLE public.event_comparisons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable delete for users based on user_id ON public.event_comparisons AS PERMISSIVE FOR DELETE TO public USING ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: location_confirmations
+ALTER TABLE public.location_confirmations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can read their own location confirmations ON public.location_confirmations AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));"
+"-- Policy for table: location_confirmations
+ALTER TABLE public.location_confirmations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can insert their own location confirmations ON public.location_confirmations AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));"
+"-- Policy for table: Events
+ALTER TABLE public.Events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable delete for users based on user_id ON public.Events AS PERMISSIVE FOR DELETE TO public USING ((( SELECT auth.uid() AS uid) = 'ba398812-06a0-4c48-9f15-0660d3af0047'::uuid));"
+"-- Policy for table: admin_users
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Enable users to view their own data only ON public.admin_users AS PERMISSIVE FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) = user_id));"
+"-- Policy for table: review_replies
+ALTER TABLE public.review_replies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Anyone can read review replies ON public.review_replies AS PERMISSIVE FOR SELECT TO anon, authenticated USING (true);"
+"-- Policy for table: review_replies
+ALTER TABLE public.review_replies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can add their own replies ON public.review_replies AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((user_id = auth.uid()));"
+"-- Policy for table: review_replies
+ALTER TABLE public.review_replies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Users can delete their own replies ON public.review_replies AS PERMISSIVE FOR DELETE TO authenticated USING ((user_id = auth.uid()));"
+"-- Policy for table: admin_invite_codes
+ALTER TABLE public.admin_invite_codes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Admins can create their own invite code ON public.admin_invite_codes AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (((owner_user_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM admin_users a
+  WHERE (a.user_id = auth.uid())))));"
+"-- Policy for table: Reviews
+ALTER TABLE public.Reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Admins can delete any review ON public.Reviews AS PERMISSIVE FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
+   FROM admin_users a
+  WHERE (a.user_id = auth.uid()))));"
+"-- Policy for table: Venues
+ALTER TABLE public.Venues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY Admins can update venues ON public.Venues AS PERMISSIVE FOR UPDATE TO authenticated USING (true) WITH CHECK (true);"

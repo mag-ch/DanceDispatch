@@ -556,7 +556,7 @@ export async function getUserReviews(userId: string, includeAnon: boolean): Prom
         .from('Reviews')
         .select('id, event_id, user_id, privacy_level, created_at, entity_type, entity_id, rating, comment, ReviewMedia(storage_path)')
         .eq('user_id', userId)
-        .neq('privacy_level', 'anonymous')
+        .eq('privacy_level', 'public')
         .order('created_at', { ascending: false });
       data = result.data;
       error = result.error;
@@ -1149,11 +1149,9 @@ export async function checkUserFollow(userId: string, targetUserId: string): Pro
     .select('*')
     .eq('user_id', userId)
     .eq('followed_id', targetUserId)
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    return false;
-  }
+  if (error) throw error;
 
   return !!data;
 }

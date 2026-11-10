@@ -12,6 +12,7 @@ import ExpandableList from '@/app/components/ExpandableList';
 import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
 import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
 import MakePartyPlanButton from './MakePartyPlanButton';
+import BlockedUsers from './BlockedUsers';
 // import AdminInviteCodePanel from './AdminInviteCodePanel';
 
 
@@ -83,7 +84,7 @@ export default async function ProfilePage() {
     });
 
     // Pre-render item lists so they can be handed to client components as children
-    const followedUserItems = followedUsers.map((follow: any) => (
+    const followedUserItems = (showActions: boolean) => followedUsers.map((follow: any) => (
         <SearchResult
             key={follow.id}
             header={follow.username}
@@ -93,10 +94,11 @@ export default async function ProfilePage() {
             entity="users"
             badgeUserId={follow.id}
             topBadges={followedUserBadgeMap[String(follow.id)] ?? []}
+            showActions={showActions}
         />
     ));
 
-    const followedVenueItems = followedVenues.map((venue: any, index: number) => (
+    const followedVenueItems = (showActions: boolean) => followedVenues.map((venue: any, index: number) => (
         <SearchResult
             key={`${venue.id}-${index}`}
             header={venue.name}
@@ -105,10 +107,11 @@ export default async function ProfilePage() {
             img={venue.photourls}
             entityId={venue.id}
             entity="venues"
+            showActions={showActions}
         />
     ));
 
-    const favoriteDJItems = favoriteDJs.map((host: any, index: number) => (
+    const favoriteDJItems = (showActions: boolean) => favoriteDJs.map((host: any, index: number) => (
         <SearchResult
             key={`${host.id}-${index}`}
             header={host.name}
@@ -117,6 +120,7 @@ export default async function ProfilePage() {
             img={host.photoUrl}
             entityId={host.id}
             entity="hosts"
+            showActions={showActions}
         />
     ));
 
@@ -131,6 +135,7 @@ export default async function ProfilePage() {
             img={event.imageurl}
             entityId={event.id}
             entity="events"
+            event={event}
         />
     ));
 
@@ -260,6 +265,8 @@ export default async function ProfilePage() {
                 </div>
             </section>
 
+            <BlockedUsers />
+
             {/* Followed Users */}
             <CollapsedSectionModal
                 title="Following"
@@ -267,8 +274,9 @@ export default async function ProfilePage() {
                 emptyMessage="Not following anyone yet"
                 discoverHref="/search?categories=users"
                 discoverLabel="Discover Users"
+                modalChildren={followedUserItems(true)}
             >
-                {followedUserItems}
+                {followedUserItems(false)}
             </CollapsedSectionModal>
 
             {/* Favorite Venues */}
@@ -278,8 +286,9 @@ export default async function ProfilePage() {
                 emptyMessage="No favorite venues yet"
                 discoverHref="/search?categories=venues"
                 discoverLabel="Discover Venues"
+                modalChildren={followedVenueItems(true)}
             >
-                {followedVenueItems}
+                {followedVenueItems(false)}
             </CollapsedSectionModal>
 
             {/* Favorite DJs */}
@@ -289,8 +298,9 @@ export default async function ProfilePage() {
                 emptyMessage="No favorite DJs yet"
                 discoverHref="/search?categories=hosts"
                 discoverLabel="Discover DJs"
+                modalChildren={favoriteDJItems(true)}
             >
-                {favoriteDJItems}
+                {favoriteDJItems(false)}
             </CollapsedSectionModal>
 
             {/* Upcoming Events - kept fully displayed */}
@@ -312,7 +322,7 @@ export default async function ProfilePage() {
                 </div>
                 <div className="space-y-4">
                     {upcomingEvents.map((event: Event, index: number) => (
-                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events"/>
+                        <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={event.startdate + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" event={event}/>
                         ))}
                     {upcomingEvents.length === 0 && (
                         <div>

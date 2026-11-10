@@ -471,7 +471,7 @@ export default function SearchClient({
                                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">{group.dateLabel}</p>
                                             <div className="space-y-3">
                                                 {group.events.map((event: Event, index: number) => (
-                                                    <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={formatEventDate(event.startdate) + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" />
+                                                    <SearchResult key={`${event.id}-${index}`} header={event.title} subheader={event.description} date={formatEventDate(event.startdate) + " " + event.starttime} price={event.price} location={event.location} img={event.imageurl} entityId={event.id} entity="events" event={event} />
                                                 ))}
                                             </div>
                                         </div>

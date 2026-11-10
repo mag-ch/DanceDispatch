@@ -16,6 +16,8 @@ interface SaveEntityButtonProps {
     entityId: string | number;
     initialSaved?: boolean;
     isDisabled?: boolean;
+    onFollowChange?: (isFollowing: boolean) => void;
+    compact?: boolean;
 }
 
 interface ActionToastProps {
@@ -206,10 +208,12 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
     );
 };
 
-export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, entityId, initialSaved, isDisabled }) => {
+export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, entityId, initialSaved, isDisabled, onFollowChange, compact = false }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
+    const [loadError, setLoadError] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
     const [showPopup, setShowPopup] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const isSubmittingRef = useRef(false);
@@ -239,6 +243,7 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
         if (initialSaved !== undefined) {
             setIsSaved(initialSaved);
             setIsLoading(false);
+            setLoadError(false);
             return () => {
                 isMounted = false;
             };
@@ -253,29 +258,44 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
         if (!session) {
             setIsSaved(false);
             setIsLoading(false);
+            setLoadError(false);
             return () => {
                 isMounted = false;
             };
         }
 
+        if (entity === 'users' && String(entityId) === session.user.id) {
+            setIsLoading(false);
+            return () => { isMounted = false; };
+        }
+
         setIsLoading(true);
         fetch(`/api/users/saved-${entity}/${entityId}`)
-            .then((res) => res.json())
+            .then((res) => {
+                if (!res.ok) throw new Error('Failed to check follow status');
+                return res.json();
+            })
             .then((data) => {
+                if (typeof data.isSaved !== 'boolean') throw new Error('Invalid follow status response');
                 if (isMounted) {
-                    setIsSaved(!!data.isSaved);
+                    setIsSaved(data.isSaved);
                     setIsLoading(false);
+                    setLoadError(false);
                 }
             })
             .catch((error) => {
                 console.error('Error fetching saved state:', error);
-                if (isMounted) setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                    setLoadError(true);
+                    showToast('Could not load follow status');
+                }
             });
 
         return () => {
             isMounted = false;
         };
-    }, [entityId, entity, initialSaved, session, authLoading]);
+    }, [entityId, entity, initialSaved, session, authLoading, retryCount]);
 
     const handleClick = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -287,6 +307,12 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
 
         if (!session) {
             setShowPopup(true);
+            return;
+        }
+
+        if (loadError) {
+            setIsLoading(true);
+            setRetryCount((count) => count + 1);
             return;
         }
         
@@ -308,6 +334,7 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
                 throw new Error('Failed to update follow state');
             }
 
+            onFollowChange?.(newSavedState);
             showToast(
                 newSavedState
                     ? `Now following this ${getFollowedEntityLabel(entity)}`
@@ -316,26 +343,31 @@ export const FollowEntityButton: React.FC<SaveEntityButtonProps> = ({ entity, en
         } catch (error) {
             console.error('Failed to follow/unfollow user:', error);
             setIsSaved(previousSavedState);
+            showToast('Could not update follow status. Please try again.');
         } finally {
             isSubmittingRef.current = false;
         }
     };
 
+    if (entity === 'users' && session?.user.id === String(entityId)) return null;
+
     return (
         <>
             <button
+                type="button"
                 onClick={handleClick}
-                disabled={isLoading || isDisabled}
-                className={`group px-6 py-2 rounded transition ${!isSaved ? 'btn-highlighted' : ''} ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-90'}`}
-                aria-disabled={isLoading || isDisabled}
-                title={isDisabled ? 'Follow is unavailable for past items' : 'Follow'}
+                disabled={isLoading || authLoading || isDisabled}
+                className={`group ${compact ? 'px-3 py-1 text-sm' : 'px-6 py-2'} rounded transition ${!isSaved ? 'btn-highlighted' : ''} ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-90'}`}
+                aria-disabled={isLoading || authLoading || isDisabled}
+                aria-pressed={loadError ? undefined : isSaved}
+                title={isDisabled ? 'Follow is unavailable' : loadError ? 'Retry loading follow status' : isSaved ? 'Unfollow' : 'Follow'}
             >
-                {isSaved ? 'Unfollow' : 'Follow'}
+                {loadError ? 'Retry' : isSaved ? 'Unfollow' : 'Follow'}
             </button>
             <AuthRequiredModal
                 isOpen={showPopup}
                 onClose={() => setShowPopup(false)}
-                message="Please log in or sign up to follow users."
+                message={`Please log in or sign up to follow ${entity}.`}
             />
             {toastMessage && <ActionToast message={toastMessage} />}
         </>

@@ -85,7 +85,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               href="/activity-feed"
               className="rounded-full border border-cyan-500/60 bg-white/70 px-3 py-1 text-xs font-semibold text-cyan-800 transition hover:bg-cyan-100 dark:border-cyan-400/40 dark:bg-transparent dark:text-cyan-300 dark:hover:bg-cyan-400/10"
             >
-              View all reviews
+              View all activity
             </Link>
           </div>
 

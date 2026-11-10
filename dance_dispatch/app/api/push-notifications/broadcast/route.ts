@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     let href = '/notifications';
     let tag = `broadcast-${randomUUID()}`;
     let recipientUserIds: string[] | null = null;
+    let actorUserId: string | undefined;
 
     if (mode === 'message') {
       title = typeof body?.title === 'string' ? body.title.trim() : '';
@@ -91,6 +92,8 @@ export async function POST(request: Request) {
       }
 
       const reviewerId = String((reviewRow as { user_id?: unknown }).user_id ?? '').trim();
+      if (!reviewerId) throw new Error('Review has no author.');
+      actorUserId = reviewerId;
       if (reviewRow.privacy_level === 'private') {
         return NextResponse.json({ error: 'Private reviews cannot be announced.' }, { status: 400 });
       }
@@ -172,8 +175,8 @@ export async function POST(request: Request) {
 
     const payload = { title, body: message, href, tag };
     const result = recipientUserIds
-      ? await sendPushToUsers(recipientUserIds, payload)
-      : await sendPushToAllUsers(payload);
+      ? await sendPushToUsers(recipientUserIds, payload, actorUserId)
+      : await sendPushToAllUsers(payload, actorUserId);
 
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

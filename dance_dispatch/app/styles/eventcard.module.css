@@ -20,6 +20,10 @@
   cursor: pointer;
 }
 
+.searchAction {
+  flex-shrink: 0;
+}
+
 .avatarWrap {
   flex-shrink: 0;
   width: 2.5rem;

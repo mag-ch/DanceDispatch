@@ -28,8 +28,8 @@ async function setup({ privacy = 'public', profileError = null, username = 'danc
     '@/lib/utils_supabase_server': { getEventById: async () => ({ id: '2', title: 'Party' }) },
     '@/lib/push-notification-constants': { PUSH_TEST_USER_ID: 'admin' },
     '@/lib/push-notifications': {
-      sendPushToAllUsers: async (payload) => { sends.push(payload); return {}; },
-      sendPushToUsers: async (users, payload) => { sends.push({ ...payload, users }); return {}; },
+      sendPushToAllUsers: async (payload, actorUserId) => { sends.push({ ...payload, actorUserId }); return {}; },
+      sendPushToUsers: async (users, payload, actorUserId) => { sends.push({ ...payload, users, actorUserId }); return {}; },
     },
     '@/lib/supabase/server': { createClient: async () => supabase },
   };
@@ -45,6 +45,7 @@ test('new review announcement resolves username but targets followers by ID', as
   const response = await post({ mode: 'new-review', reviewId: '1', followersOnly: true });
   assert.equal(response.status, 200);
   assert.equal(sends[0].body, 'dancer posted a review for Party!');
+  assert.equal(sends[0].actorUserId, 'user-id');
   assert.deepEqual(sends[0].users, ['follower']);
   assert.ok(calls.some(([table, column, value]) => table === 'profiles' && column === 'id' && value === 'user-id'));
   assert.ok(calls.some(([table, column, value]) => table === 'UserFollowUsers' && column === 'followed_id' && value === 'user-id'));
@@ -55,6 +56,7 @@ test('anonymous review does not expose or fetch the author username', async () =
   const response = await post({ mode: 'new-review', reviewId: '1' });
   assert.equal(response.status, 200);
   assert.equal(sends[0].body, 'Anonymous posted a review for Party!');
+  assert.equal(sends[0].actorUserId, 'user-id');
   assert.equal(calls.some(([table]) => table === 'profiles'), false);
 });
 

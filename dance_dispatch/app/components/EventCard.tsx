@@ -2,7 +2,7 @@ import React from 'react';
 import { processUrl, resolveServerImageUrl } from '@/lib/utils'
 import type { Event } from '@/lib/utils'
 import { formatDateOnly, isUpcoming } from '@/lib/date-utils';
-import { SaveEventButton } from './SaveEventButton';
+import { FollowEntityButton, SaveEventButton } from './SaveEventButton';
 import CustomLink from './CustomLink';
 import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
 import UserBadgesInline, { BadgeChipsInline } from './UserBadgesInline';
@@ -32,6 +32,8 @@ interface SearchResultProps {
     entity?: string;
     badgeUserId?: string;
     topBadges?: CompactBadge[];
+    event?: Pick<Event, 'startdate' | 'starttime' | 'enddate' | 'endtime'>;
+    showActions?: boolean;
 }
 
 const formatEventDate = (dateString: string) => {
@@ -68,6 +70,8 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     entity,
     badgeUserId,
     topBadges,
+    event,
+    showActions = false,
 }) => {
     const formatDate = (date: string) => {
         return new Intl.DateTimeFormat('en-US', {
@@ -111,6 +115,16 @@ export const SearchResult: React.FC<SearchResultProps> = ({
                     </div>
                 </div>
             </CustomLink>
+            {showActions && entityId && entity === 'events' && event && (
+                <div className={styles.searchAction}>
+                    <SaveEventButton eventId={entityId} isDisabled={!isUpcoming(event)} showLabel />
+                </div>
+            )}
+            {showActions && entityId && (entity === 'hosts' || entity === 'venues' || entity === 'users') && (
+                <div className={styles.searchAction}>
+                    <FollowEntityButton entity={entity} entityId={entityId} compact />
+                </div>
+            )}
         </div>
     );
 };

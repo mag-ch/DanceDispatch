@@ -1001,11 +1001,11 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="space-y-6 lg:sticky lg:top-8">
                             <div className="hidden rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-cyan-50 via-surface to-amber-50 p-4 shadow-[0_12px_35px_rgba(8,145,178,0.14)] dark:from-cyan-500/10 dark:via-surface dark:to-amber-500/10 lg:block">
                                 <div className="mb-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Who's Going? ({rsvpUsers.length})</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">{isPastEvent ? 'Who Attended' : 'Who\'s Going?'} ({rsvpUsers.length})</p>
                                 </div>
 
                                 {rsvpUsers.length === 0 ? (
-                                    <p className="text-sm text-muted">No RSVPs yet.</p>
+                                    <p className="text-sm text-muted">{isPastEvent ? 'No one attended.' : 'No RSVPs yet.'}</p>
                                 ) : (
                                     <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
                                         {rsvpUsers.map((rsvpUser) => {

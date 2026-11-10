@@ -1,0 +1,101 @@
+table_name,column_name,data_type
+admin_invite_codes,created_at,timestamp with time zone
+user_badge_stats,total_points,integer
+user_badge_stats,rsvp_count,integer
+user_badge_stats,review_count,integer
+user_badge_stats,referral_count,integer
+user_badge_stats,share_count,integer
+user_badge_stats,updated_at,timestamp with time zone
+user_badge_stats,submit_event_count,integer
+user_badges,id,uuid
+user_badges,user_id,uuid
+user_badges,badge_id,uuid
+user_badges,unlocked_at,timestamp with time zone
+event_comparisons,user_id,uuid
+event_comparisons,event_a_id,bigint
+event_comparisons,event_b_id,bigint
+event_comparisons,winner_is_a,boolean
+event_comparisons,created_at,timestamp with time zone
+pending_events,id,bigint
+pending_events,created_at,timestamp with time zone
+pending_events,event_id,bigint
+pending_events,created_by,uuid
+pending_events,exclude,boolean
+event_rankings,id,uuid
+event_rankings,user_id,uuid
+event_rankings,event_id,bigint
+event_rankings,rank,integer
+event_rankings,score,numeric
+event_rankings,created_at,timestamp with time zone
+event_rankings,updated_at,timestamp with time zone
+review_replies,id,bigint
+review_replies,review_id,bigint
+review_replies,parent_reply_id,bigint
+review_replies,user_id,uuid
+review_replies,created_at,timestamp with time zone
+EventSeries,id,uuid
+EventSeries,created_at,timestamp with time zone
+EventSeries,dtstart,timestamp without time zone
+EventSeries,duration,interval
+EventSeries,location,bigint
+EventSeries,price,numeric
+EventSeries,host_id,integer
+EventSeries,active,boolean
+host_media,id,bigint
+host_media,created_at,timestamp with time zone
+host_media,host_id,bigint
+Hosts,id,bigint
+Hosts,created_at,timestamp with time zone
+patch_notes,id,bigint
+patch_notes,created_at,timestamp with time zone
+user_plans,user_id,uuid
+user_plans,event_ids,ARRAY
+user_plans,id,bigint
+venue_attributes,id,bigint
+venue_attributes,created_at,timestamp with time zone
+venue_attributes,venue_id,bigint
+venue_attributes,data_type,USER-DEFINED
+SavedEvents,id,bigint
+SavedEvents,created_at,timestamp with time zone
+SavedEvents,event_id,bigint
+SavedEvents,user_id,uuid
+Events,id,bigint
+Events,created_at,timestamp with time zone
+Events,start,timestamp with time zone
+Events,end,timestamp with time zone
+Events,location,bigint
+Events,price,numeric
+Events,series_id,uuid
+Events,cancelled,boolean
+admin_invite_redemptions,id,bigint
+admin_invite_redemptions,code_id,bigint
+admin_invite_redemptions,redeemed_by,uuid
+admin_invite_redemptions,redeemed_at,timestamp with time zone
+admin_users,user_id,uuid
+admin_users,granted_by,uuid
+admin_users,created_at,timestamp with time zone
+admin_invite_codes,id,bigint
+admin_invite_codes,owner_user_id,uuid
+admin_invite_codes,max_uses,integer
+admin_invite_codes,uses_count,integer
+admin_invite_codes,revoked,boolean
+user_badge_stats,user_id,uuid
+user_badges,metadata,jsonb
+user_badges,active,boolean
+badges,id,uuid
+badges,is_active,boolean
+badges,sort_order,integer
+badges,created_at,timestamp with time zone
+badge_requirements,id,uuid
+badge_requirements,badge_id,uuid
+badge_requirements,min_value,numeric
+badge_requirements,created_at,timestamp with time zone
+event_hosts,id,bigint
+event_hosts,event_id,bigint
+event_hosts,host_id,bigint
+push_subscriptions,id,bigint
+push_subscriptions,user_id,uuid
+push_subscriptions,expiration_time,bigint
+push_subscriptions,created_at,timestamp with time zone
+push_subscriptions,updated_at,timestamp with time zone
+UserFollowUsers,id,bigint

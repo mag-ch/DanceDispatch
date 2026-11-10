@@ -49,17 +49,36 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
     const folderPath = `events/${eventId}/${userId}`;
 
     const loadMedia = useCallback(async () => {
+        if (authLoading) return;
         const { data: folders } = await supabase.storage
             .from('event-media')
             .list(`events/${eventId}`, { limit: 200 });
 
         if (!folders) return;
 
+        let visibleFolders = folders;
+        if (userId) {
+            const uuidFolders: FileObject[] = folders.filter((folder: FileObject) =>
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(folder.name));
+            if (uuidFolders.length > 0) {
+                const { data: profiles, error: profileError } = await supabase.from('profiles')
+                    .select('id').in('id', uuidFolders.map((folder) => folder.name));
+                if (profileError) {
+                    console.error('Failed to check media visibility:', profileError);
+                    setError('Unable to load event media.');
+                    return;
+                }
+                const visibleIds = new Set((profiles ?? []).map((profile: { id: string }) => String(profile.id)));
+                const uuidNames = new Set(uuidFolders.map((folder) => folder.name));
+                visibleFolders = folders.filter((folder: FileObject) => !uuidNames.has(folder.name) || visibleIds.has(folder.name));
+            }
+        }
+
         const allFiles: MediaFile[] = [];
         const myFiles: MediaFile[] = [];
 
         await Promise.all(
-            folders.map(async (folder: FileObject) => {
+            visibleFolders.map(async (folder: FileObject) => {
                 const { data: files } = await supabase.storage
                     .from('event-media')
                     .list(`events/${eventId}/${folder.name}`);
@@ -89,7 +108,7 @@ const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
         setAllMedia(allFiles);
         setUserMedia(myFiles);
         onMediaChange?.(myFiles);
-    }, [eventId, userId, supabase, onMediaChange]);
+    }, [eventId, userId, supabase, onMediaChange, authLoading]);
 
     useEffect(() => { loadMedia(); }, [loadMedia]);
 

@@ -69,22 +69,6 @@ export async function getSavedEventsBucketsForUserServer(userId: string): Promis
 }
 
 
-export async function getVenueById(venueId: string) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('Venues')
-        .select('*')
-        .eq('id', venueId)
-        .maybeSingle(); 
-        
-    if (error) {
-        console.error('Error fetching venue from Supabase:', error);
-        return null;
-    }
-
-    return data;
-}
-
 
 export async function getAggregatedVenueAttributes(venueId: string) {
     const supabase = await createClient();

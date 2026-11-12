@@ -1,5 +1,5 @@
 import { Event } from '@/lib/utils';
-import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions, getUserReviews } from '@/lib/utils_supabase_server';
+import { getAllFollowedVenues, getAllFollowedHosts, getAllFollowedUsers, getUserById, checkNewUserMissions, getUserReviews, getHosts } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { getSavedEventsForUserServer, getTopBadgesForUsers, getUserPointsSummary } from '@/lib/server_utils';
 import { SearchResult } from '@/app/components/EventCard';
@@ -13,6 +13,7 @@ import CollapsedSectionModal from '@/app/components/CollapsedSectionModal';
 import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
 import MakePartyPlanButton from './MakePartyPlanButton';
 import BlockedUsers from './BlockedUsers';
+import ProfileEditor from './ProfileEditor';
 // import AdminInviteCodePanel from './AdminInviteCodePanel';
 
 
@@ -23,7 +24,7 @@ export default async function ProfilePage() {
     const userdata = await getUserById(user.id);
     const displayName = userdata?.full_name || userdata?.username || user.email || 'User';
     
-    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus, pointsSummary] = await Promise.all([
+    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus, pointsSummary, hosts] = await Promise.all([
         getAllFollowedVenues(user.id),
         getAllFollowedHosts(user.id),
         getAllFollowedUsers(user.id),
@@ -32,6 +33,7 @@ export default async function ProfilePage() {
         getUserReviews(user.id, true),
         checkNewUserMissions(user.id),
         getUserPointsSummary(user.id),
+        getHosts(),
     ]);
 
     const followedUserBadgeMap = await getTopBadgesForUsers(
@@ -161,25 +163,11 @@ export default async function ProfilePage() {
                 </div>
 
                 <section className="bg-surface text-text rounded-lg p-6 flex-1">
-                    {userdata?.full_name && <div className="space-y-2">
-                        <p className="text-sm text-text">Full Name</p>
-                        <p className="text-xl font-semibold text-text">{userdata.full_name || 'Not provided'}</p>
-                    </div>}
-                    {userdata?.username && <div className="space-y-2 mt-4">
-                        <p className="text-sm text-text">Username</p>
-                        <div className="text-xl font-semibold text-text flex items-center gap-2">
-                            <span>{userdata.username || 'Not provided'}</span>
-                            <BadgeShowcase userId={user.id} />
-                        </div>
-                    </div>}
-                    <div className="space-y-2 mt-4">
-                        <p className="text-sm text-text">Email</p>
-                        <p className="text-xl font-semibold text-text">{user.email}</p>
-                    </div>
-                    <div className="space-y-2 mt-4">
-                        <p className="text-sm text-text">Member Since</p>
-                        <p className="text-xl font-semibold text-text">{new Date(user.created_at).toLocaleDateString()}</p>
-                    </div>
+                    <ProfileEditor fullName={userdata?.full_name ?? ''} username={userdata?.username ?? ''} email={user.email ?? ''}
+                        bio={userdata?.bio ?? ''} genres={userdata?.genres ?? []}
+                        genreOptions={Array.from(new Set(hosts.flatMap((host) => host.genres ?? [])))}
+                        memberSince={new Date(user.created_at).toLocaleDateString()}
+                        usernameBadge={<BadgeShowcase userId={user.id} />} />
                     <NotificationSubscriptionToggle />
                 </section>
                 {user.id === PUSH_TEST_USER_ID && (

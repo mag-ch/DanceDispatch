@@ -1,63 +1,151 @@
-import { MapPin, Calendar, Star } from 'lucide-react';
-import { getUniqueVenueAttributes, getAggregatedVenueAttributes, getVenueAttributes, getVenueComments } from '@/lib/server_utils';
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import { Calendar, Star, Pencil, Check, X, Plus, Trash2 } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import Link from 'next/link';
-import { getCachedVenues, getCachedEvents } from '@/lib/utils_supabase_server';
-import { notFound } from 'next/navigation';
 import VenueImageGallery from './VenueImageGallery';
-import { prettifyCase } from '@/lib/utils';
-import VenueRefreshButton from '@/app/components/VenueRefreshButton';
 import { FollowEntityButton } from '@/app/components/SaveEventButton';
-import { openInMaps } from '@/lib/utils_supabase';
 import OpenInMapsButton from '@/app/components/OpenInMapsButton';
-import { geocodeAddress } from '@/lib/geocoding';
-import VenueDetailsEditor from './VenueDetailsEditor';
 import { renderDescriptionWithLineBreaks } from '@/app/components/Components';
 import { isUpcoming } from '@/lib/date-utils';
 import CommunityMediaGallery from '@/app/components/CommunityMediaGallery';
-import type { Metadata } from 'next';
-import { metadataDescription, pageMetadata } from '@/lib/page-metadata';
+import { useAuth } from '@/app/providers/AuthContext';
+import type { Event, Venue } from '@/lib/utils';
 
-export async function generateMetadata({ params }: { params: Promise<{ venueId: string }> }): Promise<Metadata> {
-    const { venueId } = await params;
-    const venue = (await getCachedVenues()).find((item) => item.id === venueId);
-    if (!venue) return { title: 'Venue not found' };
-
-    const description = metadataDescription(venue.bio, `Discover events and reviews at ${venue.name} on DanceDispatch.`);
-    const image = venue.photourls.split(',')[0]?.trim() || '/images/default_venues.jpg';
-    return pageMetadata(venue.name, description, `/venues/${encodeURIComponent(venue.id)}`, image);
+interface EditableAttribute {
+    id?: number;
+    attribute: string;
+    value: string | number;
 }
 
-export default async function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
-    const { venueId } = await params;
+interface VenuePageData {
+    venue: Venue;
+    venues: Venue[];
+    allEvents: Event[];
+    uniqueVenueAttributes: { attribute: string; value: string | number }[] | null;
+    aggregatedVenueAttributes: { attribute: string; average: number }[] | null;
+    venueAttributes: (EditableAttribute & { id: number; data_type: 'unique' | 'rating' })[];
+    venueComments: VenueComment[] | null;
+    venueCoordinates: { lat: number; lng: number } | null;
+}
 
-    const [venues, allEvents] = await Promise.all([
-        getCachedVenues(),
-        getCachedEvents(false, venueId),
-    ]);
+interface VenueComment {
+    rating: number | string | null;
+    comment: string | null;
+    created_at: string;
+    event_id: string | number;
+    username: string;
+    eventName: string;
+    mediaPaths: string[];
+}
 
-    const [uniqueVenueAttributes, aggregatedVenueAttributes, venueAttributes] = await Promise.all([
-        getUniqueVenueAttributes(venueId),
-        getAggregatedVenueAttributes(venueId),
-        getVenueAttributes(venueId),
-    ]);
+export const VENUE_TYPES = ['Nightclub', 'Indoor Space', 'Outdoor', 'Studio', 'Bar', 'Community Center', 'Live Music Venue', 'Restaurant', 'Record Store', 'Cafe'] as const;
 
-    const venueComments = await getVenueComments(venueId);
+function prettifyAttribute(attribute: string) {
+    const readable = attribute.replace(/_/g, ' ');
+    return readable.slice(0, 1).toUpperCase() + readable.slice(1);
+}
 
-    const ratedComments = (venueComments ?? []).filter((comment: any) => Number(comment.rating) > 0);
+export default function VenuePage({ params }: { params: Promise<{ venueId: string }> }) {
+    const { venueId } = use(params);
+    const { session, isAdmin } = useAuth();
+    const isAuthenticated = !!session && isAdmin;
+    const [pageData, setPageData] = useState<VenuePageData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [editing, setEditing] = useState(false);
+    const [name, setName] = useState('');
+    const [type, setType] = useState('');
+    const [bio, setBio] = useState('');
+    const [address, setAddress] = useState('');
+    const [website, setWebsite] = useState('');
+    const [photoUrl, setPhotoUrl] = useState('');
+    const [freeformAttributes, setFreeformAttributes] = useState<EditableAttribute[]>([]);
+    const [starAttributes, setStarAttributes] = useState<EditableAttribute[]>([]);
+    const [deletedAttributeIds, setDeletedAttributeIds] = useState<number[]>([]);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        const fetchVenueDetails = async () => {
+            try {
+                const response = await fetch(`/api/venues/${encodeURIComponent(venueId)}/details`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error ?? 'Failed to fetch venue details');
+                if (!cancelled) setPageData(data);
+            } catch (fetchError) {
+                if (!cancelled) setLoadError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch venue details');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+        void fetchVenueDetails();
+        return () => { cancelled = true; };
+    }, [venueId]);
+
+    const startEditing = () => {
+        if (!pageData) return;
+        const venue = pageData.venue;
+        setName(venue.name ?? '');
+        setType(venue.type ?? '');
+        setBio(venue.bio ?? '');
+        setAddress(venue.address ?? '');
+        setWebsite(venue.website ?? '');
+        setPhotoUrl(venue.photourls ?? '');
+        setFreeformAttributes(pageData.venueAttributes.filter((item) => item.data_type === 'unique').map((item) => ({ id: item.id, attribute: item.attribute, value: String(item.value) })));
+        setStarAttributes(pageData.venueAttributes.filter((item) => item.data_type === 'rating').map((item) => ({ id: item.id, attribute: item.attribute, value: Number(item.value) })));
+        setDeletedAttributeIds([]);
+        setError(null);
+        setEditing(true);
+    };
+
+    const cancelEditing = () => {
+        setEditing(false);
+        setError(null);
+    };
+
+    const saveEdits = async () => {
+        if (!pageData) return;
+        setSaving(true);
+        setError(null);
+        try {
+            const response = await fetch(`/api/venues/${encodeURIComponent(pageData.venue.id)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, type, bio, address, website, photoUrl, freeformAttributes, starAttributes, deletedAttributeIds }),
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(data?.error ?? 'Failed to save venue details');
+            window.location.reload();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : 'Failed to save venue details');
+            setSaving(false);
+        }
+    };
+
+    const addFreeformAttribute = () => setFreeformAttributes((attributes) => [...attributes, { attribute: '', value: '' }]);
+    const addStarAttribute = () => setStarAttributes((attributes) => [...attributes, { attribute: '', value: 0 }]);
+    const removeAttribute = (items: EditableAttribute[], index: number, setItems: (items: EditableAttribute[]) => void) => {
+        const removed = items[index];
+        if (removed.id !== undefined) setDeletedAttributeIds((ids) => [...ids, removed.id!]);
+        setItems(items.filter((_, currentIndex) => currentIndex !== index));
+    };
+
+    if (loading) return <p className="p-8 text-text">Loading venue...</p>;
+    if (loadError || !pageData) return <p role="alert" className="p-8 text-red-500">{loadError ?? 'Venue not found.'}</p>;
+
+    const { venue, venues, allEvents, uniqueVenueAttributes, aggregatedVenueAttributes, venueComments, venueCoordinates } = pageData;
+    const ratedComments = (venueComments ?? []).filter((comment) => Number(comment.rating) > 0);
     const ratingCount = ratedComments.length;
     const averageRating = ratingCount > 0
-        ? ratedComments.reduce((sum: number, comment: any) => sum + Number(comment.rating), 0) / ratingCount
+        ? ratedComments.reduce((sum, comment) => sum + Number(comment.rating), 0) / ratingCount
         : 0;
     const textComments = (venueComments ?? [])
-        .filter((comment: any) => Boolean(comment.comment?.trim()))
-        .sort((first: any, second: any) => Date.parse(second.created_at) - Date.parse(first.created_at))
+        .filter((comment) => Boolean(comment.comment?.trim()))
+        .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
         .slice(0, 5);
-
-    const venue = venues.find(v => v.id === venueId);
-    if (!venue) return notFound();
-
-    const venueCoordinates = venue.address ? await geocodeAddress(venue.address) : null;
 
     const now = new Date();
     const pastEvents = allEvents
@@ -79,44 +167,83 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                         {/* Header */}
                         <section className="mb-4 bg-surface p-6 rounded-lg">
                             <div className="flex flex-col gap-4 mb-2 md:flex-row md:items-start md:justify-between">
-                                <div>
-                                    <h2 className="text-sm text-text uppercase">{venue.type}</h2>
-                                    <h1 className="text-4xl text-text font-bold mt-2">{venue.name}</h1>
+                                <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-2">
+                                    {editing ? (
+                                        <>
+                                            <label className="w-full text-sm text-muted">Venue type
+                                                <select className="mt-1 w-full rounded border border-default bg-bg p-2 text-text" value={type} onChange={(event) => setType(event.target.value)}>
+                                                    {VENUE_TYPES.map((venueType) => <option key={venueType} value={venueType}>{venueType}</option>)}
+                                                </select>
+                                            </label>
+                                            <input aria-label="Venue name" className="w-full rounded border border-default bg-bg p-2 text-4xl font-bold text-text" value={name} onChange={(event) => setName(event.target.value)} />
+                                            <label className="w-full text-sm text-muted">Photo URL
+                                                <input className="mt-1 w-full rounded border border-default bg-bg p-2 text-text" value={photoUrl} onChange={(event) => setPhotoUrl(event.target.value)} />
+                                            </label>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h2 className="text-sm uppercase text-text">{venue.type}</h2>
+                                            <h1 className="break-words text-4xl font-bold text-text">{venue.name}</h1>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="flex w-full min-w-0 flex-col items-stretch gap-2 md:w-auto md:flex-row md:items-center">
                                     <FollowEntityButton entity="venues" entityId={venue.id} />
+                                    {isAuthenticated && !editing && (
+                                        <button type="button" onClick={startEditing} className="self-start rounded border border-default p-2 transition hover:border-accent" title="Edit">
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    {editing && (
+                                        <>
+                                            <button type="button" onClick={saveEdits} disabled={saving} className="rounded border border-green-500 p-2 text-green-500 transition hover:bg-green-500 hover:text-white disabled:opacity-50" title="Save">
+                                                <Check className="h-4 w-4" />
+                                            </button>
+                                            <button type="button" onClick={cancelEditing} disabled={saving} className="rounded border border-red-500 p-2 text-red-500 transition hover:bg-red-500 hover:text-white" title="Cancel">
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
+                            {error && <p role="alert" className="mt-2 text-sm text-red-500">{error}</p>}
                         </section>
-                        <div className="mb-4">
-                            <VenueDetailsEditor venue={venue} attributes={venueAttributes} />
-                        </div>
                         {/* External Link */}
-                        {venue.website && (
+                        {(venue.website || editing) && (
                             <section className="mb-4 bg-surface p-6 rounded-lg">
-                                <a
-                                    href={venue.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-blue-500 hover:text-blue-600 font-semibold transition"
-                                >
-                                    Visit Website
-                                    <span>↗</span>
-                                </a>
+                                {editing ? (
+                                    <label className="block text-sm font-semibold text-text">Website
+                                        <input type="url" value={website} onChange={(event) => setWebsite(event.target.value)} className="mt-2 w-full rounded border border-default bg-bg p-2 font-normal text-text" />
+                                    </label>
+                                ) : (
+                                    <a href={venue.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-semibold text-blue-500 transition hover:text-blue-600">
+                                        Visit Website <span>↗</span>
+                                    </a>
+                                )}
                             </section>
                         )}
 
                         {/* Bio */}
-                        {venue.bio && <section className="mb-4 bg-surface p-6 rounded-lg">
+                        {(venue.bio || editing) && <section className="mb-4 bg-surface p-6 rounded-lg">
                             <h2 className="font-semibold text-text text-lg mb-2">Bio</h2>
-                            <p className="text-text">{renderDescriptionWithLineBreaks(venue.bio)}</p>
+                            {editing ? (
+                                <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={4} className="w-full resize-y rounded border border-default bg-bg p-2 text-text" />
+                            ) : (
+                                <p className="text-text">{renderDescriptionWithLineBreaks(venue.bio)}</p>
+                            )}
                         </section>}
 
 
 
                         {/* Address & Map */}
                         <section className="mb-4 bg-surface p-6 rounded-lg">
-                            <OpenInMapsButton address={venue.address} />
+                            {editing ? (
+                                <label className="mb-3 block text-sm font-semibold text-text">Address
+                                    <input value={address} onChange={(event) => setAddress(event.target.value)} className="mt-2 w-full rounded border border-default bg-bg p-2 font-normal text-text" />
+                                </label>
+                            ) : (
+                                <OpenInMapsButton address={venue.address} />
+                            )}
                             {venueCoordinates ? (
                                 <iframe
                                     width="100%"
@@ -134,28 +261,60 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                         {/* Attributes */}
                         <div className="grid md:grid-cols-2 gap-8 mb-4">
                             {/* Unique Attributes */}
-                            {uniqueVenueAttributes && uniqueVenueAttributes.length > 0 && <section className="bg-surface p-6 rounded-lg">
-                                <ul className="text-text">
-                                    {uniqueVenueAttributes.map((attr, index) => (
-                                        <li key={index} className='font-bold text-white px-2 py-1 rounded m-2 hover:opacity-80 transition w-fit' style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>{prettifyCase(attr.attribute)}: {attr.value}</li>
-                                    ))}
-                                </ul>
+                            {((uniqueVenueAttributes?.length ?? 0) > 0 || editing) && <section className="bg-surface p-6 rounded-lg">
+                                {editing ? (
+                                    <>
+                                        <h2 className="mb-3 font-semibold text-text">Venue attributes</h2>
+                                        <div className="space-y-2">
+                                            {freeformAttributes.map((item, index) => (
+                                                <div key={`unique-${index}`} className="flex gap-2">
+                                                    <input aria-label="Attribute name" value={item.attribute} onChange={(event) => setFreeformAttributes((current) => current.map((attribute, currentIndex) => currentIndex === index ? { ...attribute, attribute: event.target.value } : attribute))} placeholder="Attribute" className="min-w-0 flex-1 rounded border border-default bg-bg px-2 py-1 text-text" />
+                                                    <input aria-label="Attribute value" value={item.value} onChange={(event) => setFreeformAttributes((current) => current.map((attribute, currentIndex) => currentIndex === index ? { ...attribute, value: event.target.value } : attribute))} placeholder="Value" className="min-w-0 flex-1 rounded border border-default bg-bg px-2 py-1 text-text" />
+                                                    <button type="button" onClick={() => removeAttribute(freeformAttributes, index, setFreeformAttributes)} className="rounded border border-default p-2 text-red-500" aria-label="Remove attribute"><Trash2 className="h-4 w-4" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button type="button" onClick={addFreeformAttribute} className="mt-3 inline-flex items-center gap-1 rounded border border-default px-2 py-1 text-sm font-semibold text-text"><Plus className="h-4 w-4" />Add attribute</button>
+                                    </>
+                                ) : (
+                                    <ul className="text-text">
+                                        {uniqueVenueAttributes?.map((attr, index) => (
+                                            <li key={index} className="m-2 w-fit rounded px-2 py-1 font-bold text-white transition hover:opacity-80" style={{ backgroundColor: `hsl(${Math.random() * 360}, 40%, 50%)` }}>{prettifyAttribute(attr.attribute)}: {attr.value}</li>
+                                        ))}
+                                    </ul>
+                                )}
                             </section>}
 
                             {/* Rating Attributes */}
-                            {aggregatedVenueAttributes && aggregatedVenueAttributes.length > 0 && <section className="bg-surface p-6 rounded-lg">
-                                <ul className="text-text">
-                                    {aggregatedVenueAttributes.map((attr, index) => (
-                                        <li key={index}>{prettifyCase(attr.attribute)}: {'★'.repeat(Math.round(attr.average))}{'☆'.repeat(5 - Math.round(attr.average))} ({attr.average}/5)</li>
-                                    ))}
-                                </ul>
+                            {((aggregatedVenueAttributes?.length ?? 0) > 0 || editing) && <section className="bg-surface p-6 rounded-lg">
+                                {editing ? (
+                                    <>
+                                        <h2 className="mb-3 font-semibold text-text">Venue ratings</h2>
+                                        <div className="space-y-2">
+                                            {starAttributes.map((item, index) => (
+                                                <div key={`rating-${index}`} className="flex gap-2">
+                                                    <input aria-label="Rating name" value={item.attribute} onChange={(event) => setStarAttributes((current) => current.map((attribute, currentIndex) => currentIndex === index ? { ...attribute, attribute: event.target.value } : attribute))} placeholder="Rating" className="min-w-0 flex-1 rounded border border-default bg-bg px-2 py-1 text-text" />
+                                                    <input aria-label="Rating value" type="number" min={1} max={5} value={item.value} onChange={(event) => setStarAttributes((current) => current.map((attribute, currentIndex) => currentIndex === index ? { ...attribute, value: Number(event.target.value) } : attribute))} className="w-20 rounded border border-default bg-bg px-2 py-1 text-text" />
+                                                    <button type="button" onClick={() => removeAttribute(starAttributes, index, setStarAttributes)} className="rounded border border-default p-2 text-red-500" aria-label="Remove rating"><Trash2 className="h-4 w-4" /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button type="button" onClick={addStarAttribute} className="mt-3 inline-flex items-center gap-1 rounded border border-default px-2 py-1 text-sm font-semibold text-text"><Plus className="h-4 w-4" />Add rating</button>
+                                    </>
+                                ) : (
+                                    <ul className="text-text">
+                                        {aggregatedVenueAttributes?.map((attr, index) => (
+                                            <li key={index}>{prettifyAttribute(attr.attribute)}: {'★'.repeat(Math.round(attr.average))}{'☆'.repeat(5 - Math.round(attr.average))} ({attr.average}/5)</li>
+                                        ))}
+                                    </ul>
+                                )}
                             </section>}
                         </div>
 
 
                         <CommunityMediaGallery
-                            items={(venueComments ?? []).flatMap((comment: any) =>
-                                (comment.mediaPaths ?? []).map((path: string) => ({ path, eventId: comment.event_id, eventName: comment.eventName }))
+                            items={(venueComments ?? []).flatMap((comment) =>
+                                comment.mediaPaths.map((path) => ({ path, eventId: comment.event_id, eventName: comment.eventName }))
                             )}
                         />
 
@@ -180,7 +339,7 @@ export default async function VenuePage({ params }: { params: Promise<{ venueId:
                                     )}
                                 </div>
                                 <div className="space-y-3">
-                                    {textComments.length > 0 ? textComments.map((comment: any, index: number) => (
+                                    {textComments.length > 0 ? textComments.map((comment, index) => (
                                         <blockquote key={`${comment.event_id}-${comment.created_at}-${index}`} className="rounded-lg border border-default p-4">
                                             <p className="text-sm text-text">&ldquo;{comment.comment}&rdquo;</p>
                                             <footer className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted">

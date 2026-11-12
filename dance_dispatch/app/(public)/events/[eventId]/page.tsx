@@ -1,5 +1,5 @@
-import { getEventById, getEventReviews, getRelatedEvents, getHostPreviousEventReviews, getVenuePreviousEventReviews } from '@/lib/utils_supabase_server';
-import { CompactUserBadge, getTopBadgesForUsers, getVenueById } from '@/lib/server_utils';
+import { getEventReviews, getRelatedEvents, getHostPreviousEventReviews, getVenuePreviousEventReviews, getVenueById, getEventByIdIncludingPending } from '@/lib/utils_supabase_server';
+import { CompactUserBadge, getTopBadgesForUsers } from '@/lib/server_utils';
 import { notFound } from 'next/navigation';
 import { EventDetailClient } from './EventDetailClient';
 import { EventReview } from '@/lib/utils';
@@ -42,7 +42,7 @@ export default async function EventDetailPage({ params, searchParams, showReview
     
     // Fetch all data in parallel on the server
     const [event, eventReviews, relatedEvents, rsvpUsers] = await Promise.all([
-        getEventById(eventId),
+        getEventByIdIncludingPending(eventId),
         getEventReviews(eventId),
         getRelatedEvents(eventId),
         getEventRsvpUsers(eventId),
@@ -156,7 +156,7 @@ async function getEventRsvpUsers(eventId: string): Promise<EventRsvpUser[]> {
 
 export async function generateMetadata({ params, searchParams, showReviewModal = false }: EventDetailPageProps) {
   const { eventId } = await params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdIncludingPending(eventId);
   if (!event) return { title: "Event not found" };
 
   const when = new Date(event.starttime).toLocaleDateString("en-US", {

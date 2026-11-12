@@ -9,6 +9,7 @@ import { DisplayEventReview } from "@/app/components/EventReview";
 import { useRouter } from "next/navigation";
 import BlockUserButton from "@/app/components/BlockUserButton";
 import SearchableListModal from "@/app/components/SearchableListModal";
+import ProfileDetails from "@/app/components/ProfileDetails";
 
 type Profile = {
   id: string;
@@ -16,6 +17,8 @@ type Profile = {
   full_name: string | null;
   profile_picture: string | null;
   created_at: string;
+  bio?: string | null;
+  genres?: string[] | null;
 };
 
 type UserProfileClientProps = {
@@ -137,6 +140,7 @@ export default function UserProfileClient({
               {canManageBlock && <BlockUserButton userId={user.id} name={displayName} isBlocked={isBlocked} />}
             </div>}
           </div>
+          <ProfileDetails bio={user.bio ?? null} genres={user.genres ?? null} />
         </section>
 
         <section className="space-y-6">

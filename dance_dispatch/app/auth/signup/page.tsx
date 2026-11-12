@@ -71,25 +71,8 @@ export default function SignUp() {
                 },
             });
             if (error) throw error;
-            const uuid = data.user?.id;
-            if (!uuid) {
+            if (!data.user?.id) {
                 throw new Error('Sign up succeeded but user id is missing');
-            }
-
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert(
-                    {
-                        id: uuid,
-                        full_name: trimmedFullName,
-                        username: trimmedUsername,
-                        email: normalizedEmail,
-                    },
-                    { onConflict: 'id' }
-                );
-
-            if (profileError) {
-                throw profileError;
             }
 
             if (!data.session) {

@@ -446,6 +446,11 @@ export async function getEventById(eventId: string): Promise<Event | null> {
   return events.find((event) => event.id === eventId) ?? null;
 }
 
+export async function getEventByIdIncludingPending(eventId: string): Promise<Event | null> {
+  const { events } = await getCachedCatalog();
+  return events.find((event) => event.id === eventId) ?? null;
+}
+
 export async function getEventReviews(eventId: string): Promise<EventReview[]> {
   try {
     const supabase = await createServerClient();
@@ -1163,7 +1168,7 @@ export async function checkUserFollow(userId: string, targetUserId: string): Pro
 export async function getUserById(userId: string): Promise<any | null> {
   const supabase = await createServerClient();
 
-  const { data, error } = await supabase.from('profiles').select('id,full_name,username,profile_picture,created_at').eq('id', userId).single();
+  const { data, error } = await supabase.from('profiles').select('id,full_name,username,profile_picture,created_at,bio,genres').eq('id', userId).single();
   if (error) {
     console.error(`Error fetching user with ID ${userId}:`, error);
     return null;
@@ -1961,6 +1966,13 @@ export async function getHostById(hostId: string): Promise<Host | null> {
   const hosts = await getCachedHosts();
   return hosts.find((host) => host.id === hostId) ?? null;
 }
+
+
+export async function getVenueById(venueId: string) {
+   const vennues = await getCachedVenues();
+   return vennues.find((venue) => venue.id === venueId) ?? null;
+}
+
 
 export async function checkHostSaved(hostId: string, userId: string): Promise<boolean> {
   const supabase = await createServerClient();

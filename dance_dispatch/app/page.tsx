@@ -355,17 +355,13 @@ async function TrendingEvents({ selectedFilter }: { selectedFilter?: string }) {
 }
 
 async function TrendingEventCards({ initialFilter }: { initialFilter: string }) {
-  const [events, pendingReviewEventIds] = await Promise.all([
-    getCachedEvents(),
-    getPendingReviewEventIds(),
-  ]);
-  const visibleEvents = events.filter((event) => !pendingReviewEventIds.has(String(event.id)));
+  const events = await getCachedEvents();
 
   return (
     <TrendingEventsClient
-      events={visibleEvents}
+      events={events}
       initialFilter={initialFilter}
-      cards={visibleEvents.map((event) => <EventCard key={event.id} event={event} />)}
+      cards={events.map((event) => <EventCard key={event.id} event={event} />)}
     />
   );
 }

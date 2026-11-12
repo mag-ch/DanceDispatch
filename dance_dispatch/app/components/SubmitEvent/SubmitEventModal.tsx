@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthRequiredModal } from '@/app/components/AuthRequiredModal';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Venue } from '@/lib/utils';
@@ -8,6 +9,7 @@ import { ArrowLeft, Repeat, Upload, X } from 'lucide-react';
 import type { Event } from "@/lib/utils";
 import { HostSelector } from '@/app/components/HostSelector';
 import { getRecurrenceSummary } from '@/lib/recurrence-options';
+import { usePushNotifications } from '@/app/hooks/usePushNotifications';
 
 interface FormState {
     title: string;
@@ -72,7 +74,17 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
     onBack,
     initialData
 }) => {
+    const router = useRouter();
     const { session, loading: authLoading } = useAuth();
+    const {
+        isSupported: pushSupported,
+        isSubscribed: pushSubscribed,
+        hasCheckedSubscription,
+        permission: pushPermission,
+        isLoading: isEnablingPush,
+        error: pushError,
+        subscribe,
+    } = usePushNotifications();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [form, setForm] = useState<FormState>(createInitialForm(initialData));
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -80,6 +92,8 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [duplicateId, setDuplicateId] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [submittedEventId, setSubmittedEventId] = useState<string | null>(null);
+    const [showPushPrompt, setShowPushPrompt] = useState(false);
     const [isUploadingFlyer, setIsUploadingFlyer] = useState(false);
     const flyerInputRef = React.useRef<HTMLInputElement>(null);
     const isAddingNewVenue = form.locationid === '__new__';
@@ -127,6 +141,33 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
             .then((data) => setVenues(Array.isArray(data) ? data : []))
             .catch(() => {});
     }, [isOpen, venues.length]);
+
+    useEffect(() => {
+        if (!success || !submittedEventId || !hasCheckedSubscription) return;
+        if (pushSupported && !pushSubscribed) {
+            setShowPushPrompt(true);
+            return;
+        }
+
+        setSuccess(false);
+        setSubmittedEventId(null);
+        onClose();
+        router.push(`/events/${submittedEventId}`);
+    }, [hasCheckedSubscription, onClose, pushSupported, pushSubscribed, router, submittedEventId, success]);
+
+    const continueToSubmittedEvent = () => {
+        if (!submittedEventId) return;
+        const eventId = submittedEventId;
+        setSuccess(false);
+        setSubmittedEventId(null);
+        onClose();
+        router.push(`/events/${eventId}`);
+    };
+
+    const enablePushAndContinue = async () => {
+        const enabled = await subscribe();
+        if (enabled) continueToSubmittedEvent();
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -232,14 +273,11 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
             }
 
             setSuccess(true);
+            setSubmittedEventId(data.id);
+            setShowPushPrompt(false);
             setForm(empty);
             setSelectedHostIds([]);
             setIsRecurring(false);
-            setTimeout(() => {
-                setSuccess(false);
-                onClose();
-                window.location.href = `/events/${data.id}`;
-            }, 1500);
         } catch {
             setError('Network error. Please try again.');
         } finally {
@@ -285,6 +323,38 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                 <div className="p-6">
                     <h2 className="mb-4 text-2xl font-bold text-text">Submit an Event</h2>
 
+                    {showPushPrompt ? (
+                        <section className="rounded-lg border border-default bg-surface p-5">
+                            <h3 className="text-lg font-semibold text-text">Get notified when your event is approved!</h3>
+                            <p className="mt-2 text-sm text-muted">
+                                {pushPermission === 'denied'
+                                    ? 'Notifications are blocked for this site. You can enable them in your browser or device settings.'
+                                    : 'Enable push notifications on this device to know as soon as your event is approved.'}
+                            </p>
+                            {pushError && <p role="alert" className="mt-3 text-sm text-red-500">{pushError}</p>}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {pushPermission !== 'denied' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => void enablePushAndContinue()}
+                                        disabled={isEnablingPush}
+                                        className="btn-highlighted rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                                    >
+                                        {isEnablingPush ? 'Enabling...' : 'Enable Push Notifications'}
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={continueToSubmittedEvent}
+                                    disabled={isEnablingPush}
+                                    className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-text hover-bg-accent-soft disabled:opacity-60"
+                                >
+                                    {pushPermission === 'denied' ? 'Continue' : 'Not now'}
+                                </button>
+                            </div>
+                        </section>
+                    ) : (
+                    <>
                     {success && (
                         <p className="mb-4 rounded-lg bg-green-100 p-3 text-green-800 text-sm">
                             Event submitted! Redirecting...
@@ -673,6 +743,8 @@ export const SubmitEventModal: React.FC<SubmitEventModalProps> = ({
                             {isSubmitting ? 'Submitting...' : 'Submit Event'}
                         </button>
                     </form>
+                    </>
+                    )}
                 </div>
             </div>
         </div>

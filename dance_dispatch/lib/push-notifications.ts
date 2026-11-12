@@ -233,6 +233,51 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   return { sent, removed: endpointsToDelete.length };
 }
 
+export async function sendNewFollowerNotification(followerId: string, followedUserId: string): Promise<void> {
+  if (!followerId || !followedUserId || followerId === followedUserId) {
+    return;
+  }
+
+  const supabase = getServiceRoleClient();
+  const [outgoingBlock, incomingBlock, profileResult] = await Promise.all([
+    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', followerId).eq('blocked_id', followedUserId).maybeSingle(),
+    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', followedUserId).eq('blocked_id', followerId).maybeSingle(),
+    supabase.from('profiles').select('username').eq('id', followerId).maybeSingle(),
+  ]);
+  if (outgoingBlock.error || incomingBlock.error) {
+    throw new Error((outgoingBlock.error ?? incomingBlock.error)?.message || 'Failed to check follower notification privacy');
+  }
+  if (outgoingBlock.data || incomingBlock.data) {
+    return;
+  }
+
+  const followerName = String((profileResult.data as { username?: unknown } | null)?.username ?? '').trim() || 'Someone';
+  const payload: PushPayload = {
+    title: 'New follower',
+    body: `${followerName} started following you.`,
+    href: '/profile?manage=followers',
+    tag: `new-follower-${followerId}`,
+  };
+  const { error } = await supabase.from('user_notifications').insert({
+    user_id: followedUserId,
+    actor_user_id: followerId,
+    type: 'new_follower',
+    title: payload.title,
+    body: payload.body,
+    href: payload.href,
+    metadata: { followerId },
+  });
+  if (error) {
+    throw new Error(error.message || 'Failed to save follower notification');
+  }
+
+  try {
+    await sendPushToUser(followedUserId, payload);
+  } catch (pushError) {
+    console.error(`Failed to send new follower push notification to ${followedUserId}:`, pushError);
+  }
+}
+
 type BroadcastResult = {
   users: number;
   notified: number;

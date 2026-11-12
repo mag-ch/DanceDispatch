@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type User = { id: string; name: string };
 type Tab = 'followers' | 'blocked';
 
 export default function BlockedUsers() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const openFollowersFromNotification = searchParams.get('manage') === 'followers';
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tabsRef = useRef<Record<Tab, HTMLButtonElement | null>>({ followers: null, blocked: null });
   const requestRef = useRef<AbortController | null>(null);
@@ -21,7 +23,7 @@ export default function BlockedUsers() {
 
   useEffect(() => () => requestRef.current?.abort(), []);
 
-  async function load(nextTab: Tab) {
+  const load = useCallback(async (nextTab: Tab) => {
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
@@ -44,7 +46,13 @@ export default function BlockedUsers() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!openFollowersFromNotification) return;
+    dialogRef.current?.showModal();
+    void load('followers');
+  }, [load, openFollowersFromNotification]);
 
   function open() {
     dialogRef.current?.showModal();

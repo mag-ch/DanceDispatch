@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkUserFollow } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
+import { sendNewFollowerNotification } from '@/lib/push-notifications';
 
 export async function GET(
     request: NextRequest,
@@ -32,12 +33,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
         const supabase = await createClient();
 
         if (saveToggle) {
+            if (user.id === followUserId) {
+                return NextResponse.json({ error: 'You cannot follow yourself.' }, { status: 400 });
+            }
             const { error } = await supabase
                 .from('UserFollowUsers')
                 .insert({ followed_id: followUserId, user_id: user.id });
             if (error) {
                 console.error('Error saving user follow:', error);
                 return NextResponse.json({ error: 'Failed to save user follow' }, { status: 500 });
+            }
+            try {
+                await sendNewFollowerNotification(user.id, followUserId);
+            } catch (notificationError) {
+                console.error('Failed to send new follower notification:', notificationError);
             }
         } else {
             const { error } = await supabase

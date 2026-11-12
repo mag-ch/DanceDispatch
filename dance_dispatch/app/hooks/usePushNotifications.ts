@@ -59,8 +59,8 @@ export function usePushNotifications() {
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = registration ? await registration.pushManager.getSubscription() : null;
 
       setState((current) => ({
         ...current,
@@ -145,7 +145,8 @@ export function usePushNotifications() {
         return false;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.getRegistration('/')
+        ?? await navigator.serviceWorker.register('/sw.js', { scope: '/' });
       const existingSubscription = await registration.pushManager.getSubscription();
       const subscription = existingSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,

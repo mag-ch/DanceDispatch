@@ -1,0 +1,577 @@
+[33mcommit 952b54443a20ad66fa3e7b6666cbd7c3d28a3574[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdebug-prod-build[m[33m, [m[1;31morigin/debug-prod-build[m[33m)[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Nov 12 15:29:08 2026 -0500
+
+    notifs for event submission and follows
+
+[33mcommit 2df160cc7d278953fa0c23c3756a57f39ce8199d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Nov 12 15:00:06 2026 -0500
+
+    editing interface
+
+[33mcommit 36492d04146a85640aec2953a7fb9e2c310dbb73[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Nov 10 15:32:23 2026 -0500
+
+    mpa and cache
+
+[33mcommit dfada61b0eb7845430193c3fb45eef395f055d55[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Nov 10 15:02:00 2026 -0500
+
+    gitignore
+
+[33mcommit 15c051480dda119682b3c0b8b7c7702aa768d04c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Nov 10 15:00:49 2026 -0500
+
+    add follow button to user list
+
+[33mcommit c65d0d49580b8478c308ea81a19686fe6e30287d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 16:41:47 2026 -0500
+
+    push notification messages
+
+[33mcommit 1b46fc712f51bec18f2d9ec05a8e3ba8de4ddafd[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 15:36:22 2026 -0500
+
+    crit bug fix
+
+[33mcommit d0bc90e0d853b50e77448545c65499f79c2c4da2[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 15:31:46 2026 -0500
+
+    crit bug fix
+
+[33mcommit 1f2630fc4589db44c9cc6bd8747523ed6fe591e6[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 15:10:41 2026 -0500
+
+    previous reviews for organizer
+
+[33mcommit bbd7eaaac772dcdcfcda47ec6a63ccaf254269f2[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 14:32:20 2026 -0500
+
+    reviews on organizer pages
+
+[33mcommit a768fa2a9e9c9fe1ad4a05ddd6850901429c9610[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 13:21:43 2026 -0500
+
+    activity feed!
+
+[33mcommit 348c4fb202a25144d0046c123abda5898105abec[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Nov 9 12:07:09 2026 -0500
+
+    fixed host creation and event update
+
+[33mcommit 7f4be77cdd6a906254fd27662fc370aba9a81607[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Nov 7 17:44:27 2026 -0500
+
+    homepage tweaks
+
+[33mcommit 0e0bfc18ff347952e42a547b677fa01d44da574e[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Nov 7 04:16:18 2026 -0500
+
+    coloring host types
+
+[33mcommit 60ec1326b7c8d37480c8c27c44040ebf434dcdfd[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Nov 7 04:13:48 2026 -0500
+
+    host type replaces host tags
+
+[33mcommit be5cf7a79f5e7a826546e3545c656a064176186c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Nov 7 03:48:52 2026 -0500
+
+    organizer saving
+
+[33mcommit b1e34eaca1b15879ea92cb03be4b06ae896bbc5f[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Nov 7 03:06:16 2026 -0500
+
+    group upcoming by week
+
+[33mcommit acc33d97004390d40a0d7a3472ece2e94c58c8dd[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Nov 5 17:03:28 2026 -0500
+
+    organized homefeed for discovery
+
+[33mcommit d7be9f604e492e5d5f47e8eb777c4c92a84dc3e8[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Nov 5 02:01:59 2026 -0500
+
+    exclude me from leaderboard
+
+[33mcommit 4968ed6832174acefefc2adf29bc7bf79f2b7e64[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Nov 5 01:09:06 2026 -0500
+
+    lots of minor fixes, plus review points for dj and venue reviews
+
+[33mcommit 62b70be26184b039fb2e9761ee9405ed9dd1d3c9[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Nov 3 14:19:58 2026 -0500
+
+    deleting events w credentials
+
+[33mcommit 712131bf14661ec3792d699f4524de0e340c8b53[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Oct 31 02:00:27 2026 -0400
+
+    review count
+
+[33mcommit 24b97323f0b8d5e976d9f1c1a9e63fc7074b9a6d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Sat Oct 31 01:58:51 2026 -0400
+
+    badge selection!
+
+[33mcommit e4b837322890c73370217bf6b24705efadfc381f[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 29 12:33:57 2026 -0400
+
+    display username instead of full name
+
+[33mcommit 5bcfae6a2c3dc0e63640fd9d1d7a81861662762d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 29 12:32:39 2026 -0400
+
+    review awards points now
+
+[33mcommit 743cc72bdb98c89a992fa968c14f38c9d8722262[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 29 01:33:55 2026 -0400
+
+    filter noid pending events
+
+[33mcommit 0719c2149c7654e66f9fb91ea7134133791b0caf[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 16 12:44:22 2026 -0400
+
+    points not awarded for reviewing [unresolved]
+
+[33mcommit d3604a1b556f436a76a4295dbab7e89fd8633885[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 15 15:48:00 2026 -0400
+
+    awarding points for reviews
+
+[33mcommit 18c256e9b34e114cd53d4d27fd3f30ec4b0c2c13[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 15 13:23:44 2026 -0400
+
+    lightmode styling
+
+[33mcommit 8b251b78804f8b7bc894556715aa0b9f745a9c2d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 15 13:12:32 2026 -0400
+
+    genre chip, editing saving, and related artists
+
+[33mcommit 25f4eaf3b67287200eb4d071dd040c99b72d7d7f[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 15 11:20:32 2026 -0400
+
+    approve event not from service role
+
+[33mcommit 43cb7f87c3c409c08b5346f9e4d81b898b2231e3[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Oct 14 23:32:20 2026 -0400
+
+    refactor past event logic
+
+[33mcommit 0391afc1614eb4d04d447f16dadb94edeca87411[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Oct 13 15:59:19 2026 -0400
+
+    added suppoort for recurring events
+
+[33mcommit 5b323fb048ba4d324299c34423c8df623d1e3fc8[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 12 13:19:54 2026 -0400
+
+    broadcast specific people
+
+[33mcommit d51f843ef1f187dbf986c9be0ccba080827425c0[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 12 13:09:36 2026 -0400
+
+    review display
+
+[33mcommit a2e87cc6f9072ee9db7a49263626d08805df8780[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 12 12:27:55 2026 -0400
+
+    venue and host default images, and caching/display reviewed events
+
+[33mcommit 7d4eb76688c24237ce5bdf384a9ab9ce6b2f458a[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 12 11:19:17 2026 -0400
+
+    past aggregate reviews
+
+[33mcommit a5824ea8b53a56593a4460464a70636116f8bba9[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 9 13:03:47 2026 -0400
+
+    location permission caching
+
+[33mcommit 2b414668e38ea08ae351e07d6d29b7fe015c9ba4[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 9 11:16:41 2026 -0400
+
+    info display and other stuff
+
+[33mcommit e449fbee848433cff109036989c87fdf17bcdfdd[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 5 11:14:36 2026 -0400
+
+    layout margins and bottom scroll
+
+[33mcommit ae5a6bc7766e3a40a54a6dff11b69e31291be119[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 5 10:51:47 2026 -0400
+
+    separate location enable prompt from check in
+
+[33mcommit 8e3b5c397652ed6133b3146a372ca700063b2559[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Oct 5 10:51:21 2026 -0400
+
+    didnt go option on ranking
+
+[33mcommit c44f27a5fa9298446efb9c759302d2a556e0f13c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 2 20:34:37 2026 -0400
+
+    leaderboard point display
+
+[33mcommit 17a497ac595667d64d54746eb53c5207c5ce356a[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 2 20:25:23 2026 -0400
+
+    limit one badge - code cleanup tbd
+
+[33mcommit 87d2465b8c47171b7a0404b4eb01cd0924d1b5f9[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 2 20:11:45 2026 -0400
+
+    push announcement date and msg refinement
+
+[33mcommit 7918788533008834ce1531cfeaf05ded437e5e98[m
+Author: magch <maggie2292@outlook.com>
+Date:   Fri Oct 2 19:44:25 2026 -0400
+
+    badges for submitting events
+
+[33mcommit 74f4142cc479779771ac239ee40cc17ddfe633f3[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 1 12:01:10 2026 -0400
+
+    revamp PWA install
+
+[33mcommit ded7a86251d09a12ad06da9f2f68d3abf8d936ba[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 1 11:37:00 2026 -0400
+
+    save button reactivity
+
+[33mcommit 8bb3e5be678ea49ac034de02407c57abdc106533[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Oct 1 11:23:34 2026 -0400
+
+    pwa prompt
+
+[33mcommit ec6405149c471a4ca62720897fe3dfa33d653f74[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 15:18:44 2026 -0400
+
+    profile past events sorting
+
+[33mcommit 6dfcaae43219a3d612a4ab44d5dbaa3e3763cf68[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 15:07:40 2026 -0400
+
+    fix followed user and save event errors
+
+[33mcommit 380fd604103000f5d464fc29a24f8b44bb3bfb1c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 12:40:00 2026 -0400
+
+    accidentally reversed cache ordering
+
+[33mcommit c2402339e501bf6e882162360c0760b81092389b[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 12:20:49 2026 -0400
+
+    venue editing duplicate attribute issue
+
+[33mcommit 30cc8421e618fb406efde8a2d57ba88995346d47[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 12:12:46 2026 -0400
+
+    broadcast push adjustments
+
+[33mcommit 5d3a0bda55ebbd9d4bc7d692990c9e37d49d5ee5[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 30 11:18:47 2026 -0400
+
+    PUSH SENDING initial version
+
+[33mcommit 80e945f5766775ee6da1c3a85e3c536d0a081878[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Sep 29 00:07:36 2026 -0400
+
+    removed all invite code and admin logic
+
+[33mcommit 04b8b359675f97ffa2f7cf3e98176ce83fa49b04[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Sep 28 23:52:37 2026 -0400
+
+    width fix and also admin anon fix
+
+[33mcommit 435b77b5530786ceb9e837181910e48f9ffaee5c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 20:08:49 2026 -0400
+
+    host editing page
+
+[33mcommit c9e23b88ff9ba47b255e16b80b4ca6094bbd8cf5[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 19:15:26 2026 -0400
+
+    venue editor
+
+[33mcommit 83796b24867e88025f818decbf34a573264399b5[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 15:20:54 2026 -0400
+
+    remove parse from ra option from manual event entry
+
+[33mcommit 67a7c185c1636059fac4ed2a81004a544d263e94[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 15:14:42 2026 -0400
+
+    profile followed ent. horizontal scroll
+
+[33mcommit 7e40b5a5bc94ff6e5a85ebe73a8e986db163b15e[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 15:13:24 2026 -0400
+
+    profile followed ent. horizontal scroll
+
+[33mcommit eb60dc9c1afd9c6315b37367061f0d1bf72292a0[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 14:55:46 2026 -0400
+
+    push for replies
+
+[33mcommit c4d98f306112fbdc9cb273647679db5178385aba[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 14:34:21 2026 -0400
+
+    location prompt freq, if enabled permanent
+
+[33mcommit f8d09bf89cb9241abab6864a2e4ff4f9132d5724[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 14:31:02 2026 -0400
+
+    review replies
+
+[33mcommit 7b86668d357fd658839588818e4f830025002bf3[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 13:44:13 2026 -0400
+
+    remove natural language search for now - flesh out later
+
+[33mcommit 0c2c16ced8207f028fbe55df7c04330795603716[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 13:43:45 2026 -0400
+
+    invite code add usage upon approval 2
+
+[33mcommit af4941f747891824cab19dbd4f02e9cf12c49a44[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Sep 23 13:42:04 2026 -0400
+
+    invite code add usage upon approval
+
+[33mcommit 838bec226d5c89e552f2e4fd3245c8d7d3e8b7ba[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Sep 22 22:34:31 2026 -0400
+
+    flyer image upload
+
+[33mcommit 9c74f62f3775a36a58d08795307ea4d2465f613e[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Sep 22 22:23:20 2026 -0400
+
+    party map mobile format and dark mode toggle
+
+[33mcommit 0f99c8337d8d9668e81c26f55e28a41f03ed5a78[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Sep 17 20:10:43 2026 -0400
+
+    added more admin features
+
+[33mcommit 4758f9c9ae5dd7ca52ccfe48939528bd50a3b119[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Sep 17 19:26:27 2026 -0400
+
+    added logout back to web view
+
+[33mcommit 08358468052f144663c67c0ce3c5fa4ff1b90891[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Sep 17 19:24:42 2026 -0400
+
+    implemented admin invite code, and initial admin auth to editable fields
+
+[33mcommit 716d9a86ff1f2ba1262569b08c6fa55f9a6a0f54[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Aug 26 16:30:53 2026 -0400
+
+    fix approval queue
+
+[33mcommit d6f97cb4766969b088956973345bf00fb9db16b0[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Aug 26 13:09:08 2026 -0400
+
+    image fallback
+
+[33mcommit d4e92fdbfb6aaf930ca292419e53f1eaf1be87da[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Aug 26 10:00:35 2026 -0400
+
+    parse from ra
+
+[33mcommit 327d6fd4c25c113613d6e7c3f3f78427ba2bf2e8[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Aug 26 10:00:30 2026 -0400
+
+    parse from ra
+
+[33mcommit e8857287fa2c51a12414524a8c5515e29be67c14[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Aug 25 11:45:08 2026 -0400
+
+    limit map geocoding scope
+
+[33mcommit 943823b0e91207b559bc6d84cf37b5f1e7c9d03b[m
+Author: magch <maggie2292@outlook.com>
+Date:   Tue Aug 25 09:30:47 2026 -0400
+
+    party map
+
+[33mcommit 1f293ea09603e6d0c1c0133e167f581ea9e11f7b[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 16:30:48 2026 -0400
+
+    manifest anad touch ups
+
+[33mcommit 993203e9329e0ee55f64a002ecf300cb8cc319f6[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 16:30:14 2026 -0400
+
+    manifest anad touch ups
+
+[33mcommit 3f2a6de7d719a61502f5f7b79cacb8e2940d265d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 16:23:57 2026 -0400
+
+    goelocationn caching - komoot
+
+[33mcommit 713e7bcfe01643e457b7bc771e4f877976e501d3[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 15:44:00 2026 -0400
+
+    mobile header no pp
+
+[33mcommit 54b8c7d7082b97bdc3842cece273f64b6eb6b5f5[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 15:39:01 2026 -0400
+
+    semantic searching
+
+[33mcommit 6dc4e4ea3ea24425243d69264f3c47ba1e3240ea[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 14:08:31 2026 -0400
+
+    event card revisions
+
+[33mcommit b39a43bee9fdab1b959c84cf4e9b5430d64272ae[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 13:43:04 2026 -0400
+
+    filtering chips on landing page
+
+[33mcommit b15f1055b507390945049a9b408f64bf414e993d[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 11:07:08 2026 -0400
+
+    new landing page
+
+[33mcommit 0be79988150a2bdf103e750d651f2476569af3df[m
+Author: magch <maggie2292@outlook.com>
+Date:   Mon Aug 24 10:42:01 2026 -0400
+
+    new landing page
+
+[33mcommit 3e2a901fee52d7b5266ba4733303ff043d1c2e5f[m
+Author: magch <maggie2292@outlook.com>
+Date:   Thu Aug 20 13:23:04 2026 -0400
+
+    fixed route extensions
+
+[33mcommit 274bfb41cd78232d380961a9b5717f73cc0ee7d4[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 15:36:18 2026 -0400
+
+    compact landing announcement
+
+[33mcommit f98bc7a7f50f81bc05fdc7b750281a0f4c5dc1cc[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 15:32:16 2026 -0400
+
+    only show modal on initial matchup, and reduce lookback to 4 days
+
+[33mcommit a6e3abb71642b0b793de35eef0991f4562327f2c[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 13:35:44 2026 -0400
+
+    event review temp and profile coming events ordering
+
+[33mcommit 5e6d0091e2d530b0e7ee3867a0ee04d5305f119e[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 02:04:31 2026 -0400
+
+    mark attendance and past events filter
+
+[33mcommit aa68403580b35250994f6df4f5303c1fc74a926e[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 01:47:53 2026 -0400
+
+    Revert "landing announcement for non users"
+    
+    This reverts commit c93657b54e34872f992ceffcd9bc6faaadfd3ef9.
+    
+    reverting again...
+
+[33mcommit 77f0a32830410d70c14b2483500da52e36461b2a[m
+Author: magch <maggie2292@outlook.com>
+Date:   Wed Jul 22 01:45:35 2026 -0400
+
+    Revert "landing announcement for non users"
+    
+    This reverts commit 4e16d257847c4d5a72810fd3da03ec4336eaae96.
+    
+    reverting cherry pick

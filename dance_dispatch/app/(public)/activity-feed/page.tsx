@@ -3,6 +3,8 @@ import ReviewFeedClient from './ReviewFeedClient';
 import { getRecentActivitySections } from '@/lib/recent-activity';
 import { getCurrentUserId } from '@/lib/auth-helpers';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Activity Feed',
   description: 'Explore community reviews, comments, RSVPs, and events from your follows.',
@@ -16,7 +18,7 @@ export default async function ReviewFeedPage() {
   ]);
   const activity = await getRecentActivitySections(userId ?? undefined, true);
   return (
-    <div className="-mx-4 px-2 py-4 sm:mx-auto sm:max-w-3xl sm:px-4 sm:py-8 lg:relative lg:left-1/2 lg:mx-0 lg:w-[75vw] lg:max-w-none lg:-translate-x-1/2 lg:px-6">
+    <div className="px-4 py-4 sm:mx-auto sm:max-w-3xl sm:py-8 lg:relative lg:left-1/2 lg:mx-0 lg:w-[75vw] lg:max-w-none lg:-translate-x-1/2 lg:px-6">
       <h1 className="text-xl font-bold text-text sm:text-2xl">Activity Feed</h1>
       <p className="mt-1 text-sm text-muted">
         Reviews, comments, friend RSVPs, and upcoming events from your follows.

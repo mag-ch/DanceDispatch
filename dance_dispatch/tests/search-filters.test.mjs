@@ -169,3 +169,31 @@ test('quick edits to different filters preserve earlier values and do not naviga
   assert.equal(client.writes.length, 2);
   assert.equal(elements(tree, (node) => node.type === 'input' && node.props.type === 'text')[0].props.value, 'party mix ');
 });
+
+test('past-events control stays outside the mobile filters and visible across categories', async () => {
+  const client = await setupClient();
+  let tree = client.render();
+  client.flushEffects();
+  const checkbox = () => elements(tree, (node) => node.type === 'input' && node.props.type === 'checkbox');
+  const sidebar = () => elements(tree, (node) => node.type === 'aside' && node.props.id === 'search-mobile-filters')[0];
+  assert.equal(checkbox().length, 1);
+  assert.equal(elements(sidebar(), (node) => node.type === 'input' && node.props.type === 'checkbox').length, 0);
+  assert.match(sidebar().props.className, /\bhidden\b/);
+
+  const filterButton = () => elements(tree, (node) => node.type === 'button' && node.props['aria-controls'] === 'search-mobile-filters')[0];
+  filterButton().props.onClick();
+  tree = client.render();
+  assert.match(sidebar().props.className, /\bblock\b/);
+  assert.equal(checkbox().length, 1);
+  filterButton().props.onClick();
+  tree = client.render();
+
+  const categories = elements(tree, (node) => node.type === 'button' && ['events', 'venues', 'hosts'].includes(node.props.children));
+  for (const button of categories) button.props.onClick();
+  tree = client.render();
+  assert.equal(checkbox().length, 1);
+  checkbox()[0].props.onChange({ target: { checked: true } });
+  tree = client.render();
+  assert.equal(checkbox()[0].props.checked, true);
+  assert.equal(client.current.searchParams.get('includePast'), 'true');
+});

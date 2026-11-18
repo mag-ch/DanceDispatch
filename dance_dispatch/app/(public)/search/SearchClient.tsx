@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import { Event } from '@/lib/utils';
 import Select from 'react-select';
@@ -243,7 +243,7 @@ export default function SearchClient({
                 </div>
 
                 {/* Category Toggles */}
-                <div className="flex flex-wrap gap-2 mb-4 sm:mb-6 items-center">
+                <div className="flex flex-wrap gap-2 mb-4 items-center">
                     {ALL_CATEGORIES.map((category) => (
                         <button
                             key={category}
@@ -270,14 +270,28 @@ export default function SearchClient({
                     </button>
                 </div>
 
-                <div className="mb-4 lg:hidden">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-full pr-3 text-sm font-medium text-text">
+                        <input
+                            type="checkbox"
+                            role="switch"
+                            checked={pastEventsBool}
+                            onChange={(e) => updateFilters({ includePast: e.target.checked })}
+                            className="peer sr-only"
+                        />
+                        <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-slate-400 transition-colors peer-checked:bg-cyan-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cyan-500 dark:bg-slate-600 dark:peer-checked:bg-cyan-500">
+                            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${pastEventsBool ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </span>
+                        View past events
+                    </label>
                     <button
                         onClick={() => setMobileFiltersOpen((prev) => !prev)}
-                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-surface text-text font-medium text-sm"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-default bg-surface px-4 text-sm font-medium text-text transition hover:bg-accent-soft lg:hidden"
                         type="button"
                         aria-expanded={mobileFiltersOpen}
                         aria-controls="search-mobile-filters"
                     >
+                        <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                         {mobileFiltersOpen ? 'Hide filters' : 'Show filters'}
                     </button>
                 </div>
@@ -296,16 +310,6 @@ export default function SearchClient({
                                 <div className="mb-6">
                                     <h3 className="font-semibold mb-3 text-text">Event Filters</h3>
                                     <div className="space-y-4">
-                                        <label className="flex items-center gap-2 text-sm font-medium text-text">
-                                            <input
-                                                type="checkbox"
-                                                checked={pastEventsBool}
-                                                onChange={(e) => updateFilters({ includePast: e.target.checked })}
-                                                className="rounded border-gray-300"
-                                            />
-                                            View past events
-                                        </label>
-
                                         <div>
                                             <label className="block text-sm font-medium mb-1 text-text">Date Range</label>
                                             <div className="flex flex-col gap-2">

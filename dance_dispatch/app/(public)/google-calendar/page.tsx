@@ -75,8 +75,6 @@ export default function GoogleCalendarAdminPage() {
   const [pendingReviewError, setPendingReviewError] = useState<string | null>(null);
   const [pendingApproveId, setPendingApproveId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-
-
   useEffect(() => {
     const raw = window.localStorage.getItem(WATCH_EXPIRATION_KEY);
     const parsed = parseExpirationToMs(raw);
@@ -204,47 +202,23 @@ const approvePendingReviewEvent = async (eventId: string) => {
     setPendingReviewError(null);
 
     try {
-      // Step 1:  delete the event
-
-      
-      const deleteResponse = await fetch(`/api/events/${eventId}`, {
+      const deleteResponse = await fetch('/api/google-calendar/pending-events', {
         method: 'DELETE',
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId }),
       });
-      
-      const deletePayload = (await deleteResponse.json().catch(() => ({}))) as { error?: string };
-  
+      const deletePayload = (await deleteResponse.json()) as { error?: string };
       if (!deleteResponse.ok) {
         setPendingReviewError(deletePayload.error || 'Failed to delete event');
-        setPendingDeleteId(null);
         return;
       }
-      
-      // // Step 2:same as Approve (exclude from pending review)
-
-      // if (deleteResponse.ok) {
-      //   const excludeResponse = await fetch('/api/google-calendar/exclude-event', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({ eventId }),
-      //   });
-      //   const excludePayload = (await excludeResponse.json()) as { ok?: boolean; error?: string };
-      //   if (!excludeResponse.ok) {
-      //     setPendingReviewError(excludePayload.error || 'Failed to exclude pending event');
-      //     return;
-      //   }
-      // }
-      
-
-
       setPendingReviewItems((current) => current.filter((item) => item.eventId !== eventId));
-    } catch (error) {
+    } catch {
       setPendingReviewError('Failed to delete pending event');
     } finally {
       setPendingDeleteId(null);
     }
   };
-
 
   const registerWatch = async () => {
     setLoading(true);
@@ -337,7 +311,9 @@ const approvePendingReviewEvent = async (eventId: string) => {
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold text-text">Pending Events For Manual Review</h2>
-        <p className="mt-1 text-xs text-muted">Rows with `exclude = false` from `pending_events`.</p>
+        <p className="mt-1 text-xs text-muted">
+          Deleting a pending Google Calendar event permanently prevents it from being imported again.
+        </p>
         {pendingReviewError ? (
           <p className="mt-2 text-xs text-red-500">{pendingReviewError}</p>
         ) : null}

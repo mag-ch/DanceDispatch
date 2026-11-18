@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-type User = { id: string; name: string };
+type User = { id: string; name: string; isFollowing?: boolean };
 type Tab = 'followers' | 'blocked';
 
 export default function BlockedUsers() {
@@ -18,6 +18,7 @@ export default function BlockedUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [confirmingRemovalId, setConfirmingRemovalId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -29,6 +30,7 @@ export default function BlockedUsers() {
     requestRef.current = controller;
     setTab(nextTab);
     setUsers([]);
+    setConfirmingRemovalId(null);
     setLoading(true);
     setError('');
     setMessage('');
@@ -64,26 +66,35 @@ export default function BlockedUsers() {
     dialogRef.current?.close();
   }
 
-  async function update(user: User, action: 'remove' | 'block' | 'unblock') {
+  async function update(user: User, action: 'follow' | 'unfollow' | 'remove' | 'block' | 'unblock') {
     if (pending) return;
-    const prompt = action === 'remove'
-      ? `Remove ${user.name} as a follower? They can follow you again unless blocked.`
-      : action === 'block'
-        ? `Block ${user.name}? You will both be unfollowed and neither can follow the other until unblocked.`
-        : '';
-    if (prompt && !window.confirm(prompt)) return;
-
     setPending(user.id);
     setError('');
     setMessage('');
     try {
-      const endpoint = action === 'remove' ? 'followers' : 'blocks';
+      const isFollowAction = action === 'follow' || action === 'unfollow';
+      const endpoint = isFollowAction ? 'saved-users' : action === 'remove' ? 'followers' : 'blocks';
       const response = await fetch(`/api/users/${endpoint}/${encodeURIComponent(user.id)}`, {
-        method: action === 'block' ? 'POST' : 'DELETE',
+        method: action === 'follow' || action === 'block' ? 'POST' : 'DELETE',
+        ...(isFollowAction ? {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ saveToggle: action === 'follow' }),
+        } : {}),
       });
       if (!response.ok) throw new Error(`Failed to ${action} user`);
-      setUsers((current) => current.filter((entry) => entry.id !== user.id));
-      setMessage(action === 'remove' ? 'Follower removed.' : action === 'block' ? 'User blocked.' : 'User unblocked.');
+      if (isFollowAction) {
+        setUsers((current) => current.map((entry) => entry.id === user.id
+          ? { ...entry, isFollowing: action === 'follow' }
+          : entry));
+        setMessage(action === 'follow' ? `Following ${user.name}.` : `Unfollowed ${user.name}.`);
+      } else if (action === 'unblock') {
+        setUsers((current) => current.filter((entry) => entry.id !== user.id));
+        setMessage('User unblocked.');
+      } else {
+        setUsers((current) => current.filter((entry) => entry.id !== user.id));
+        setConfirmingRemovalId(null);
+        setMessage(action === 'remove' ? 'Follower removed.' : 'User blocked.');
+      }
       router.refresh();
     } catch (err) {
       console.error(`Failed to ${action} user:`, err);
@@ -138,18 +149,40 @@ export default function BlockedUsers() {
               {users.map((user) => (
                 <li key={user.id} className="flex flex-wrap items-center justify-between gap-3">
                   <Link href={`/users/${encodeURIComponent(user.id)}`} className="text-text hover:underline">{user.name}</Link>
-                  <div className="flex gap-2">
-                    {tab === 'followers' && <button type="button" disabled={pending !== null}
-                      onClick={() => void update(user, 'remove')}
-                      className="rounded border border-default px-3 py-1 text-sm hover:border-accent disabled:opacity-50">
-                      Remove
-                    </button>}
+                  {tab === 'followers' ? confirmingRemovalId === user.id ? (
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span>Block this user as well?</span>
+                      <button type="button" disabled={pending !== null}
+                        onClick={() => void update(user, 'block')}
+                        className="rounded border border-default px-3 py-1 hover:border-accent disabled:opacity-50">
+                        {pending === user.id ? 'Working...' : 'Yes'}
+                      </button>
+                      <button type="button" disabled={pending !== null}
+                        onClick={() => void update(user, 'remove')}
+                        className="rounded border border-default px-3 py-1 hover:border-accent disabled:opacity-50">
+                        {pending === user.id ? 'Working...' : 'No'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button type="button" disabled={pending !== null}
+                        onClick={() => void update(user, user.isFollowing ? 'unfollow' : 'follow')}
+                        className="rounded border border-default px-3 py-1 text-sm hover:border-accent disabled:opacity-50">
+                        {pending === user.id ? 'Working...' : user.isFollowing ? 'Unfollow' : 'Follow'}
+                      </button>
+                      <button type="button" disabled={pending !== null}
+                        onClick={() => { setError(''); setConfirmingRemovalId(user.id); }}
+                        className="rounded border border-default px-3 py-1 text-sm hover:border-accent disabled:opacity-50">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
                     <button type="button" disabled={pending !== null}
-                      onClick={() => void update(user, tab === 'followers' ? 'block' : 'unblock')}
+                      onClick={() => void update(user, 'unblock')}
                       className="rounded border border-default px-3 py-1 text-sm hover:border-accent disabled:opacity-50">
-                      {pending === user.id ? 'Working...' : tab === 'followers' ? 'Block' : 'Unblock'}
+                      {pending === user.id ? 'Working...' : 'Unblock'}
                     </button>
-                  </div>
+                  )}
                 </li>
               ))}
             </ul>

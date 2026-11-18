@@ -2,7 +2,7 @@ import 'server-only';
 
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { createClient } from './supabase/client';
+import { createServiceClient } from './supabase/service';
 
 type GoogleOAuthTokenResponse = {
   access_token: string;
@@ -367,7 +367,7 @@ function isRecurringEvent(item: GoogleCalendarEventItem): boolean {
 }
 
 async function getOrCreateVenueId(
-  supabase: any,
+  supabase: ReturnType<typeof createServiceClient>,
   venueName: string | null,
   venueAddress: string | null
 ): Promise<string | null> {
@@ -377,14 +377,16 @@ async function getOrCreateVenueId(
 
   if (venueName) {
     const byName = await supabase.from('Venues').select('id').eq('name', venueName).limit(1).maybeSingle();
-    if (!byName.error && byName.data?.id) {
+    if (byName.error) throw new Error(`Failed to find venue: ${byName.error.message}`);
+    if (byName.data?.id) {
       return String(byName.data.id);
     }
   }
 
   if (venueAddress) {
     const byAddress = await supabase.from('Venues').select('id').eq('address', venueAddress).limit(1).maybeSingle();
-    if (!byAddress.error && byAddress.data?.id) {
+    if (byAddress.error) throw new Error(`Failed to find venue: ${byAddress.error.message}`);
+    if (byAddress.data?.id) {
       return String(byAddress.data.id);
     }
   }
@@ -406,12 +408,13 @@ async function getOrCreateVenueId(
   return String(insertRes.data.id);
 }
 
-async function getOrCreateHostIds(supabase: any, hostNames: string[]): Promise<string[]> {
+async function getOrCreateHostIds(supabase: ReturnType<typeof createServiceClient>, hostNames: string[]): Promise<string[]> {
   const hostIds: string[] = [];
 
   for (const hostName of hostNames) {
     const existing = await supabase.from('Hosts').select('id').eq('name', hostName).limit(1).maybeSingle();
-    if (!existing.error && existing.data?.id) {
+    if (existing.error) throw new Error(`Failed to find host: ${existing.error.message}`);
+    if (existing.data?.id) {
       hostIds.push(String(existing.data.id));
       continue;
     }
@@ -425,9 +428,10 @@ async function getOrCreateHostIds(supabase: any, hostNames: string[]): Promise<s
       .select('id')
       .single();
 
-    if (!created.error && created.data?.id) {
-      hostIds.push(String(created.data.id));
+    if (created.error || !created.data?.id) {
+      throw new Error(created.error?.message || `Failed to create host ${hostName}`);
     }
+    hostIds.push(String(created.data.id));
   }
 
   return hostIds;
@@ -491,10 +495,6 @@ async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarFetched
     }
   } while (pageToken);
 
-  if (nextSyncToken) {
-    await writeGoogleCalendarSyncToken(nextSyncToken);
-  }
-
   if (!existingSyncToken) {
     syncMode = 'full';
   }
@@ -507,7 +507,7 @@ async function fetchGoogleCalendarEventsForSync(): Promise<GoogleCalendarFetched
 }
 
 export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalendarSyncSummary> {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const fetched = await fetchGoogleCalendarEventsForSync();
   const events = fetched.items;
 
@@ -532,7 +532,6 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
 
   for (const item of events) {
     const googleCalId = String(item.id || '').trim();
-    const title = (item.summary || 'Untitled event').trim();
     const start = normalizeGoogleCalendarDateTime(item.start?.dateTime || item.start?.date);
     const end = normalizeGoogleCalendarDateTime(item.end?.dateTime || item.end?.date);
 
@@ -546,126 +545,52 @@ export async function syncGoogleCalendarEventsToSupabase(): Promise<GoogleCalend
       continue;
     }
 
-    const excluded = await supabase
-      .from('pending_events')
-      .select('google_cal_id')
-      .eq('google_cal_id', googleCalId)
-      .eq('exclude', true)
-      .limit(1)
-      .maybeSingle();
-
-    if (excluded.data?.google_cal_id) {
-      summary.skippedExcluded += 1;
-      continue;
-    }
-
-    const existingEvent = await supabase
-      .from('Events')
-      .select('id')
-      .eq('google_cal_id', googleCalId)
-      .limit(1)
-      .maybeSingle();
-
-    const existingPending = await supabase
-      .from('pending_events')
-      .select('google_cal_id')
-      .eq('google_cal_id', googleCalId)
-      .limit(1)
-      .maybeSingle();
-
-    if (existingEvent.data?.id || existingPending.data?.google_cal_id) {
-      summary.skippedExisting += 1;
-      continue;
-    }
-
-    const { venueName, venueAddress } = splitLocation(item.location);
-    const venueId = await getOrCreateVenueId(supabase, venueName, venueAddress);
-    const hostIds = await getOrCreateHostIds(supabase, parseHostNamesFromTitle(title));
-
-    console.log('Inserting event from Google Calendar', {
-      googleCalId,
-      title,
-      start,
-      end,
-      venueId,
-      hostIds,
-    });
-    const insertedEvent = await supabase
-      .from('Events')
-      .insert({
-        google_cal_id: googleCalId,
-        title,
-        start,
-        end,
-        location: venueId,
-        description: item.description || '',
-        flyer_url: null,
-        price: null,
-        external_url: item.htmlLink || null,
-      })
-      .select('id')
-      .single();
-
-    if (insertedEvent.error || !insertedEvent.data?.id) {
-      throw new Error(insertedEvent.error?.message || `Failed to insert event ${googleCalId}`);
-    }
-
-    const newEventId = String(insertedEvent.data.id);
-    summary.inserted += 1;
-
-    if (hostIds.length > 0) {
-      const eventHostsPayload = hostIds.map((hostId) => ({
-        event_id: newEventId,
-        host_id: hostId,
-      }));
-      const hostInsertResult = await supabase.from('event_hosts').insert(eventHostsPayload);
-      if (hostInsertResult.error) {
-        console.warn('Failed to insert event hosts', hostInsertResult.error.message);
-      }
-    }
-
-    console.info('Successfully inserted event from Google Calendar, queuing pending event for sync', {
-      googleCalId,
-      eventId: newEventId,
-    });
-
-    const pendingPayload = {
-      google_cal_id: googleCalId,
-      event_id: newEventId,
-      exclude: false,
-    };
-
-    console.info('Attempting pending_events insert for Google Calendar event', {
-      googleCalId,
-      eventId: newEventId,
-      payloadKeys: Object.keys(pendingPayload),
-    });
-
-    console.log('Pending event payload', pendingPayload);
-
-    const pendingInsertResult = await supabase.from('pending_events').insert(pendingPayload);
-    if (!pendingInsertResult.error) {
+    const outcome = await importCalendarItem(supabase, item);
+    if (outcome === 'excluded') summary.skippedExcluded += 1;
+    else if (outcome === 'existing') summary.skippedExisting += 1;
+    else {
+      summary.inserted += 1;
       summary.pendingQueued += 1;
-    } else {
-      const pendingConflictCheck = await supabase
-        .from('pending_events')
-        .select('google_cal_id,event_id,exclude,created_by')
-        .or(`google_cal_id.eq.${googleCalId},event_id.eq.${newEventId}`)
-        .limit(5);
-
-      console.warn('Failed to insert pending event for Google Calendar sync', {
-        googleCalId,
-        eventId: newEventId,
-        errorMessage: pendingInsertResult.error.message,
-        errorCode: pendingInsertResult.error.code,
-        errorDetails: pendingInsertResult.error.details,
-        errorHint: pendingInsertResult.error.hint,
-        payload: pendingPayload,
-        existingRowsError: pendingConflictCheck.error?.message || null,
-        existingRows: pendingConflictCheck.data || [],
-      });
     }
   }
 
+  if (fetched.nextSyncToken) await writeGoogleCalendarSyncToken(fetched.nextSyncToken);
   return summary;
+}
+
+async function importCalendarItem(
+  supabase: ReturnType<typeof createServiceClient>,
+  item: GoogleCalendarEventItem
+): Promise<'inserted' | 'existing' | 'excluded'> {
+  const googleCalId = String(item.id || '').trim();
+  const title = (item.summary || 'Untitled event').trim();
+  const start = normalizeGoogleCalendarDateTime(item.start?.dateTime || item.start?.date);
+  const end = normalizeGoogleCalendarDateTime(item.end?.dateTime || item.end?.date);
+  if (!googleCalId || !start || !end || item.status === 'cancelled' || isRecurringEvent(item)) {
+    throw new Error('Calendar event cannot be imported');
+  }
+
+  const rejected = await supabase.from('rejected_calendar_events')
+    .select('google_cal_id').eq('google_cal_id', googleCalId).maybeSingle();
+  if (rejected.error) throw rejected.error;
+  if (rejected.data) return 'excluded';
+  const existing = await supabase.from('Events').select('id').eq('google_cal_id', googleCalId).maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data) return 'existing';
+
+  const { venueName, venueAddress } = splitLocation(item.location);
+  const venueId = await getOrCreateVenueId(supabase, venueName, venueAddress);
+  const hostIds = await getOrCreateHostIds(supabase, parseHostNamesFromTitle(title));
+  const { data, error } = await supabase.rpc('import_google_calendar_event', {
+    p_event: {
+      google_cal_id: googleCalId, title, start, end, location: venueId,
+      description: item.description || '', external_url: item.htmlLink || null,
+    },
+    p_host_ids: hostIds,
+  });
+  if (error) throw new Error(`Failed to import calendar event ${googleCalId}: ${error.message}`);
+  if (data !== 'inserted' && data !== 'existing' && data !== 'excluded') {
+    throw new Error(`Unexpected calendar import result for ${googleCalId}`);
+  }
+  return data;
 }

@@ -16,6 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Google Calendar review
+
+Apply `supabase/rejected_calendar_events.sql` to the Supabase database before deploying
+the calendar review changes. The migration moves pending rows with no local `event_id`
+and a nonblank Google Calendar ID into the rejection table, regardless of `exclude`.
+Rows without a Google ID are left untouched. Run the migration using a database role
+that can create tables and functions. Calendar sync and review require
+`SUPABASE_SERVICE_ROLE_KEY` on the server.
+
+Deleting a pending calendar event permanently prevents its reimport without changing
+Google Calendar. Manually submitted pending events without a Google ID are deleted normally.
+If an earlier version of this migration was applied, rerun it before deploying to remove
+the old restore-capable import function.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

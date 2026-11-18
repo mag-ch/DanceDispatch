@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
 import { requireAuth } from '@/lib/auth-helpers';
+import { requireAdmin } from '@/lib/admin';
+import { createServiceClient } from '@/lib/supabase/service';
+import { revalidateCatalogCache } from '@/lib/utils_supabase_server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 type PendingEventRow = {
@@ -24,6 +27,26 @@ function getSupabaseClient() {
   }
 
   return createSupabaseClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await requireAdmin();
+    const body = await request.json() as { eventId?: unknown };
+    const eventId = typeof body.eventId === 'string' ? body.eventId : '';
+    if (!/^[1-9]\d*$/.test(eventId)) {
+      return NextResponse.json({ error: 'Invalid event ID' }, { status: 400 });
+    }
+    const { data, error } = await createServiceClient().rpc('reject_pending_event', { p_event_id: eventId });
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: 'Pending event not found or already reviewed' }, { status: 404 });
+    revalidateCatalogCache();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Failed to reject pending event', error);
+    const message = error instanceof Error ? error.message : 'Failed to reject pending event';
+    return NextResponse.json({ error: message }, { status: message.toLowerCase().includes('unauthorized') ? 401 : 500 });
+  }
 }
 
 export async function GET() {

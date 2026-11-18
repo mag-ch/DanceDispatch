@@ -41,14 +41,14 @@ test('host, venue and user results have a follow control outside the link', asyn
   }
 });
 
-test('event results provide labelled RSVP and disable past events', async () => {
+test('event results provide a labelled action for both upcoming and past events', async () => {
   const { SearchResult, SaveEventButton } = await setup();
-  for (const [startdate, disabled] of [['upcoming', false], ['past', true]]) {
+  for (const startdate of ['upcoming', 'past']) {
     const row = SearchResult({ header: 'Party', subheader: '', entity: 'events', entityId: '42', event: { startdate }, showActions: true });
     const [, action] = React.Children.toArray(row.props.children);
     assert.equal(action.props.children.type, SaveEventButton);
     assert.equal(action.props.children.props.eventId, '42');
-    assert.equal(action.props.children.props.isDisabled, disabled);
+    assert.equal(action.props.children.props.isDisabled, undefined);
     assert.equal(action.props.children.props.showLabel, true);
   }
 });

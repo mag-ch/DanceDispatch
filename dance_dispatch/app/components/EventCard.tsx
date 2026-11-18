@@ -1,7 +1,7 @@
 import React from 'react';
 import { processUrl, resolveServerImageUrl } from '@/lib/utils'
 import type { Event } from '@/lib/utils'
-import { formatDateOnly, isUpcoming } from '@/lib/date-utils';
+import { formatDateOnly } from '@/lib/date-utils';
 import { FollowEntityButton, SaveEventButton } from './SaveEventButton';
 import CustomLink from './CustomLink';
 import styles from '@/app/styles/eventcard.module.css'; // changed from './eventcard.css'
@@ -117,7 +117,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({
             </CustomLink>
             {showActions && entityId && entity === 'events' && event && (
                 <div className={styles.searchAction}>
-                    <SaveEventButton eventId={entityId} isDisabled={!isUpcoming(event)} showLabel />
+                    <SaveEventButton eventId={entityId} showLabel />
                 </div>
             )}
             {showActions && entityId && (entity === 'hosts' || entity === 'venues' || entity === 'users') && (
@@ -149,7 +149,6 @@ export const RelatedEventCard: React.FC<EventCardProps> = async ({ event }) => {
 
 export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     const defaultThumbnail = await resolveServerImageUrl(event.imageurl, `/images/default_events.jpg`);
-    const isPastEvent = !isUpcoming(event);
 
     const extLink = event.externallink ?? undefined;
     const hostGenres = Array.from(new Set((event.hostGenres ?? []).map((genre) => String(genre).trim()).filter(Boolean)));
@@ -161,7 +160,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
     return (
         <>
         <div className={styles.mobileOnly}>
-            <EventCardCompactView event={event} thumbnail={defaultThumbnail} isPastEvent={isPastEvent} genres={hostGenres} />
+            <EventCardCompactView event={event} thumbnail={defaultThumbnail} genres={hostGenres} />
         </div>
         <div className={`${styles.card} ${styles.desktopOnly}`}>
             <CustomLink href={`/events/${event.id}`} className={styles.cardLink}>
@@ -177,7 +176,7 @@ export const EventCard: React.FC<EventCardProps> = async ({ event }) => {
                         </div>
                     )}
                     <div className={styles.saveOverlay}>
-                        <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
+                        <SaveEventButton eventId={event.id} />
                     </div>
                 </div>
                 <div className={styles.content}>
@@ -235,9 +234,8 @@ const formatCompactDate = (dateString: string) => {
 const EventCardCompactView: React.FC<{
     event: Event;
     thumbnail: string;
-    isPastEvent: boolean;
     genres: string[];
-}> = ({ event, thumbnail, isPastEvent, genres }) => (
+}> = ({ event, thumbnail, genres }) => (
     <div className={styles.compactCard}>
         <CustomLink href={`/events/${event.id}`} className={styles.compactLink}>
             <img src={thumbnail} alt={event.title} className={styles.compactImage} />
@@ -256,7 +254,7 @@ const EventCardCompactView: React.FC<{
             </div>
         </CustomLink>
         <div className={styles.compactSave}>
-            <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
+            <SaveEventButton eventId={event.id} />
         </div>
     </div>
 );

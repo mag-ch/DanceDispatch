@@ -10,6 +10,8 @@ interface SaveEventButtonProps {
     initialSaved?: boolean;
     isDisabled?: boolean;
     showLabel?: boolean;
+    onSavedChange?: (isSaved: boolean) => void;
+    onReview?: () => void;
 }
 interface SaveEntityButtonProps {
     entity: string;
@@ -41,11 +43,15 @@ const getFollowedEntityLabel = (entity: string) => {
     return 'entity';
 };
 
-export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initialSaved, isDisabled, showLabel = false }) => {
+export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initialSaved, isDisabled, showLabel = false, onSavedChange, onReview }) => {
     const { session, loading: authLoading } = useAuth();
     const [isSaved, setIsSaved] = useState(initialSaved ?? false);
     const [isLoading, setIsLoading] = useState(initialSaved === undefined && !!session);
     const [loadError, setLoadError] = useState(false);
+    const [isPastEvent, setIsPastEvent] = useState(false);
+    const [attendanceStep, setAttendanceStep] = useState<'confirm' | 'review' | null>(null);
+    const [attendanceError, setAttendanceError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     const [showPopup, setShowPopup] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -73,15 +79,6 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
     useEffect(() => {
         let isMounted = true;
 
-        if (initialSaved !== undefined) {
-            setIsSaved(initialSaved);
-            setIsLoading(false);
-            setLoadError(false);
-            return () => {
-                isMounted = false;
-            };
-        }
-
         if (authLoading) {
             return () => {
                 isMounted = false;
@@ -104,9 +101,10 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
                 return res.json();
             })
             .then((data) => {
-                if (typeof data.isSaved !== 'boolean') throw new Error('Invalid saved state response');
+                if (typeof data.isSaved !== 'boolean' || typeof data.isPastEvent !== 'boolean') throw new Error('Invalid saved state response');
                 if (isMounted) {
                     setIsSaved(data.isSaved);
+                    setIsPastEvent(data.isPastEvent);
                     setIsLoading(false);
                     setLoadError(false);
                 }
@@ -125,70 +123,79 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
         };
     }, [eventId, initialSaved, session, authLoading, retryCount]);
 
-    const handleClick = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (isDisabled) {
-            return;
-        }
-
-        if (!session) {
-            setShowPopup(true);
-            return;
-        }
-
-        if (loadError) {
-            setIsLoading(true);
-            setRetryCount((count) => count + 1);
-            return;
-        }
-        
-        // Prevent multiple simultaneous requests
+    const updateSaved = async (newSavedState: boolean, attendanceConfirmed = false) => {
         if (isSubmittingRef.current) return;
-        
         isSubmittingRef.current = true;
-        const previousSavedState = isSaved;
-        const newSavedState = !isSaved;
-        setIsSaved(newSavedState);
+        setIsSubmitting(true);
+        setAttendanceError(null);
         try {
             const response = await fetch(`/api/users/saved-events/${eventId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ saveToggle: newSavedState })
+                body: JSON.stringify({ saveToggle: newSavedState, attendanceConfirmed })
             });
-
+            const payload = await response.json() as { isPastEvent?: boolean; attendanceConfirmationRequired?: boolean; error?: string };
+            if (response.status === 409 && payload.attendanceConfirmationRequired) {
+                setIsPastEvent(true);
+                setAttendanceStep('confirm');
+                return;
+            }
             if (!response.ok) {
-                throw new Error('Failed to update saved state');
+                throw new Error(payload.error || 'Failed to update saved state');
             }
-
-            if (newSavedState) {
+            setIsSaved(newSavedState);
+            onSavedChange?.(newSavedState);
+            if (typeof payload.isPastEvent === 'boolean') setIsPastEvent(payload.isPastEvent);
+            if (newSavedState && payload.isPastEvent) {
+                setAttendanceStep('review');
+            } else if (newSavedState) {
                 showToast("RSVP'ed to event");
-            }
-            else {
-                showToast('Removed from RSVPs');
+            } else {
+                showToast(isPastEvent ? 'Removed attendance' : 'Removed from RSVPs');
             }
         } catch (error) {
             console.error('Failed to save event:', error);
-            setIsSaved(previousSavedState);
-            showToast('Could not update RSVP');
+            if (attendanceConfirmed) setAttendanceError(error instanceof Error ? error.message : 'Could not mark attendance');
+            else showToast('Could not update RSVP');
         } finally {
             isSubmittingRef.current = false;
+            setIsSubmitting(false);
         }
     };
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isDisabled) return;
+        if (!session) {
+            setShowPopup(true);
+        } else if (loadError) {
+            setIsLoading(true);
+            setRetryCount((count) => count + 1);
+        } else if (isPastEvent && !isSaved) {
+            setAttendanceError(null);
+            setAttendanceStep('confirm');
+        } else {
+            void updateSaved(!isSaved);
+        }
+    };
+
+    const actionLabel = loadError ? 'Retry loading RSVP status'
+        : isPastEvent ? (isSaved ? 'Remove attendance' : 'Mark as attended')
+        : (isSaved ? 'Remove RSVP' : 'RSVP to event');
 
     return (
         <>
             <button
                 type="button"
                 onClick={handleClick}
-                disabled={isLoading || authLoading || isDisabled}
+                disabled={isLoading || authLoading || isDisabled || isSubmitting}
                 className={`group inline-flex items-center gap-2 rounded-full transition ${showLabel ? 'px-4 py-2 text-sm font-semibold' : 'p-2'} ${isDisabled ? 'cursor-not-allowed opacity-40 grayscale' : 'hover:opacity-80'}`}
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-                aria-disabled={isLoading || authLoading || isDisabled}
+                aria-disabled={isLoading || authLoading || isDisabled || isSubmitting}
                 aria-pressed={loadError ? undefined : isSaved}
-                aria-label={isDisabled ? 'RSVP closed for past events' : loadError ? 'Retry loading RSVP status' : isSaved ? 'Remove RSVP' : 'RSVP to event'}
-                title={isDisabled ? 'RSVP closed for past events' : loadError ? 'Retry loading RSVP status' : isSaved ? 'Remove RSVP' : 'RSVP to event'}
+                aria-label={isDisabled ? 'RSVP unavailable' : actionLabel}
+                title={isDisabled ? 'RSVP unavailable' : actionLabel}
             >
                 <Bookmark
                     fill={isSaved ? 'white' : 'none'}
@@ -196,8 +203,43 @@ export const SaveEventButton: React.FC<SaveEventButtonProps> = ({ eventId, initi
                     size={showLabel ? 18 : 24}
                     aria-hidden="true"
                 />
-                {showLabel && <span className="text-white">{loadError ? 'Retry RSVP' : isSaved ? 'RSVPed' : 'RSVP'}</span>}
+                {showLabel && <span className="text-white">{loadError ? 'Retry RSVP' : isPastEvent ? (isSaved ? 'Attended' : 'Mark attended') : (isSaved ? 'RSVPed' : 'RSVP')}</span>}
             </button>
+            {attendanceStep && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4 py-6"
+                    onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby={`attendance-title-${eventId}`}
+                        className="w-full max-w-md rounded-2xl border border-default bg-surface p-6 shadow-2xl">
+                        <h3 id={`attendance-title-${eventId}`} className="text-xl font-semibold text-text">
+                            {attendanceStep === 'confirm' ? 'Did you attend this event?' : 'Attendance recorded'}
+                        </h3>
+                        <p className="mt-3 text-sm text-muted">
+                            {attendanceStep === 'confirm'
+                                ? 'Confirm that you attended. Past attendance does not earn RSVP points.'
+                                : 'Leave a review to share your experience and earn review points.'}
+                        </p>
+                        {attendanceError && <p role="alert" className="mt-3 text-sm text-red-500">{attendanceError}</p>}
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button type="button" disabled={isSubmitting} onClick={() => setAttendanceStep(null)}
+                                className="rounded-lg border border-default px-4 py-2 text-sm font-semibold text-text disabled:opacity-60">
+                                {attendanceStep === 'confirm' ? 'Cancel' : 'Not now'}
+                            </button>
+                            <button type="button" disabled={isSubmitting}
+                                onClick={() => {
+                                    if (attendanceStep === 'confirm') void updateSaved(true, true);
+                                    else {
+                                        setAttendanceStep(null);
+                                        if (onReview) onReview();
+                                        else window.location.assign(`/events/${eventId}?showReviewModal=true`);
+                                    }
+                                }}
+                                className="btn-highlighted rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60">
+                                {attendanceStep === 'confirm' ? (isSubmitting ? 'Saving...' : 'Yes, I attended') : 'Leave a review'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <AuthRequiredModal
                 isOpen={showPopup}
                 onClose={() => setShowPopup(false)}

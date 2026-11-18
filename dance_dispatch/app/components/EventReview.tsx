@@ -13,7 +13,7 @@ interface ReviewModalProps {
     isOpen: boolean;
     event: Event;
     onClose: () => void;
-    onSubmit: (reviews: ReviewData[]) => void;
+    onSubmit: (reviews: ReviewData[]) => Promise<void>;
     
 }
 
@@ -95,6 +95,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
     const [showDJSection, setShowDJSection] = useState(false);
     const [privacyLevel, setPrivacyLevel] = useState<'public' | 'private' | 'anonymous'>('public');
     const [userMedia, setUserMedia] = useState<MediaFile[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     React.useEffect(() => {
         if (event.hostNames) {
@@ -115,7 +117,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
         setDjReviews(prev => ({ ...prev, [dj]: { ...prev[dj], comment } }));
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+        if (isSubmitting) return;
         const reviewsToSubmit: ReviewData[] = [];
         const allMediaPaths = userMedia.map(m => m.path);
         const hostIdFromPath = (path: string) => {
@@ -163,14 +166,22 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
             }
         });
 
-        onSubmit(reviewsToSubmit);
-        setGeneralComment('');
-        setVenueRating(0);
-        setVenueComment('');
-        setDjReviews({});
-        setPrivacyLevel('public');
-        onClose();
-        setUserMedia([]);
+        setIsSubmitting(true);
+        setSubmitError(null);
+        try {
+            await onSubmit(reviewsToSubmit);
+            setGeneralComment('');
+            setVenueRating(0);
+            setVenueComment('');
+            setDjReviews({});
+            setPrivacyLevel('public');
+            onClose();
+            setUserMedia([]);
+        } catch (error) {
+            setSubmitError(error instanceof Error ? error.message : 'Failed to submit review');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -181,7 +192,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2 flex-shrink-0">
                     <h2 className="text-2xl font-bold text-text">Leave a Review</h2>
-                    <button onClick={onClose} className="text-text hover:text-text"><X size={24} /></button>
+                    <button onClick={onClose} disabled={isSubmitting} className="text-text hover:text-text"><X size={24} /></button>
                 </div>
                 <div className="mb-4 flex-shrink-0">
                     <p className="text-xs font-medium text-text">{event.title}</p>
@@ -263,12 +274,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, event, onClose
                 </div>
 
                 {/* Footer */}
+                {submitError && <p role="alert" className="mt-3 text-sm text-red-500">{submitError}</p>}
                 <div className="mt-6 flex gap-3 flex-shrink-0 border-t pt-4">
-                    <button onClick={onClose} className="flex-1 px-4 py-2 text-text border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+                    <button onClick={onClose} disabled={isSubmitting} className="flex-1 px-4 py-2 text-text border border-gray-300 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-60">
                         Cancel
                     </button>
-                    <button onClick={handleSubmit} className="btn-highlighted flex-1 px-4 py-2 rounded-lg font-medium">
-                        Submit Review
+                    <button onClick={() => void handleSubmit()} disabled={isSubmitting} className="btn-highlighted flex-1 px-4 py-2 rounded-lg font-medium disabled:opacity-60">
+                        {isSubmitting ? 'Submitting...' : 'Submit Review'}
                     </button>
                 </div>
             </div>

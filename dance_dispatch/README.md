@@ -27,6 +27,10 @@ that can create tables and functions. Calendar sync and review require
 
 Deleting a pending calendar event permanently prevents its reimport without changing
 Google Calendar. Manually submitted pending events without a Google ID are deleted normally.
+
+Users can mark past events as attended after confirming attendance. This does not
+award RSVP points; submitting a review still earns the usual review points. Event
+end times are interpreted as Eastern wall-clock time for this decision.
 If an earlier version of this migration was applied, rerun it before deploying to remove
 the old restore-capable import function.
 

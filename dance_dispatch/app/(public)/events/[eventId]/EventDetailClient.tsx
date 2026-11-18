@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Star, MapPin, Calendar, Share2, X } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { Event, EventReview, Host, resolveImageUrl, resolveServerImageUrl } from '@/lib/utils';
@@ -59,6 +60,7 @@ function formatCompactDate(value: string): string {
 
 export function EventDetailClient({ event, eventReviews, relatedEvents, venueAddress, showReviewModal = false, hostPreviousReviewsMap = new Map(), venuePreviousReviewsMap = new Map(), rsvpUsers = [] }: EventDetailClientProps) {
     const { session, loading: authLoading, isAdmin } = useAuth();
+    const router = useRouter();
     const locationName = event.location?.trim() || 'Location Revealed To Ticket Holders';
     // Private reviews are only visible to their author, so exclude them from lists and counts.
     const visibleReviews = eventReviews.filter(
@@ -68,6 +70,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const postEventReviews = visibleReviews.filter((review) => !review.isPreEvent);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [isSavedEvent, setIsSavedEvent] = useState<boolean | null>(null);
+    const [savedEventIsPast, setSavedEventIsPast] = useState<boolean | null>(null);
+    const openedReviewFromUrl = useRef(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [showAttendanceConfirmModal, setShowAttendanceConfirmModal] = useState(false);
@@ -132,7 +136,6 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     const [isEditingEventDetails, setIsEditingEventDetails] = useState(false);
     const [isSavingEventDetails, setIsSavingEventDetails] = useState(false);
     const [eventDetailEditError, setEventDetailEditError] = useState<string | null>(null);
-    const [saveEventOnSubmit, setSaveEventOnSubmit] = useState(false);
     const [eventDetailEditForm, setEventDetailEditForm] = useState({
         title: event.title ?? '',
         startdate: event.startdate ?? '',
@@ -144,28 +147,37 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
         externallink: event.externallink ?? '',
         price: event.price?.toString() ?? '',
     });
-    const isPastEvent = !isUpcoming(event);
+    const isPastEvent = savedEventIsPast ?? !isUpcoming(event);
 
     useEffect(() => {
         let isMounted = true;
 
         if (authLoading || !session) {
             setIsSavedEvent(null);
+            setSavedEventIsPast(null);
             return () => {
                 isMounted = false;
             };
         }
 
         fetch(`/api/users/saved-events/${event.id}`)
-            .then((response) => response.json())
+            .then((response) => {
+                if (!response.ok) throw new Error('Failed to load attendance status');
+                return response.json();
+            })
             .then((data) => {
+                if (typeof data.isSaved !== 'boolean' || typeof data.isPastEvent !== 'boolean') {
+                    throw new Error('Invalid attendance status response');
+                }
                 if (isMounted) {
-                    setIsSavedEvent(Boolean(data?.isSaved));
+                    setIsSavedEvent(data.isSaved);
+                    setSavedEventIsPast(data.isPastEvent);
                 }
             })
-            .catch(() => {
+            .catch((error) => {
+                console.error('Failed to load attendance status', error);
                 if (isMounted) {
-                    setIsSavedEvent(false);
+                    setIsSavedEvent(null);
                 }
             });
 
@@ -180,31 +192,23 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             return;
         }
 
-        if (!isPastEvent) {
-            setIsReviewModalOpen(true);
-            return;
-        }
-
-        let savedState = isSavedEvent;
-        if (savedState === null) {
-            try {
-                const response = await fetch(`/api/users/saved-events/${event.id}`);
-                const data = await response.json().catch(() => null);
-                savedState = Boolean(data?.isSaved);
-                setIsSavedEvent(savedState);
-            } catch {
-                savedState = false;
-                setIsSavedEvent(false);
+        try {
+            const response = await fetch(`/api/users/saved-events/${event.id}`);
+            const data = await response.json();
+            if (!response.ok || typeof data.isSaved !== 'boolean' || typeof data.isPastEvent !== 'boolean') {
+                throw new Error(data.error || 'Failed to load attendance status');
             }
+            setIsSavedEvent(data.isSaved);
+            setSavedEventIsPast(data.isPastEvent);
+            setAttendanceConfirmError(null);
+            if (!data.isPastEvent || data.isSaved) {
+                setIsReviewModalOpen(true);
+            } else {
+                setShowAttendanceConfirmModal(true);
+            }
+        } catch (error) {
+            setAttendanceConfirmError(error instanceof Error ? error.message : 'Failed to load attendance status');
         }
-
-        if (savedState) {
-            setIsReviewModalOpen(true);
-            return;
-        }
-
-        setAttendanceConfirmError(null);
-        setShowAttendanceConfirmModal(true);
     };
 
     // Full navigation to the canonical event URL: refreshes server data and drops params like ?showReviewModal=true.
@@ -213,9 +217,10 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
     };
 
     useEffect(() => {
-        if (authLoading || !showReviewModal) return;
+        if (authLoading || !showReviewModal || openedReviewFromUrl.current) return;
+        openedReviewFromUrl.current = true;
         void openReviewFlow();
-    }, [authLoading, showReviewModal, session, isSavedEvent, isPastEvent]);
+    }, [authLoading, showReviewModal, session]);
 
     const handleConfirmPastAttendance = async () => {
         if (!session) {
@@ -228,23 +233,20 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
             setIsConfirmingAttendance(true);
             setAttendanceConfirmError(null);
 
-            // const response = await fetch(`/api/users/saved-events/${event.id}`, {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ saveToggle: true }),
-            // });
-
-            // const payload = await response.json().catch(() => null);
-            // if (!response.ok) {
-            //     throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
-            // }
-
-            // setIsSavedEvent(true);
+            const response = await fetch(`/api/users/saved-events/${event.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ saveToggle: true, attendanceConfirmed: true }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || 'Failed to mark attendance');
+            setIsSavedEvent(true);
+            setSavedEventIsPast(payload.isPastEvent);
             setShowAttendanceConfirmModal(false);
-            setSaveEventOnSubmit(true);
             setIsReviewModalOpen(true);
+            router.refresh();
         } catch (error) {
-            setAttendanceConfirmError(error instanceof Error ? error.message : 'Failed to save RSVP before review.');
+            setAttendanceConfirmError(error instanceof Error ? error.message : 'Failed to mark attendance');
         } finally {
             setIsConfirmingAttendance(false);
         }
@@ -642,7 +644,12 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold mb-4 text-text">{event.title}</h1>
                             <div className="flex gap-4">
-                                <SaveEventButton eventId={event.id} isDisabled={isPastEvent} />
+                                <SaveEventButton
+                                    eventId={event.id}
+                                    initialSaved={isSavedEvent ?? undefined}
+                                    onSavedChange={(saved) => { setIsSavedEvent(saved); router.refresh(); }}
+                                    onReview={() => setIsReviewModalOpen(true)}
+                                />
                                 <button className="p-2 hover:bg-accent" onClick={() => setShowShareModal(true)} type="button">
                                     <Share2 className="text-gray-600"/>
                                 </button>
@@ -868,18 +875,18 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     event={event}
                                     onClose={() => setIsReviewModalOpen(false)}
                                     onSubmit={async (reviews) => {
-                                        const saveresponse = await fetch(`/api/users/saved-events/${event.id}`, {
+                                        if (!isSavedEvent) {
+                                            const saveresponse = await fetch(`/api/users/saved-events/${event.id}`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ saveToggle: true }),
                                             });
-
-                                            const payload = await saveresponse.json().catch(() => null);
+                                            const payload = await saveresponse.json();
                                             if (!saveresponse.ok) {
                                                 throw new Error(payload?.error ?? 'Failed to save RSVP before review.');
                                             }
-
-                                        setIsSavedEvent(true);
+                                            setIsSavedEvent(true);
+                                        }
                                         if (!event?.id) return;
                                         const response = await fetch(`/api/reviews/${event.id}`, {
                                             method: 'POST',
@@ -891,7 +898,8 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                             return;
                                         }
 
-                                        setIsReviewModalOpen(false);
+                                        const payload = await response.json();
+                                        throw new Error(payload.error || 'Failed to submit review');
                                     }}
                                 />
                             }
@@ -900,6 +908,9 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                 onClose={() => setShowAuthModal(false)}
                                 message={`Please log in or sign up to submit a review for ${event.title}.`}
                             />
+                            {attendanceConfirmError && !showAttendanceConfirmModal && (
+                                <p role="alert" className="mt-3 text-sm text-red-500">{attendanceConfirmError}</p>
+                            )}
                             {showAttendanceConfirmModal && (
                                 <div
                                     className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4 py-6"
@@ -914,10 +925,10 @@ export function EventDetailClient({ event, eventReviews, relatedEvents, venueAdd
                                     >
                                         <h3 className="text-xl font-semibold text-text">Did you attend this event?</h3>
                                         <p className="mt-3 text-sm text-muted">
-                                            This event has ended and you did not RSVP yet. If you attended, confirm now and we will RSVP this event for you before opening the review form.
+                                            This event has ended and you did not RSVP yet. Confirm that you attended before writing a review. Past attendance does not earn RSVP points.
                                         </p>
                                         <p className="mt-2 text-sm text-muted">
-                                            Next time, RSVP before the event ends so your review flow is faster.
+                                            Reviews earn points as usual.
                                         </p>
 
                                         {attendanceConfirmError && (

@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { userSaveEvent } from '@/lib/utils_supabase_server';
-import { awardPoints, POINTS } from '@/lib/points';
+import { awardPoints } from '@/lib/points';
+import { isPastStoredEvent } from '@/lib/event-attendance';
 
 
 export async function GET(
@@ -19,6 +20,14 @@ export async function GET(
 
         const user = await requireAuth();
         const supabase = await createClient();
+        const { data: event, error: eventError } = await supabase
+            .from('Events')
+            .select('start,end')
+            .eq('id', numericEventId)
+            .maybeSingle();
+        if (eventError) throw eventError;
+        if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+        const isPastEvent = isPastStoredEvent(event.start, event.end);
 
         const { data, error } = await supabase
             .from('SavedEvents')
@@ -32,7 +41,7 @@ export async function GET(
             return NextResponse.json({ error: 'Failed to check saved event' }, { status: 500 });
         }
 
-        return NextResponse.json({ isSaved: !!data });
+        return NextResponse.json({ isSaved: !!data, isPastEvent });
     } catch (error) {
         console.error('Error checking saved event:', error);
         return NextResponse.json({ error: 'Failed to check saved event' }, { status: 500 });
@@ -41,7 +50,7 @@ export async function GET(
 
 export async function POST(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
     try {
-        const { saveToggle } = await request.json();
+        const { saveToggle, attendanceConfirmed } = await request.json();
         if (typeof saveToggle !== 'boolean') {
             return NextResponse.json({ error: 'saveToggle must be a boolean' }, { status: 400 });
         }
@@ -57,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
         // query event id from Events table to ensure it exists
         const { data: eventData, error: eventError } = await supabase
             .from('Events')
-            .select('id')
+            .select('id,start,end')
             .eq('id', numericEventId)
             .maybeSingle();
         if (eventError) {
@@ -68,13 +77,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
             return NextResponse.json({ error: 'Event not found' }, { status: 404 });
         }
 
+        const isPastEvent = isPastStoredEvent(eventData.start, eventData.end);
+        if (saveToggle && isPastEvent && attendanceConfirmed !== true) {
+            return NextResponse.json({ error: 'Please confirm that you attended', attendanceConfirmationRequired: true }, { status: 409 });
+        }
+
         await userSaveEvent(String(eventData.id), user.id, saveToggle);
 
-        if (saveToggle) {
+        if (saveToggle && !isPastEvent) {
             await awardPoints(user.id, 'rsvp', String(eventData.id), supabase);
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, isPastEvent });
     } catch (error) {
         console.error('Error in POST /saved-events:', error);
         return NextResponse.json({ error: 'Failed to save event' }, { status: 500 });

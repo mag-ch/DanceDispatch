@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkHostSaved, userSaveHost } from '@/lib/utils_supabase_server';
 import { requireAuth } from '@/lib/auth-helpers';
-import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
     request: NextRequest,
@@ -34,8 +33,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ hos
         }
 
         const user = await requireAuth();
-        const supabase = await createClient();
-      
         await userSaveHost(String(numericHostId), user.id, saveToggle);
 
         return NextResponse.json({ success: true });

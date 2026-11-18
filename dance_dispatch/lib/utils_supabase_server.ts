@@ -1240,7 +1240,10 @@ export async function userSaveHost(hostId: string, userId: string, saveBool: boo
   if (saveBool) {
     const { error } = await supabase
       .from('UserFollowedHosts')
-      .insert({ host_id: hostId, user_id: userId });
+      .upsert({ host_id: hostId, user_id: userId }, {
+        onConflict: 'user_id,host_id',
+        ignoreDuplicates: true,
+      });
     if (error) {
       console.error('Error saving user follow:', error);
       throw new Error('Failed to save user follow');
@@ -1985,7 +1988,7 @@ export async function checkHostSaved(hostId: string, userId: string): Promise<bo
 
   if (error) {
     console.error('Error checking saved host:', error);
-    return false;
+    throw error;
   }
 
   return !!data;

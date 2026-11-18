@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Host follows
+
+Apply `supabase/host_follow_constraints.sql` before deploying the host-follow changes.
+It replaces host-only uniqueness with uniqueness per user and host and removes an
+incorrect host-to-venue foreign key if present. Existing follows are retained.
+
 ## Google Calendar review
 
 Apply `supabase/rejected_calendar_events.sql` to the Supabase database before deploying

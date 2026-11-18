@@ -271,7 +271,7 @@ export default function SearchClient({
                 </div>
 
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
-                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-full pr-3 text-sm font-medium text-text">
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full text-xs font-medium text-text sm:text-sm">
                         <input
                             type="checkbox"
                             role="switch"
@@ -279,14 +279,14 @@ export default function SearchClient({
                             onChange={(e) => updateFilters({ includePast: e.target.checked })}
                             className="peer sr-only"
                         />
-                        <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-slate-400 transition-colors peer-checked:bg-cyan-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cyan-500 dark:bg-slate-600 dark:peer-checked:bg-cyan-500">
-                            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${pastEventsBool ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-400 transition-colors peer-checked:bg-cyan-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cyan-500 dark:bg-slate-600 dark:peer-checked:bg-cyan-500">
+                            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${pastEventsBool ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                         </span>
                         View past events
                     </label>
                     <button
                         onClick={() => setMobileFiltersOpen((prev) => !prev)}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-default bg-surface px-4 text-sm font-medium text-text transition hover:bg-accent-soft lg:hidden"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-default bg-surface px-3 text-xs font-medium text-text transition hover:bg-accent-soft sm:gap-2 sm:px-4 sm:text-sm lg:hidden"
                         type="button"
                         aria-expanded={mobileFiltersOpen}
                         aria-controls="search-mobile-filters"

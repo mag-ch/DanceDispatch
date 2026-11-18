@@ -1,17 +1,13 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { SearchResult } from '@/app/components/EventCard';
 import { Event } from '@/lib/utils';
 import Select from 'react-select';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { ALL_CATEGORIES, filterEventsByTime, readSearchFilters, writeSearchFilters, type SearchCategory, type SearchFilters } from '@/lib/search-filters';
 
-export type SearchCategory = 'events' | 'venues' | 'hosts' | 'users';
-const ALL_CATEGORIES: SearchCategory[] = ['events', 'venues', 'hosts', 'users'];
-
-function isSearchCategory(value: string): value is SearchCategory {
-    return value === 'events' || value === 'venues' || value === 'hosts' || value === 'users';
-}
+export type { SearchCategory } from '@/lib/search-filters';
 
 function eventMatchesQuery(event: any, query: string, venue: any): boolean {
     const eventText = [
@@ -46,9 +42,8 @@ export default function SearchClient({
     categories,
     searchBar
 }: SearchClientProps) {
-    const pathname = usePathname();
-    const router = useRouter();
     const searchParams = useSearchParams();
+    const searchParamsString = searchParams?.toString() ?? '';
 
     const formatEventDate = (dateStr?: string) => {
         if (!dateStr) return 'Date TBD';
@@ -79,26 +74,35 @@ export default function SearchClient({
         return map;
     }, [safeVenues]);
 
-    const [searchQuery, setSearchQuery] = useState(() => searchParams?.get('query') ?? searchBar ?? '');
-    const [pastEventsBool, setPastEventsBool] = useState(() => searchParams?.get('includePast') === 'true');
-    const [activeCategories, setActiveCategories] = useState<SearchCategory[]>(() => {
-        const fromUrl = searchParams?.getAll('categories') ?? [];
-        const valid = fromUrl.filter((category) => isSearchCategory(category));
-        return valid.length > 0 ? valid : categories;
-    });
-
-    const [dateStart, setDateStart] = useState(() => searchParams?.get('dateStart') ?? '');
-    const [dateEnd, setDateEnd] = useState(() => searchParams?.get('dateEnd') ?? '');
-
-    const [priceRange, setPriceRange] = useState(() => ({
-        min: searchParams?.get('minPrice') ?? '',
-        max: searchParams?.get('maxPrice') ?? '',
-    }));
+    const [filters, setFilters] = useState(() =>
+        readSearchFilters(new URLSearchParams(searchParamsString), searchBar, categories));
+    const filtersRef = useRef(filters);
+    const lastSyncedSearch = useRef(searchParamsString);
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const [selectedBoroughs, setSelectedBoroughs] = useState<any[]>(() => {
-        const fromUrl = searchParams?.getAll('boroughs') ?? [];
-        return fromUrl.map((borough) => ({ value: borough, label: borough }));
-    });
+    const { query: searchQuery, includePast: pastEventsBool, categories: activeCategories, dateStart, dateEnd } = filters;
+    const priceRange = { min: filters.minPrice, max: filters.maxPrice };
+    const selectedBoroughs = filters.boroughs.map((borough) => ({ value: borough, label: borough }));
+
+    const updateFilters = (changes: Partial<SearchFilters>) => {
+        const next = { ...filtersRef.current, ...changes };
+        filtersRef.current = next;
+        setFilters(next);
+        const params = writeSearchFilters(new URLSearchParams(window.location.search), next);
+        const query = params.toString();
+        window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+    };
+
+    useEffect(() => {
+        // Ignore an older Next.js navigation notification after a newer local edit.
+        if (new URLSearchParams(window.location.search).toString() !== searchParamsString) return;
+        if (lastSyncedSearch.current === searchParamsString) return;
+        lastSyncedSearch.current = searchParamsString;
+        const next = readSearchFilters(new URLSearchParams(searchParamsString));
+        filtersRef.current = next;
+        // Browser and Next.js navigations can change the URL independently of local edits.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFilters(next);
+    }, [searchParamsString]);
 
     const displayCategories = activeCategories.length === 0 ? ALL_CATEGORIES : activeCategories;
 
@@ -114,23 +118,25 @@ export default function SearchClient({
     };
 
     const handleDateStartChange = (val: string) => {
-        setDateStart(val);
+        let includePast = pastEventsBool;
         if (val) {
             const d = parseDateInput(val);
-            setPastEventsBool(d ? d < new Date() : false);
+            includePast = d ? d < new Date() : false;
         } else if (!dateEnd) {
-            setPastEventsBool(false);
+            includePast = false;
         }
+        updateFilters({ dateStart: val, includePast });
     };
 
     const handleDateEndChange = (val: string) => {
-        setDateEnd(val);
+        let includePast = pastEventsBool;
         if (val) {
             const d = parseDateInput(val);
-            setPastEventsBool(d ? d < new Date() : false);
+            includePast = d ? d < new Date() : false;
         } else if (!dateStart) {
-            setPastEventsBool(false);
+            includePast = false;
         }
+        updateFilters({ dateEnd: val, includePast });
     };
 
     // Returns true if a venue's address matches any selected borough
@@ -141,56 +147,9 @@ export default function SearchClient({
         );
     };
 
-    useEffect(() => {
-        const nextParams = new URLSearchParams();
-
-        const query = searchQuery.trim();
-        if (query) nextParams.set('query', query);
-
-        const hasAllCategoriesSelected =
-            activeCategories.length === ALL_CATEGORIES.length &&
-            ALL_CATEGORIES.every((category) => activeCategories.includes(category));
-
-        if (!hasAllCategoriesSelected) {
-            for (const category of activeCategories) {
-                nextParams.append('categories', category);
-            }
-        }
-
-        if (pastEventsBool) nextParams.set('includePast', 'true');
-        if (dateStart) nextParams.set('dateStart', dateStart);
-        if (dateEnd) nextParams.set('dateEnd', dateEnd);
-        if (priceRange.min !== '') nextParams.set('minPrice', priceRange.min);
-        if (priceRange.max !== '') nextParams.set('maxPrice', priceRange.max);
-
-        for (const borough of selectedBoroughs) {
-            const value = String(borough?.value ?? '').trim();
-            if (value) nextParams.append('boroughs', value);
-        }
-
-        const currentQuery = searchParams?.toString() ?? '';
-        const nextQuery = nextParams.toString();
-        if (nextQuery === currentQuery) return;
-
-        const nextHref = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-        router.replace(nextHref, { scroll: false });
-    }, [activeCategories, selectedBoroughs, dateStart, dateEnd, pathname, pastEventsBool, priceRange.max, priceRange.min, router, searchParams, searchQuery]);
-
     const toggleCategory = (category: SearchCategory) => {
-        setActiveCategories((prev) =>
-            prev.includes(category)
-                ? prev.filter((c) => c !== category)
-                : [...prev, category]
-        );
-    };
-
-    const now = new Date();
-
-    const eventEndTime = (event: any) => {
-        const dateStr = event.enddate || event.startdate;
-        const timeStr = event.endtime;
-        if (dateStr && timeStr) return new Date(`${dateStr.split('T')[0]}T${timeStr}`);
-        return new Date(dateStr);
+        const prev = filtersRef.current.categories;
+        updateFilters({ categories: prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category] });
     };
 
     const eventStartDay = (event: any): Date => {
@@ -208,13 +167,7 @@ export default function SearchClient({
             venueMap.get(String(event.locationid)),
         ));
 
-    if (pastEventsBool) {
-        filteredEvents = filteredEvents
-            .filter(event => eventEndTime(event) < now)
-            .sort((a, b) => eventEndTime(b).getTime() - eventEndTime(a).getTime());
-    } else {
-        filteredEvents = filteredEvents.filter(event => eventEndTime(event) >= now);
-    }
+    filteredEvents = filterEventsByTime(filteredEvents, pastEventsBool);
 
     if (priceRange.min !== '' || priceRange.max !== '') {
         filteredEvents = filteredEvents.filter(event => {
@@ -284,7 +237,7 @@ export default function SearchClient({
                         type="text"
                         placeholder={"Search " + displayCategories.join(", ") + "..."}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => updateFilters({ query: e.target.value })}
                         className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-surface text-text placeholder-text text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
@@ -305,7 +258,7 @@ export default function SearchClient({
                         </button>
                     ))}
                     <button
-                        onClick={() => setActiveCategories([])}
+                        onClick={() => updateFilters({ categories: [] })}
                         className="flex items-center px-3 py-2 rounded-full bg-gray-200 text-text hover:bg-gray-300 text-sm sm:text-base"
                         title="Clear all"
                         type="button"
@@ -347,7 +300,7 @@ export default function SearchClient({
                                             <input
                                                 type="checkbox"
                                                 checked={pastEventsBool}
-                                                onChange={(e) => setPastEventsBool(e.target.checked)}
+                                                onChange={(e) => updateFilters({ includePast: e.target.checked })}
                                                 className="rounded border-gray-300"
                                             />
                                             View past events
@@ -380,9 +333,7 @@ export default function SearchClient({
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            setDateStart('');
-                                                            setDateEnd('');
-                                                            setPastEventsBool(false);
+                                                            updateFilters({ dateStart: '', dateEnd: '', includePast: false });
                                                         }}
                                                         className="text-xs text-blue-500 hover:text-blue-700 text-left"
                                                     >
@@ -399,14 +350,14 @@ export default function SearchClient({
                                                     type="number"
                                                     placeholder="Min"
                                                     value={priceRange.min}
-                                                    onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                                                    onChange={(e) => updateFilters({ minPrice: e.target.value })}
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                                 <input
                                                     type="number"
                                                     placeholder="Max"
                                                     value={priceRange.max}
-                                                    onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                                                    onChange={(e) => updateFilters({ maxPrice: e.target.value })}
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-surface text-text placeholder-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                 />
                                             </div>
@@ -425,7 +376,7 @@ export default function SearchClient({
                                         isMulti
                                         options={boroughOptions}
                                         value={selectedBoroughs}
-                                        onChange={(e) => setSelectedBoroughs(e ? [...e] : [])}
+                                        onChange={(e) => updateFilters({ boroughs: e.map((option) => option.value) })}
                                         placeholder="All boroughs"
                                         className="bg-surface text-text text-sm"
                                         styles={{

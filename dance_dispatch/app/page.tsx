@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEvent/SubmitEventButton";
 import { LandingAnnouncementSection } from "./components/LandingAnnouncementModal";
-import { EventRankingModalTrigger } from "./components/EventRankings/EventRankingModalTrigger";
 import TrendingEventsClient from "./components/TrendingEventsClient";
 import { getRecentActivitySections, type RecentActivityItem } from "@/lib/recent-activity";
 
@@ -114,10 +113,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       <TrendingEvents selectedFilter={params.mission} />
 
       <LandingAnnouncementSection />
-
-      <div className="mx-auto flex w-full max-w-[1400px] items-center justify-center px-4 py-2 sm:px-6">
-        <EventRankingModalTrigger />
-        </div>
       
       
       <section className="mx-auto mb-10 w-full max-w-[1400px] px-4 sm:px-6">

@@ -4,6 +4,7 @@ import {
   LandingAnnouncementClient,
   type AnnouncementEvent,
 } from './LandingAnnouncementModalClient';
+import { EventRankingModalTrigger } from './EventRankings/EventRankingModalTrigger';
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
 import { isUpcoming } from '@/lib/date-utils';
 
@@ -129,6 +130,9 @@ export async function LandingAnnouncementSection() {
           savedCount={savedCount}
           unreviewedCount={unreviewedCount}
         />
+        <div className="relative mt-4 flex justify-left border-t border-cyan-900/10 pt-3 dark:border-cyan-100/10">
+          <EventRankingModalTrigger />
+        </div>
       </div>
     </section>
   );

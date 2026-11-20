@@ -205,12 +205,12 @@ export function EventRankingModal({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-700 transition-all"
+        className="group btn-highlighted flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-bold text-text"
       >
-        <Swords className="w-4 h-4 text-amber-400" />
+        <Swords className="h-4 w-4 transition-transform group-hover:rotate-[-12deg]" />
         <span>Event Match Ups</span>
         {remaining.length > 0 && (
-          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/15 text-amber-400 rounded-full">
+          <span className="ml-0.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold tabular-nums">
             {remaining.length}
           </span>
         )}

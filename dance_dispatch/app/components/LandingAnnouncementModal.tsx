@@ -8,7 +8,7 @@ import { EventRankingModalTrigger } from './EventRankings/EventRankingModalTrigg
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
 import { isUpcoming } from '@/lib/date-utils';
 
-const LOOKBACK_DAYS = 4;
+const LOOKBACK_DAYS = 7;
 const INITIAL_LIMIT = 5;
 const EXPANDED_LIMIT = 15;
 

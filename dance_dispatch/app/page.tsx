@@ -114,7 +114,6 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
       <LandingAnnouncementSection />
       
-      
       <section className="mx-auto mb-10 w-full max-w-[1400px] px-4 sm:px-6">
         <div className="rounded-2xl border border-yellow-500/40 bg-gradient-to-r from-yellow-100 via-yellow-50 to-white p-6 shadow-sm dark:border-yellow-400/30 dark:from-yellow-400/10 dark:via-surface dark:to-surface">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

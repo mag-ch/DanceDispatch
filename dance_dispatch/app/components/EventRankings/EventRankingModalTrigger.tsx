@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
 import { EventRankingModal, ModalComparison, ModalEvent } from './EventRankingModal';
 
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = 8;
 const MIN_EVENTS_TO_RANK = 2;
 
 function getDateString(offsetDays: number): string {

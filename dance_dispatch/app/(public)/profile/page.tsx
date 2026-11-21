@@ -14,17 +14,51 @@ import NotificationSubscriptionToggle from './NotificationSubscriptionToggle';
 import MakePartyPlanButton from './MakePartyPlanButton';
 import BlockedUsers from './BlockedUsers';
 import ProfileEditor from './ProfileEditor';
+import AllTimeEventRankingsButton, { type AllTimeEventRanking } from './AllTimeEventRankingsButton';
+import { createClient } from '@/lib/supabase/server';
 // import AdminInviteCodePanel from './AdminInviteCodePanel';
 
 
 import { PUSH_TEST_USER_ID } from '@/lib/push-notification-constants';
+
+type EventComparisonRow = {
+    event_a_id: number;
+    event_b_id: number;
+    winner_is_a: boolean;
+};
+
+async function getAllEventComparisons(userId: string): Promise<EventComparisonRow[]> {
+    const supabase = await createClient();
+    const pageSize = 1000;
+    const comparisons: EventComparisonRow[] = [];
+
+    for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+            .from('event_comparisons')
+            .select('event_a_id, event_b_id, winner_is_a')
+            .eq('user_id', userId)
+            .order('id', { ascending: true })
+            .range(from, from + pageSize - 1);
+
+        if (error) {
+            throw new Error(`Failed to load all-time event rankings: ${error.message}`);
+        }
+
+        const page = data ?? [];
+        comparisons.push(...page);
+        if (page.length < pageSize) break;
+    }
+
+    return comparisons;
+}
+
 export default async function ProfilePage() {
     const user = await requireAuth();
     // Fetch all necessary data in parallel from public.profiles
     const userdata = await getUserById(user.id);
     const displayName = userdata?.full_name || userdata?.username || user.email || 'User';
     
-    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus, pointsSummary, hosts] = await Promise.all([
+    const [followedVenues, favoriteDJs, followedUsers, upcomingEvents, pastEvents, userReviews, missionStatus, pointsSummary, hosts, eventComparisons] = await Promise.all([
         getAllFollowedVenues(user.id),
         getAllFollowedHosts(user.id),
         getAllFollowedUsers(user.id),
@@ -34,6 +68,7 @@ export default async function ProfilePage() {
         checkNewUserMissions(user.id),
         getUserPointsSummary(user.id),
         getHosts(),
+        getAllEventComparisons(user.id),
     ]);
 
     const followedUserBadgeMap = await getTopBadgesForUsers(
@@ -84,6 +119,41 @@ export default async function ProfilePage() {
         const bTime = new Date(`${b.startdate ?? ''} ${b.starttime ?? ''}`).getTime();
         return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
     });
+
+    const pastEventsById = new Map(pastEvents.map((event) => [String(event.id), event]));
+    const eventRankingStats = new Map<string, { event: Event; wins: number; losses: number }>();
+    for (const comparison of eventComparisons) {
+        const winnerId = String(comparison.winner_is_a ? comparison.event_a_id : comparison.event_b_id);
+        const loserId = String(comparison.winner_is_a ? comparison.event_b_id : comparison.event_a_id);
+        const winner = pastEventsById.get(winnerId);
+        const loser = pastEventsById.get(loserId);
+
+        if (winner) {
+            const stats = eventRankingStats.get(winnerId) ?? { event: winner, wins: 0, losses: 0 };
+            stats.wins += 1;
+            eventRankingStats.set(winnerId, stats);
+        }
+        if (loser) {
+            const stats = eventRankingStats.get(loserId) ?? { event: loser, wins: 0, losses: 0 };
+            stats.losses += 1;
+            eventRankingStats.set(loserId, stats);
+        }
+    }
+
+    const allTimeEventRankings: AllTimeEventRanking[] = [...eventRankingStats.values()]
+        .map(({ event, wins, losses }) => ({
+            eventId: String(event.id),
+            title: event.title,
+            subtitle: event.location || 'Unknown Venue',
+            date: event.startdate,
+            imageUrl: event.imageurl || undefined,
+            wins,
+            losses,
+            score: wins - losses,
+            rank: 0,
+        }))
+        .sort((a, b) => b.score - a.score || b.wins - a.wins || a.title.localeCompare(b.title))
+        .map((ranking, index) => ({ ...ranking, rank: index + 1 }));
 
     // Pre-render item lists so they can be handed to client components as children
     const followedUserItems = (showActions: boolean) => followedUsers.map((follow: any) => (
@@ -328,7 +398,10 @@ export default async function ProfilePage() {
 
             {/* Past Events - only 5 most recent shown, rest behind "See more" */}
             <section className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-text">Past Events ({pastEvents.length})</h2>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-2xl font-semibold text-text">Past Events ({pastEvents.length})</h2>
+                    <AllTimeEventRankingsButton rankings={allTimeEventRankings} />
+                </div>
                 <ExpandableList
                     items={pastEventItems}
                     initialCount={5}

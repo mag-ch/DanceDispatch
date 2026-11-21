@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { getCachedEvents, getPendingReviewEventIds } from "@/lib/utils_supabase_server";
 import { EventCard } from '@/app/components/EventCard';
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth-helpers";
 import SearchBar from "./components/SearchBar";
 import { SubmitEventButton } from "./components/SubmitEvent/SubmitEventButton";
 import { LandingAnnouncementSection } from "./components/LandingAnnouncementModal";
@@ -14,8 +15,7 @@ import { getRecentActivitySections, type RecentActivityItem } from "@/lib/recent
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ userId?: string; mission?: string }> }) {
   const params = await searchParams;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const userId = params?.userId || user?.id;
   const sections = await getRecentActivitySections(userId);
   const activitySections = [

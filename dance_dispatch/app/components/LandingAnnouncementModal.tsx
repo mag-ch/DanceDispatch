@@ -1,5 +1,6 @@
 import { getCachedEvents } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/auth-helpers';
 import {
   LandingAnnouncementClient,
   type AnnouncementEvent,
@@ -50,12 +51,10 @@ function sortByDateTime<T extends { startdate: string; starttime?: string | null
 export async function LandingAnnouncementSection() {
   const rangeStart = getDateString(LOOKBACK_DAYS);
   const rangeEnd = getDateString(0);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) return null;
+  const supabase = await createClient();
 
   // 1. Fetch saved events and all events in range
   const savedEventsRaw = await getSavedEventsForUserServer(user.id, 'past');

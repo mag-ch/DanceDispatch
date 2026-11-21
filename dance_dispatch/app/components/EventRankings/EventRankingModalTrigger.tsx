@@ -1,5 +1,6 @@
 import { getCachedEvents } from '@/lib/utils_supabase_server';
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/auth-helpers';
 import { getSavedEventsForUserServer } from '@/lib/server_utils';
 import { EventRankingModal, ModalComparison, ModalEvent } from './EventRankingModal';
 
@@ -32,12 +33,10 @@ function toModalEvent(event: any): ModalEvent {
 }
 
 export async function EventRankingModalTrigger() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) return null;
+
+  const supabase = await createClient();
 
   const rangeStart = getDateString(LOOKBACK_DAYS);
   const rangeEnd = getDateString(0);
